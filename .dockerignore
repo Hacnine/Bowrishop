@@ -1,0 +1,26 @@
+node_modules
+*/node_modules
+.git
+.gitignore
+.github
+.vscode
+.DS_Store
+backups
+docs
+*.log
+.env.local
+.env.*.local
+Dump/
+CHANGELOG.md
+LICENSE
+README.md
+
+# Old Express.js files (after NestJS migration)
+backend/app.js
+backend/controllers/
+backend/routes/
+backend/middlewares/
+backend/sockets/
+backend/utils/
+backend/modules/
+backend/config/
