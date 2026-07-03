@@ -4,7 +4,7 @@ FROM node:24-slim
 WORKDIR /app
 
 # Install pnpm
-RUN npm install -g pnpm
+RUN npm install -g pnpm@11.9.0
 
 # Install system utilities required by healthchecks and Prisma
 RUN apt-get update \
