@@ -9,7 +9,7 @@ import { CreateOrderDto, CreateGuestOrderDto, UpdateOrderStatusDto } from './dto
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
-import { Role } from '@prisma/client';
+import { Role } from 'generated/prisma';
 
 @ApiTags('Orders')
 @Controller('orders')

@@ -7,7 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto, CreateGuestOrderDto, UpdateOrderStatusDto } from './dto/order.dto';
 import { EmailService } from '../email/email.service';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus } from 'generated/prisma';
 
 @Injectable()
 export class OrdersService {
