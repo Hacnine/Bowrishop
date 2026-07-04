@@ -5,7 +5,7 @@ import { CategoriesService } from './categories.service';
 import { CreateCategoryDto, UpdateCategoryDto } from './dto/category.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
-import { Role } from 'generated/prisma';
+import { Role } from '@prisma/client';
 
 @ApiTags('Categories')
 @Controller('categories')

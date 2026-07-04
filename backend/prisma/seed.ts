@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { PrismaClient , Role, DiscountType } from 'generated/prisma';
+import { PrismaClient , Role, DiscountType } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import * as bcrypt from 'bcryptjs';
 
