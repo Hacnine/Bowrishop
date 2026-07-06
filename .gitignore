@@ -5,7 +5,7 @@ backend/generated/prisma
 # Build output
 dist/
 build/
-
+Products/
 # Prisma generated client (optional if committed)
 backend/node_modules/
 backend/dist/
