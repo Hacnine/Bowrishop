@@ -13,7 +13,7 @@ export function OAuthCallbackPage() {
     const refreshToken = searchParams.get('refreshToken');
     if (accessToken && refreshToken) {
       // Fetch profile then store credentials
-      fetch('/api/auth/profile', {
+      fetch('/api/users/me', {
         headers: { Authorization: `Bearer ${accessToken}` },
       })
         .then((r) => r.json())

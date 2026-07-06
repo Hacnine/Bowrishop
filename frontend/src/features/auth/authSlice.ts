@@ -36,6 +36,17 @@ const authSlice = createSlice({
       state.isAuthenticated = true;
       localStorage.setItem('trendora_auth', JSON.stringify(action.payload));
     },
+    setTokens(state, action: PayloadAction<{ accessToken: string; refreshToken: string }>) {
+      state.accessToken = action.payload.accessToken;
+      state.refreshToken = action.payload.refreshToken;
+      state.isAuthenticated = !!state.user;
+      if (state.user) {
+        localStorage.setItem(
+          'trendora_auth',
+          JSON.stringify({ user: state.user, ...action.payload }),
+        );
+      }
+    },
     updateUser(state, action: PayloadAction<User>) {
       state.user = action.payload;
       if (state.accessToken) {
@@ -55,5 +66,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { setCredentials, updateUser, logout } = authSlice.actions;
+export const { setCredentials, setTokens, updateUser, logout } = authSlice.actions;
 export default authSlice.reducer;

@@ -16,14 +16,22 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
+  private getAccessTokenSecret() {
+    return process.env.JWT_SECRET || 'fallback-secret';
+  }
+
+  private getRefreshTokenSecret() {
+    return process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret';
+  }
+
   private generateTokens(userId: string, email: string, role: string) {
     const payload = { sub: userId, email, role };
     const accessToken = this.jwtService.sign(payload, {
-      secret: process.env.JWT_SECRET,
-      expiresIn: (process.env.JWT_EXPIRES_IN || '1d') as any,
+      secret: this.getAccessTokenSecret(),
+      expiresIn: (process.env.JWT_EXPIRES_IN || '15m') as any,
     });
     const refreshToken = this.jwtService.sign(payload, {
-      secret: process.env.JWT_REFRESH_SECRET,
+      secret: this.getRefreshTokenSecret(),
       expiresIn: (process.env.JWT_REFRESH_EXPIRES_IN || '7d') as any,
     });
     return { accessToken, refreshToken };
@@ -65,8 +73,17 @@ export class AuthService {
     return { user: safeUser, ...tokens };
   }
 
-  async refreshTokens(userId: string, incomingRefreshToken: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+  async refreshTokens(incomingRefreshToken: string) {
+    let payload: { sub: string; email: string; role: string };
+    try {
+      payload = await this.jwtService.verifyAsync(incomingRefreshToken, {
+        secret: this.getRefreshTokenSecret(),
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
     if (!user || !user.refreshToken) throw new UnauthorizedException();
 
     const valid = await bcrypt.compare(incomingRefreshToken, user.refreshToken);

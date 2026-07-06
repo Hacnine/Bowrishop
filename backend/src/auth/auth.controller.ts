@@ -37,10 +37,8 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh access token' })
-  @UseGuards(AuthGuard('jwt'))
-  @ApiBearerAuth()
-  refresh(@CurrentUser() user: any, @Body() dto: RefreshTokenDto) {
-    return this.authService.refreshTokens(user.id, dto.refreshToken);
+  refresh(@Body() dto: RefreshTokenDto) {
+    return this.authService.refreshTokens(dto.refreshToken);
   }
 
   @Post('logout')
