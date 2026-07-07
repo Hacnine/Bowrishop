@@ -60,12 +60,13 @@ export interface OrderItem {
 
 export interface ShippingAddress {
   fullName: string;
+  phoneNumber: string;
   streetAddress: string;
   city: string;
   state: string;
   zipCode: string;
   country: string;
-  phone?: string;
+  paymentTransactionId?: string;
 }
 
 export type OrderStatus = 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';

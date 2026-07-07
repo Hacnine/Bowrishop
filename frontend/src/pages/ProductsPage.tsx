@@ -72,7 +72,7 @@ export function ProductsPage() {
           {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
         <button
-          className="flex items-center gap-2 border border-gray-300 rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-gray-50"
+          className="flex items-center gap-2 border border-gray-300 cursor-pointer rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-gray-50"
           onClick={() => setShowFilters(!showFilters)}
         >
           <SlidersHorizontal className="w-4 h-4" />
@@ -84,7 +84,7 @@ export function ProductsPage() {
         {/* Filter sidebar */}
         {showFilters && (
           <aside className="w-56 flex-shrink-0">
-            <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-6">
+            <div className="bg-white border border-gray-200 cursor-pointer rounded-2xl p-5 space-y-6">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-gray-900">Filters</span>
                 <button onClick={() => setShowFilters(false)}><X className="w-4 h-4 text-gray-400" /></button>
@@ -138,7 +138,7 @@ export function ProductsPage() {
               </label>
 
               {/* Clear */}
-              <Button variant="outline" size="sm" className="w-full" onClick={() => setSearchParams({})}>
+              <Button variant="outline" size="sm" className="w-full cursor-pointer " onClick={() => setSearchParams({})}>
                 Clear filters
               </Button>
             </div>
@@ -170,7 +170,7 @@ export function ProductsPage() {
                       key={p}
                       onClick={() => setSearchParams((prev) => { const n = new URLSearchParams(prev); n.set('page', String(p)); return n; })}
                       className={cn(
-                        'w-9 h-9 rounded-lg text-sm font-medium',
+                        'w-9 h-9 rounded-lg cursor-pointer text-sm font-medium',
                         p === page ? 'bg-indigo-600 text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50',
                       )}
                     >

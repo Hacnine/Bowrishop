@@ -16,7 +16,14 @@ export const ordersApi = baseApi.injectEndpoints({
     getGuestOrder: builder.query<Order, string>({
       query: (id) => `/orders/guest/${id}`,
     }),
-    createOrder: builder.mutation<Order, { shippingAddress: ShippingAddress; couponCode?: string; notes?: string }>({
+    createOrder: builder.mutation<
+      Order,
+      {
+        shippingAddress: ShippingAddress;
+        couponCode?: string;
+        notes?: string;
+      }
+    >({
       query: (body) => ({ url: '/orders', method: 'POST', body }),
       invalidatesTags: ['Orders', 'Cart'],
     }),

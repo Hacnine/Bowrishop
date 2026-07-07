@@ -28,36 +28,42 @@ export function AdminOrders() {
         {isLoading ? (
           <div className="p-6 space-y-3">{Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-12" />)}</div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50">
-              <tr className="text-left text-gray-500">
-                <th className="px-6 py-4 font-medium">Order</th>
-                <th className="px-6 py-4 font-medium">Customer</th>
-                <th className="px-6 py-4 font-medium">Date</th>
-                <th className="px-6 py-4 font-medium">Total</th>
-                <th className="px-6 py-4 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {data?.data.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 font-mono text-gray-700">#{order.id.slice(-8).toUpperCase()}</td>
-                  <td className="px-6 py-4 text-gray-700">{order.user?.name ?? '—'}<br /><span className="text-xs text-gray-400">{order.user?.email}</span></td>
-                  <td className="px-6 py-4 text-gray-500">{formatDate(order.createdAt)}</td>
-                  <td className="px-6 py-4 font-semibold text-gray-900">{formatCurrency(order.total)}</td>
-                  <td className="px-6 py-4">
-                    <select
-                      value={order.status}
-                      onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                      className={`text-xs font-semibold px-2 py-1.5 rounded-full border-0 focus:ring-2 focus:ring-indigo-500 cursor-pointer ${getOrderStatusColor(order.status)}`}
-                    >
-                      {STATUSES.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
-                    </select>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr className="text-left text-gray-500">
+                  <th className="px-6 py-4 font-medium">Order</th>
+                  <th className="px-6 py-4 font-medium">Customer</th>
+                  <th className="px-6 py-4 font-medium">Phone</th>
+                  <th className="px-6 py-4 font-medium">Transaction ID</th>
+                  <th className="px-6 py-4 font-medium">Date</th>
+                  <th className="px-6 py-4 font-medium">Total</th>
+                  <th className="px-6 py-4 font-medium">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {data?.data.map((order) => (
+                  <tr key={order.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 font-mono text-gray-700">#{order.id.slice(-8).toUpperCase()}</td>
+                    <td className="px-6 py-4 text-gray-700">{order.user?.name ?? '—'}<br /><span className="text-xs text-gray-400">{order.user?.email}</span></td>
+                    <td className="px-6 py-4 text-gray-700">{order.shippingAddress?.phoneNumber ?? '—'}</td>
+                    <td className="px-6 py-4 font-mono text-gray-700">{order.shippingAddress?.paymentTransactionId ?? '—'}</td>
+                    <td className="px-6 py-4 text-gray-500">{formatDate(order.createdAt)}</td>
+                    <td className="px-6 py-4 font-semibold text-gray-900">{formatCurrency(order.total)}</td>
+                    <td className="px-6 py-4">
+                      <select
+                        value={order.status}
+                        onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                        className={`text-xs font-semibold px-2 py-1.5 rounded-full border-0 focus:ring-2 focus:ring-indigo-500 cursor-pointer ${getOrderStatusColor(order.status)}`}
+                      >
+                        {STATUSES.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
 
         {data && data.totalPages > 1 && (

@@ -1,11 +1,23 @@
 import {
-  Controller, Get, Post, Patch, Body, Param, Query, UseGuards,
-  ParseIntPipe, DefaultValuePipe,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  ParseIntPipe,
+  DefaultValuePipe,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
-import { CreateOrderDto, CreateGuestOrderDto, UpdateOrderStatusDto } from './dto/order.dto';
+import {
+  CreateOrderDto,
+  CreateGuestOrderDto,
+  UpdateOrderStatusDto,
+} from './dto/order.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -47,9 +59,8 @@ export class OrdersController {
   }
 
   @ApiBearerAuth()
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.ADMIN)
-  @UseGuards(RolesGuard)
   @Get('admin')
   getAdminOrders(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -75,4 +86,3 @@ export class OrdersController {
     return this.ordersService.updateStatus(id, dto);
   }
 }
-

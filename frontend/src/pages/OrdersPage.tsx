@@ -42,9 +42,25 @@ export function OrdersPage() {
                 {order.status.replace('_', ' ')}
               </span>
             </div>
-            <div className="flex items-center justify-between">
+
+            <div className="flex items-center justify-between mb-3">
               <p className="text-sm text-gray-500">{order.items?.length ?? 0} item(s)</p>
               <p className="font-semibold text-gray-900">{formatCurrency(order.total)}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100 text-xs">
+              <div>
+                <p className="text-gray-400 mb-0.5">Phone number</p>
+                <p className="font-medium text-gray-700">
+                  {order.shippingAddress?.phoneNumber ?? '—'}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-400 mb-0.5">bKash transaction ID</p>
+                <p className="font-mono font-medium text-gray-700">
+                  {order.shippingAddress?.paymentTransactionId ?? '—'}
+                </p>
+              </div>
             </div>
           </div>
         ))}

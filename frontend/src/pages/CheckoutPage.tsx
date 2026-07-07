@@ -11,13 +11,21 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { formatCurrency } from '../utils';
 
+const BKASH_NUMBER = '01403041607';
+const BKASH_PAYMENT_AMOUNT = 20;
+
 const schema = z.object({
   fullName: z.string().min(2, 'Full name required'),
+  phoneNumber: z
+    .string()
+    .min(11, 'Enter a valid phone number')
+    .regex(/^01[0-9]{9}$/, 'Enter a valid 11-digit phone number'),
   streetAddress: z.string().min(3, 'Street address required'),
   city: z.string().min(2, 'City required'),
   state: z.string().min(2, 'State required'),
   country: z.string().min(2, 'Country required'),
   zipCode: z.string().min(3, 'Zip code required'),
+  transactionId: z.string().min(3, 'Transaction ID required'),
   guestEmail: z.string().optional(),
   guestName: z.string().optional(),
 });
@@ -55,11 +63,13 @@ export function CheckoutPage() {
         const order = await createOrder({
           shippingAddress: {
             fullName: data.fullName,
+            phoneNumber: data.phoneNumber,
             streetAddress: data.streetAddress,
             city: data.city,
             state: data.state,
             zipCode: data.zipCode,
             country: data.country,
+            paymentTransactionId: data.transactionId,
           },
           couponCode: state?.couponCode,
         }).unwrap();
@@ -80,11 +90,13 @@ export function CheckoutPage() {
           items: guestItems.map((i) => ({ productId: i.productId, quantity: i.quantity })),
           shippingAddress: {
             fullName: data.fullName,
+            phoneNumber: data.phoneNumber,
             streetAddress: data.streetAddress,
             city: data.city,
             state: data.state,
             zipCode: data.zipCode,
             country: data.country,
+            paymentTransactionId: data.transactionId,
           },
           couponCode: state?.couponCode,
         }).unwrap();
@@ -124,6 +136,13 @@ export function CheckoutPage() {
           <div className="bg-white border border-gray-100 rounded-2xl p-6 space-y-4">
             <h2 className="font-semibold text-gray-900 mb-2">Shipping address</h2>
             <Input label="Full name" error={errors.fullName?.message} {...register('fullName')} />
+            <Input
+              label="Phone number"
+              type="tel"
+              placeholder="01XXXXXXXXX"
+              error={errors.phoneNumber?.message}
+              {...register('phoneNumber')}
+            />
             <Input label="Street address" error={errors.streetAddress?.message} {...register('streetAddress')} />
             <div className="grid grid-cols-2 gap-4">
               <Input label="City" error={errors.city?.message} {...register('city')} />
@@ -133,6 +152,30 @@ export function CheckoutPage() {
               <Input label="Zip code" error={errors.zipCode?.message} {...register('zipCode')} />
               <Input label="Country" error={errors.country?.message} {...register('country')} />
             </div>
+          </div>
+
+          {/* bKash payment instructions */}
+          <div className="bg-pink-50 border border-pink-200 rounded-2xl p-6 space-y-4">
+            <h2 className="font-semibold text-gray-900">Payment</h2>
+            <p className="text-sm text-gray-700">
+              To confirm your order, please send{' '}
+              <span className="font-bold text-pink-700">{formatCurrency(BKASH_PAYMENT_AMOUNT)}</span> to
+              this bKash number:
+            </p>
+            <div className="flex items-center gap-2 bg-white border border-pink-200 rounded-xl px-4 py-3">
+              <span className="text-lg font-bold tracking-wide text-pink-700">{BKASH_NUMBER}</span>
+              <span className="text-xs text-gray-500">(Send Money)</span>
+            </div>
+            <Input
+              label="bKash transaction ID"
+              placeholder="e.g. 8N7A2XJ4K9"
+              error={errors.transactionId?.message}
+              {...register('transactionId')}
+            />
+            <p className="text-xs text-gray-500">
+              Enter the transaction ID you received by SMS after sending the payment. Your order will
+              be confirmed once we verify it.
+            </p>
           </div>
         </div>
 
@@ -167,9 +210,9 @@ export function CheckoutPage() {
               </div>
             </div>
 
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5 text-xs text-amber-800">
+            {/* <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5 text-xs text-amber-800">
               This is a demo store. No real payment is processed.
-            </div>
+            </div> */}
 
             <Button type="submit" className="w-full" isLoading={isLoading}>
               Place order
@@ -180,5 +223,3 @@ export function CheckoutPage() {
     </div>
   );
 }
-
-

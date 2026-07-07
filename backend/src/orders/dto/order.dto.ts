@@ -4,12 +4,18 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class ShippingAddressDto {
   @IsString() fullName: string;
+
+  @IsString() phoneNumber: string;
+
   @IsString() streetAddress: string;
   @IsString() city: string;
   @IsString() state: string;
   @IsString() zipCode: string;
   @IsString() country: string;
-  @IsOptional() @IsString() phone?: string;
+
+  @IsOptional()
+  @IsString()
+  paymentTransactionId?: string;
 }
 
 export class CreateOrderDto {
