@@ -16,4 +16,4 @@ volumes:
   trendora_pgdata:
 
 
-# git pull && docker compose up -d --build backend frontend
+# git pull && docker compose up -d --build  frontend

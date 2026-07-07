@@ -63,7 +63,7 @@ export function AdminLayout() {
               collapsed ? 'w-0 opacity-0' : 'w-auto opacity-100',
             )}
           >
-            Bowri Shop
+            <img src="/Icon/icon.png" className='h-20'/>
           </Link>
 
           <button

@@ -36,7 +36,7 @@ export function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="text-2xl font-bold text-indigo-600 flex-shrink-0">
-            Bowri Shop
+            <img src="/Icon/icon-2.webp" className='h-24'/>
           </Link>
 
           {/* Search - desktop */}
