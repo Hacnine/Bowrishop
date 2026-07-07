@@ -1,6 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,700;1,700&family=Pinyon+Script&display=swap');
+
 @import "tailwindcss";
 
+
 @theme {
+  --font-cormorant: "Cormorant Garamond", serif;
+  --font-swash: "Pinyon Script", cursive;
+
   --color-white: #fff9f5;
   --color-black: #4a3328;
 

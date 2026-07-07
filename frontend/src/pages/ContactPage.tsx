@@ -40,9 +40,9 @@ export function ContactPage() {
         {/* Contact info */}
         <div className="space-y-6">
           {[
-            { icon: Mail, title: 'Email', val: 'support@trendora.com' },
-            { icon: Phone, title: 'Phone', val: '+1 (555) 000-0000' },
-            { icon: MapPin, title: 'Office', val: '123 Shop St, Commerce City, CA' },
+            { icon: Mail, title: 'Email', val: 'bowrishopbd@gmail.com' },
+            { icon: Phone, title: 'Phone', val: '+880 14030 607' },
+            { icon: MapPin, title: 'Office', val: 'Nishipur, Gangni, Meherpur' },
           ].map(({ icon: Icon, title, val }) => (
             <div key={title} className="flex gap-4">
               <div className="w-11 h-11 bg-indigo-50 rounded-xl flex items-center justify-center flex-shrink-0">

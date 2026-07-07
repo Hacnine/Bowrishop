@@ -33,7 +33,7 @@ const heroSlides = [
     image: '/hero/hero-1.webp',
     link: '/products?categoryId=1',
     objectPosition: 'center center',
-    titleClass: 'text-[#4A3328]',
+    titleClass: 'text-[#4A3328] ',
     descriptionClass: 'text-[#7A6557]',
     eyebrowClass: 'text-[#8B6A56]',
     buttonClass: 'bg-[#C7927E] text-white hover:bg-[#A97462]',
@@ -300,7 +300,7 @@ function Perks({ slide }) {
               <Icon className={`w-5 h-5 ${iconColor}`} />
             </div>
             <div>
-              <div className={`text-sm font-semibold leading-snug ${slide.perksTitleClass}`}>
+              <div className={`text-sm font-semibold leading-snug  ${slide.perksTitleClass}`}>
                 {title}
               </div>
               <div className={`text-xs leading-snug ${slide.perksDescClass}`}>{desc}</div>
@@ -365,7 +365,7 @@ export function Hero({ categories = [] }) {
             <span className="block w-10 h-[2px] bg-current opacity-70" />
 
             <h1
-              className={`${slide.titleClass} text-5xl lg:text-6xl font-bold leading-tight`}
+              className={`${slide.titleClass} text-5xl lg:text-6xl font-cormorant font-bold leading-tight`}
             >
               {slide.title}
             </h1>

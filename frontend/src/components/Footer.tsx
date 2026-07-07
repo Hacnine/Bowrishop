@@ -26,7 +26,7 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
-            <span className="text-2xl font-bold text-white">Trendora</span>
+            <span className="text-2xl font-cormorant font-bold text-white">Bowri Shop</span>
             <p className="mt-3 text-sm leading-relaxed">Your one-stop destination for trending products at the best prices.</p>
             <div className="flex gap-3 mt-4">
               <a href="#" className="text-gray-400 hover:text-white"><FacebookIcon /></a>
@@ -60,7 +60,7 @@ export function Footer() {
           </div>
         </div>
         <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-500">
-          © {new Date().getFullYear()} Trendora. All rights reserved.
+          © {new Date().getFullYear()} Bowri Shop. All rights reserved.
         </div>
       </div>
     </footer>
