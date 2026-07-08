@@ -79,6 +79,7 @@ model Product {
   orderItems   OrderItem[]
   reviews      Review[]
   wishlist     WishlistItem[]
+  views        ProductView[]
 }
 
 model CartItem {
@@ -145,6 +146,17 @@ model WishlistItem {
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
+}
+
+model ProductView {
+  id        String   @id @default(cuid())
+  productId String
+  sessionId String   // anonymous session fingerprint (IP+UA hash or frontend-generated UUID)
+  viewedAt  DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([viewedAt])
 }
 
 model Coupon {

@@ -63,7 +63,7 @@ export class ProductsService {
     return { products: filtered, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
-  async findBySlug(slug: string) {
+  async findBySlug(slug: string, sessionId?: string) {
     const product = await this.prisma.product.findUnique({
       where: { slug },
       include: {
@@ -75,6 +75,13 @@ export class ProductsService {
       },
     });
     if (!product) throw new NotFoundException('Product not found');
+
+    // Record view fire-and-forget (never block the response)
+    if (sessionId) {
+      this.prisma.productView.create({
+        data: { productId: product.id, sessionId },
+      }).catch(() => {}); // silently ignore duplicates or errors
+    }
 
     const averageRating = product.reviews.length
       ? product.reviews.reduce((s, r) => s + r.rating, 0) / product.reviews.length
@@ -186,6 +193,37 @@ export class ProductsService {
       include: { category: { select: { name: true, slug: true } }, reviews: { select: { rating: true } } },
     });
     return this.enrich(products);
+  }
+
+  async getMostViewed(limit = 10) {
+    // Aggregate view counts from ProductView table, last 30 days for relevance
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const topViewed = await this.prisma.productView.groupBy({
+      by: ['productId'],
+      where: { viewedAt: { gte: since } },
+      _count: { id: true },
+      orderBy: { _count: { id: 'desc' } },
+      take: limit,
+    });
+
+    if (!topViewed.length) {
+      // Fallback: best selling when no view data yet
+      return this.getBestSelling(limit);
+    }
+
+    const ids = topViewed.map((v) => v.productId);
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: ids }, isActive: true, stock: { gt: 0 } },
+      include: { category: { select: { name: true, slug: true } }, reviews: { select: { rating: true } } },
+    });
+
+    // Preserve view-count order
+    const sorted = ids
+      .map((id) => products.find((p) => p.id === id))
+      .filter(Boolean);
+
+    return this.enrich(sorted);
   }
 }
 

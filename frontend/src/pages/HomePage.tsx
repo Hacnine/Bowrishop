@@ -11,6 +11,7 @@ import {
   BadgeCheck,
   PackageCheck,
   Headset,
+  Eye,
 } from "lucide-react";
 
 import {
@@ -18,6 +19,7 @@ import {
   useGetBestSellingProductsQuery,
   useGetOnSaleProductsQuery,
   useGetNewArrivalProductsQuery,
+  useGetMostViewedProductsQuery,
 } from "../features/products/productsApi";
 import { useGetCategoriesQuery } from "../features/categories/categoriesApi";
 import { ProductCard } from "../components/ProductCard";
@@ -100,6 +102,7 @@ export function HomePage() {
     useGetOnSaleProductsQuery(10);
   const { data: newArrivals, isLoading: loadingNew } =
     useGetNewArrivalProductsQuery(10);
+    const { data: mostViewed,   isLoading: loadingViewed }   = useGetMostViewedProductsQuery(10);
 
   return (
     <>
@@ -303,6 +306,44 @@ export function HomePage() {
           href="/products?sort=newest"
         />
         <ProductRow isLoading={loadingNew} products={newArrivals} />
+      </section>
+
+        {/* ── Most Viewed ── */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <SectionHeader
+          eyebrow="Trending Now" title="Most Viewed"
+          icon={Eye} href="/products"
+          accentColor="text-purple-500" bgColor="bg-purple-50"
+        />
+        <ProductRow isLoading={loadingViewed} products={mostViewed} />
+      </section>
+
+      {/* ── Promo banners ── */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Link to="/products?categoryId=1"
+            className="group relative h-44 rounded-3xl overflow-hidden bg-gradient-to-br from-[#F7EDE6] to-[#EDD5C5] flex items-center px-8">
+            <div className="relative z-10">
+              <p className="text-xs font-bold uppercase tracking-widest text-[#C7927E] mb-1">New Arrivals</p>
+              <h3 className="text-2xl font-bold text-[#4A3328] leading-tight mb-3">Hair<br />Accessories</h3>
+              <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#C7927E] group-hover:gap-2 transition-all">
+                Shop now <ArrowRight className="w-4 h-4" />
+              </span>
+            </div>
+            <div className="absolute right-0 bottom-0 w-40 h-40 opacity-20 bg-[#C7927E] rounded-full translate-x-10 translate-y-10" />
+          </Link>
+          <Link to="/products?categoryId=3"
+            className="group relative h-44 rounded-3xl overflow-hidden bg-gradient-to-br from-[#2C2118] to-[#4A3328] flex items-center px-8">
+            <div className="relative z-10">
+              <p className="text-xs font-bold uppercase tracking-widest text-[#C9A46A] mb-1">Home & Decor</p>
+              <h3 className="text-2xl font-bold text-white leading-tight mb-3">Light Up<br />Your Space</h3>
+              <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#C9A46A] group-hover:gap-2 transition-all">
+                Explore <ArrowRight className="w-4 h-4" />
+              </span>
+            </div>
+            <div className="absolute right-6 top-1/2 -translate-y-1/2 w-32 h-32 opacity-10 bg-[#C9A46A] rounded-full" />
+          </Link>
+        </div>
       </section>
 
       {/* ── Why Choose Us ── */}

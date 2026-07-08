@@ -1,5 +1,6 @@
 import { baseApi } from '../api/baseApi';
 import type { Product, PaginatedResponse } from '../../types';
+import { getSessionId } from '../../utils/session';
 
 interface ProductsQuery {
   q?: string;
@@ -28,37 +29,54 @@ export const productsApi = baseApi.injectEndpoints({
       }),
       providesTags: ['Products'],
     }),
-    getFeaturedProducts: builder.query<Product[], number | number | void>({
+
+    getFeaturedProducts: builder.query<Product[], number | void>({
       query: (limit) => ({ url: '/products/featured', params: limit ? { limit } : {} }),
       providesTags: ['Products'],
     }),
-    getProductBySlug: builder.query<Product, string>({
-      query: (slug) => `/products/${slug}`,
-      providesTags: (_, __, slug) => [{ type: 'Product', id: slug }],
-    }),
-    createProduct: builder.mutation<Product, Partial<Product>>({
-      query: (body) => ({ url: '/products', method: 'POST', body }),
-      invalidatesTags: ['Products'],
-    }),
-    updateProduct: builder.mutation<Product, { id: string } & Partial<Product>>({
-      query: ({ id, ...body }) => ({ url: `/products/${id}`, method: 'PATCH', body }),
-      invalidatesTags: ['Products'],
-    }),
-    deleteProduct: builder.mutation<void, string>({
-      query: (id) => ({ url: `/products/${id}`, method: 'DELETE' }),
-      invalidatesTags: ['Products'],
-    }),
+
     getBestSellingProducts: builder.query<Product[], number | void>({
       query: (limit) => ({ url: '/products/best-selling', params: limit ? { limit } : {} }),
       providesTags: ['Products'],
     }),
+
     getOnSaleProducts: builder.query<Product[], number | void>({
       query: (limit) => ({ url: '/products/on-sale', params: limit ? { limit } : {} }),
       providesTags: ['Products'],
     }),
+
     getNewArrivalProducts: builder.query<Product[], number | void>({
       query: (limit) => ({ url: '/products/new-arrivals', params: limit ? { limit } : {} }),
       providesTags: ['Products'],
+    }),
+
+    getMostViewedProducts: builder.query<Product[], number | void>({
+      query: (limit) => ({ url: '/products/most-viewed', params: limit ? { limit } : {} }),
+      providesTags: ['Products'],
+    }),
+
+    // Sends x-session-id header so the backend can record the view
+    getProductBySlug: builder.query<Product, string>({
+      query: (slug) => ({
+        url: `/products/${slug}`,
+        headers: { 'x-session-id': getSessionId() },
+      }),
+      providesTags: (_, __, slug) => [{ type: 'Product', id: slug }],
+    }),
+
+    createProduct: builder.mutation<Product, Partial<Product>>({
+      query: (body) => ({ url: '/products', method: 'POST', body }),
+      invalidatesTags: ['Products'],
+    }),
+
+    updateProduct: builder.mutation<Product, { id: string } & Partial<Product>>({
+      query: ({ id, ...body }) => ({ url: `/products/${id}`, method: 'PATCH', body }),
+      invalidatesTags: ['Products'],
+    }),
+
+    deleteProduct: builder.mutation<void, string>({
+      query: (id) => ({ url: `/products/${id}`, method: 'DELETE' }),
+      invalidatesTags: ['Products'],
     }),
   }),
 });
@@ -66,11 +84,12 @@ export const productsApi = baseApi.injectEndpoints({
 export const {
   useGetProductsQuery,
   useGetFeaturedProductsQuery,
+  useGetBestSellingProductsQuery,
+  useGetOnSaleProductsQuery,
+  useGetNewArrivalProductsQuery,
+  useGetMostViewedProductsQuery,
   useGetProductBySlugQuery,
   useCreateProductMutation,
   useUpdateProductMutation,
   useDeleteProductMutation,
-  useGetBestSellingProductsQuery,
-  useGetOnSaleProductsQuery,
-  useGetNewArrivalProductsQuery,
 } = productsApi;

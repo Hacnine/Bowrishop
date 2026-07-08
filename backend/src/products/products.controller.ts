@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Headers } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
@@ -37,9 +37,17 @@ export class ProductsController {
     return this.productsService.getNewArrivals(limit ? parseInt(limit) : 10);
   }
 
+  @Get('most-viewed')
+  getMostViewed(@Query('limit') limit?: string) {
+    return this.productsService.getMostViewed(limit ? parseInt(limit) : 10);
+  }
+
   @Get(':slug')
-  findOne(@Param('slug') slug: string) {
-    return this.productsService.findBySlug(slug);
+  findOne(
+    @Param('slug') slug: string,
+    @Headers('x-session-id') sessionId?: string,
+  ) {
+    return this.productsService.findBySlug(slug, sessionId);
   }
 
   @Post()
@@ -66,4 +74,3 @@ export class ProductsController {
     return this.productsService.remove(id);
   }
 }
-
