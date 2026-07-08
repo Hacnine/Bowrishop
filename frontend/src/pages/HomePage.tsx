@@ -35,21 +35,16 @@ const perks = [
 ];
 
 function SectionHeader({
-  eyebrow,
-  title,
-  icon: Icon,
-  href,
+  eyebrow, title, icon: Icon, href, accentColor = 'text-[#C7927E]', bgColor = 'bg-[#F7EDE6]',
 }: {
-  eyebrow: string;
-  title: string;
-  icon: any;
-  href: string;
+  eyebrow: string; title: string; icon: any; href: string;
+  accentColor?: string; bgColor?: string;
 }) {
   return (
     <div className="flex items-end justify-between mb-7">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-[#F7EDE6] rounded-full flex items-center justify-center flex-shrink-0">
-          <Icon className="w-5 h-5 text-[#C7927E]" />
+        <div className={`w-10 h-10 ${bgColor} rounded-full flex items-center justify-center flex-shrink-0`}>
+          <Icon className={`w-5 h-5 ${accentColor}`} />
         </div>
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-[#C7927E] mb-0.5">
