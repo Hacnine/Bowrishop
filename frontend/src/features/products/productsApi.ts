@@ -48,6 +48,18 @@ export const productsApi = baseApi.injectEndpoints({
       query: (id) => ({ url: `/products/${id}`, method: 'DELETE' }),
       invalidatesTags: ['Products'],
     }),
+    getBestSellingProducts: builder.query<Product[], number | void>({
+      query: (limit) => ({ url: '/products/best-selling', params: limit ? { limit } : {} }),
+      providesTags: ['Products'],
+    }),
+    getOnSaleProducts: builder.query<Product[], number | void>({
+      query: (limit) => ({ url: '/products/on-sale', params: limit ? { limit } : {} }),
+      providesTags: ['Products'],
+    }),
+    getNewArrivalProducts: builder.query<Product[], number | void>({
+      query: (limit) => ({ url: '/products/new-arrivals', params: limit ? { limit } : {} }),
+      providesTags: ['Products'],
+    }),
   }),
 });
 
@@ -58,4 +70,7 @@ export const {
   useCreateProductMutation,
   useUpdateProductMutation,
   useDeleteProductMutation,
+  useGetBestSellingProductsQuery,
+  useGetOnSaleProductsQuery,
+  useGetNewArrivalProductsQuery,
 } = productsApi;

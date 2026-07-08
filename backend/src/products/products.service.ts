@@ -117,5 +117,75 @@ export class ProductsService {
       reviews: undefined,
     }));
   }
+
+  private enrich(products: any[]) {
+    return products.map((p) => ({
+      ...p,
+      averageRating: p.reviews?.length
+        ? p.reviews.reduce((s: number, r: any) => s + r.rating, 0) / p.reviews.length
+        : 0,
+      reviewCount: p.reviews?.length ?? 0,
+      reviews: undefined,
+    }));
+  }
+
+  async getBestSelling(limit = 10) {
+    // Products ordered most frequently → rank by total quantity sold via OrderItem
+    const topItems = await this.prisma.orderItem.groupBy({
+      by: ['productId'],
+      _sum: { quantity: true },
+      orderBy: { _sum: { quantity: 'desc' } },
+      take: limit,
+    });
+
+    if (!topItems.length) {
+      // Fallback: newest active products when no orders exist yet
+      return this.getFeatured(limit);
+    }
+
+    const ids = topItems.map((i) => i.productId);
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: ids }, isActive: true, stock: { gt: 0 } },
+      include: { category: { select: { name: true, slug: true } }, reviews: { select: { rating: true } } },
+    });
+
+    // Preserve the best-selling order
+    const sorted = ids
+      .map((id) => products.find((p) => p.id === id))
+      .filter(Boolean);
+
+    return this.enrich(sorted);
+  }
+
+  async getOnSale(limit = 10) {
+    // Products that have a comparePrice higher than price (i.e. discounted)
+    const products = await this.prisma.product.findMany({
+      where: {
+        isActive: true,
+        stock: { gt: 0 },
+        comparePrice: { not: null },
+      },
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      include: { category: { select: { name: true, slug: true } }, reviews: { select: { rating: true } } },
+    });
+
+    // Filter in JS: comparePrice must be strictly greater than price
+    const onSale = products.filter(
+      (p) => p.comparePrice && Number(p.comparePrice) > Number(p.price),
+    );
+
+    return this.enrich(onSale);
+  }
+
+  async getNewArrivals(limit = 10) {
+    const products = await this.prisma.product.findMany({
+      where: { isActive: true, stock: { gt: 0 } },
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      include: { category: { select: { name: true, slug: true } }, reviews: { select: { rating: true } } },
+    });
+    return this.enrich(products);
+  }
 }
 

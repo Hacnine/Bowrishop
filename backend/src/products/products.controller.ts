@@ -18,8 +18,23 @@ export class ProductsController {
   }
 
   @Get('featured')
-  getFeatured() {
-    return this.productsService.getFeatured();
+  getFeatured(@Query('limit') limit?: string) {
+    return this.productsService.getFeatured(limit ? parseInt(limit) : 8);
+  }
+
+  @Get('best-selling')
+  getBestSelling(@Query('limit') limit?: string) {
+    return this.productsService.getBestSelling(limit ? parseInt(limit) : 10);
+  }
+
+  @Get('on-sale')
+  getOnSale(@Query('limit') limit?: string) {
+    return this.productsService.getOnSale(limit ? parseInt(limit) : 10);
+  }
+
+  @Get('new-arrivals')
+  getNewArrivals(@Query('limit') limit?: string) {
+    return this.productsService.getNewArrivals(limit ? parseInt(limit) : 10);
   }
 
   @Get(':slug')
