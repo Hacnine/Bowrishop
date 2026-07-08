@@ -29,9 +29,9 @@ export function Footer() {
             <span className="text-2xl font-cormorant font-bold text-white">Bowri Shop</span>
             <p className="mt-3 text-sm leading-relaxed">Your one-stop destination for trending products at the best prices.</p>
             <div className="flex gap-3 mt-4">
-              <a href="#" className="text-gray-400 hover:text-white"><FacebookIcon /></a>
-              <a href="#" className="text-gray-400 hover:text-white"><TwitterIcon /></a>
-              <a href="#" className="text-gray-400 hover:text-white"><InstagramIcon /></a>
+              <a href="https://www.facebook.com/bowrishop/" className="text-gray-400 hover:text-white"><FacebookIcon /></a>
+              <a href="https://twitter.com/bowrishop" className="text-gray-400 hover:text-white"><TwitterIcon /></a>
+              <a href="https://www.instagram.com/bowrishop/" className="text-gray-400 hover:text-white"><InstagramIcon /></a>
             </div>
           </div>
           <div>

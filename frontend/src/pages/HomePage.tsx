@@ -23,6 +23,7 @@ import { useGetCategoriesQuery } from "../features/categories/categoriesApi";
 import { ProductCard } from "../components/ProductCard";
 import { ProductCardSkeleton } from "../components/ui/Skeleton";
 import { Hero } from "../components/Hero";
+import SEO from "../components/SEO";
 
 const perks = [
   { icon: Truck, title: "Free Delivery", desc: "On orders over ৳500" },
@@ -101,7 +102,13 @@ export function HomePage() {
     useGetNewArrivalProductsQuery(10);
 
   return (
-    <div className="bg-[#FDFAF7]">
+    <>
+    <SEO
+        title="Bowri Shop | Home, Kitchen, Beauty, Electronics, Clothing & Footwear"
+        description="Shop home essentials, kitchenware, beauty products, electronics, clothing, footwear and more at Bowri Shop. Fast delivery across Bangladesh."
+      />
+
+      <div className="bg-[#FDFAF7]">
       {/* ── Hero ── */}
       <Hero categories={categories ?? []} />
 
@@ -381,5 +388,7 @@ export function HomePage() {
         </div>
       </section>
     </div>
+    </>
+    
   );
 }
