@@ -199,7 +199,7 @@ export function ProductsPage() {
           {/* Product grid */}
           <div className="flex-1 min-w-0">
             {isLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {Array.from({ length: 12 }).map((_, i) => (
                   <ProductCardSkeleton key={i} />
                 ))}
@@ -220,7 +220,7 @@ export function ProductsPage() {
                 <p className="text-sm text-gray-500 mb-4">
                   {data.total} products
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                   {data.data.map((p) => (
                     <ProductCard key={p.id} product={p} />
                   ))}
