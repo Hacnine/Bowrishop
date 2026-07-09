@@ -64,6 +64,7 @@ export const router = createBrowserRouter([
         children: [
           { path: 'profile/orders', element: wrap(OrdersPage) },
           { path: 'profile', element: wrap(ProfilePage) },
+          { path: 'profile/wishlist', element: wrap(WishlistPage) },
           { path: 'wishlist', element: wrap(WishlistPage) },
         ],
       },
