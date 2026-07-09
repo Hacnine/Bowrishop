@@ -18,7 +18,7 @@ const SORT_OPTIONS = [
 
 export function ProductsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [showFilters, setShowFilters] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
 
   const q = searchParams.get("q") ?? "";
   const categoryId = searchParams.get("categoryId") ?? "";
