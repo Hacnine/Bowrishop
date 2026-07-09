@@ -13,6 +13,7 @@ backend/dist/
 frontend/node_modules/
 
 
+docs/
 # Local env files
 .env
 .env.local
