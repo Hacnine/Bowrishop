@@ -144,7 +144,15 @@ function VariantForm({
               className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="#000000"
               value={form.colorHex ?? ''}
-              onChange={(e) => set('colorHex', e.target.value)}
+              onChange={(e) => {
+                // Normalise shorthand (#abc → #aabbcc) so backend @IsHexColor() never rejects it
+                const raw = e.target.value.trim();
+                const normalised =
+                  /^#[0-9a-fA-F]{3}$/.test(raw)
+                    ? '#' + [...raw.slice(1)].map((c) => c + c).join('')
+                    : raw;
+                set('colorHex', normalised);
+              }}
             />
           </div>
         </div>

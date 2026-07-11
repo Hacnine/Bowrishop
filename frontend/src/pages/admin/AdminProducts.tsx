@@ -99,13 +99,12 @@ export function AdminProducts() {
   const onSubmit = async (data: FormValues) => {
     const payload = {
       ...data,
-      slug: editProduct ? editProduct.slug : slugify(data.name),
       price: Number(data.price),
       comparePrice: data.comparePrice ? Number(data.comparePrice) : undefined,
       stock: Number(data.stock),
       images: imageUrls,
       tags: data.tags ? data.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
-    };
+};
     try {
       if (editProduct) {
         await updateProduct({ id: editProduct.id, ...payload }).unwrap();

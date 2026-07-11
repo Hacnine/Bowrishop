@@ -10,8 +10,9 @@ export class CreateVariantDto {
   @IsOptional() @IsString()
   color?: string;
 
-  @ApiProperty({ required: false, example: '#1a1a1a' })
-  @IsOptional() @IsHexColor()
+  @ApiProperty({ required: false, example: '#c9748e' })
+  @IsOptional()
+  @IsString()
   colorHex?: string;
 
   @ApiProperty({ required: false, example: 'Large' })
