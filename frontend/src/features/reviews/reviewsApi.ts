@@ -1,5 +1,5 @@
 import { baseApi } from '../api/baseApi';
-import type { Review } from '../../types';
+import type { Review } from '../../types/types.index';
 
 interface ReviewsResponse { reviews: Review[]; averageRating: number; count: number; }
 

@@ -1,5 +1,5 @@
 import { baseApi } from '../api/baseApi';
-import type { Cart } from '../../types';
+import type { Cart } from '../../types/types.index';
 
 export const cartApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({

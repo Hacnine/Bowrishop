@@ -14,7 +14,7 @@ import { updateGuestItem, removeGuestItem, clearGuestCart } from '../features/ca
 import { Button } from '../components/ui/Button';
 import { Skeleton } from '../components/ui/Skeleton';
 import { formatCurrency } from '../utils';
-import type { Coupon } from '../types';
+import type { Coupon } from '../types/types.index';
 
 export function CartPage() {
   const navigate = useNavigate();

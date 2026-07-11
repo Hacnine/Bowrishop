@@ -1,5 +1,5 @@
 import { baseApi } from '../api/baseApi';
-import type { Category } from '../../types';
+import type { Category } from '../../types/types.index';
 
 export const categoriesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({

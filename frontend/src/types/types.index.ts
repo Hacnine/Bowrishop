@@ -10,6 +10,20 @@ export interface User {
   createdAt: string;
 }
 
+export interface ProductVariant {
+  id: string;
+  productId: string;
+  color?: string;
+  colorHex?: string;
+  size?: string;
+  price: number;
+  comparePrice?: number;
+  stock: number;
+  images: string[];
+  sku?: string;
+  isActive: boolean;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -22,8 +36,8 @@ export interface Product {
   tags: string[];
   isActive: boolean;
   categoryId: string;
-  userId?: string;
   category?: Category;
+  variants?: ProductVariant[];
   averageRating?: number;
   reviewCount?: number;
   createdAt: string;
@@ -43,6 +57,8 @@ export interface CartItem {
   id: string;
   quantity: number;
   product: Pick<Product, 'id' | 'name' | 'slug' | 'price' | 'comparePrice' | 'images' | 'stock' | 'isActive'>;
+  // Populated when a variant was selected
+  variant?: Pick<ProductVariant, 'id' | 'color' | 'colorHex' | 'size' | 'price' | 'comparePrice' | 'stock' | 'images'>;
 }
 
 export interface Cart {
@@ -50,12 +66,21 @@ export interface Cart {
   subtotal: number;
 }
 
+export interface VariantSnapshot {
+  color?: string;
+  colorHex?: string;
+  size?: string;
+}
+
 export interface OrderItem {
   id: string;
   productId: string;
+  variantId?: string;
+  variantSnapshot?: VariantSnapshot;
   quantity: number;
   price: number;
   product?: Pick<Product, 'id' | 'name' | 'images' | 'slug'>;
+  variant?: Pick<ProductVariant, 'id' | 'color' | 'colorHex' | 'size'>;
 }
 
 export interface ShippingAddress {
@@ -102,7 +127,9 @@ export interface Review {
 export interface WishlistItem {
   id: string;
   productId: string;
-  product: Pick<Product, 'id' | 'name' | 'slug' | 'price' | 'comparePrice' | 'images' | 'stock'>;
+  product: Pick<Product, 'id' | 'name' | 'slug' | 'price' | 'comparePrice' | 'images' | 'stock'> & {
+    variants?: Pick<ProductVariant, 'id' | 'price' | 'stock'>[];
+  };
 }
 
 export interface Coupon {
@@ -153,3 +180,19 @@ export interface AdminStats {
   topProducts: Array<{ productId: string; _sum: { quantity: number }; product?: Product }>;
   ordersByStatus: Array<{ status: OrderStatus; _count: { id: number } }>;
 }
+
+// ─── Variant mutation payloads ─────────────────────────────────────────────────
+
+export interface CreateVariantPayload {
+  color?: string;
+  colorHex?: string;
+  size?: string;
+  price: number;
+  comparePrice?: number;
+  stock: number;
+  images?: string[];
+  sku?: string;
+  isActive?: boolean;
+}
+
+export interface UpdateVariantPayload extends Partial<CreateVariantPayload> {}

@@ -1,8 +1,14 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Headers } from '@nestjs/common';
+import {
+  Controller, Get, Post, Patch, Delete,
+  Body, Param, Query, UseGuards, Headers,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
-import { CreateProductDto, UpdateProductDto, ProductQueryDto } from './dto/product.dto';
+import {
+  CreateProductDto, UpdateProductDto, ProductQueryDto,
+  CreateVariantDto, UpdateVariantDto,
+} from './dto/product.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Role } from '@prisma/client';
@@ -11,6 +17,8 @@ import { Role } from '@prisma/client';
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
+
+  // ─── Public ────────────────────────────────────────────────────────────────
 
   @Get()
   findAll(@Query() query: ProductQueryDto) {
@@ -50,6 +58,8 @@ export class ProductsController {
     return this.productsService.findBySlug(slug, sessionId);
   }
 
+  // ─── Admin: Product CRUD ───────────────────────────────────────────────────
+
   @Post()
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
@@ -72,5 +82,44 @@ export class ProductsController {
   @Roles(Role.ADMIN)
   remove(@Param('id') id: string) {
     return this.productsService.remove(id);
+  }
+
+  // ─── Admin: Variant CRUD ───────────────────────────────────────────────────
+  // Routes:
+  //   GET    /products/:id/variants         → list all variants for a product
+  //   POST   /products/:id/variants         → add a new variant
+  //   PATCH  /products/:id/variants/:vid    → update a variant
+  //   DELETE /products/:id/variants/:vid    → delete a variant
+
+  @Get(':id/variants')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.ADMIN)
+  getVariants(@Param('id') id: string) {
+    return this.productsService.getVariants(id);
+  }
+
+  @Post(':id/variants')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.ADMIN)
+  createVariant(@Param('id') id: string, @Body() dto: CreateVariantDto) {
+    return this.productsService.createVariant(id, dto);
+  }
+
+  @Patch(':id/variants/:vid')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.ADMIN)
+  updateVariant(@Param('vid') vid: string, @Body() dto: UpdateVariantDto) {
+    return this.productsService.updateVariant(vid, dto);
+  }
+
+  @Delete(':id/variants/:vid')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.ADMIN)
+  deleteVariant(@Param('vid') vid: string) {
+    return this.productsService.deleteVariant(vid);
   }
 }

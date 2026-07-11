@@ -61,38 +61,65 @@ model Category {
 }
 
 model Product {
-  id           String         @id @default(cuid())
+  id           String             @id @default(cuid())
   name         String
-  slug         String         @unique
+  slug         String             @unique
   description  String
-  price        Decimal        @db.Decimal(10, 2)
-  comparePrice Decimal?       @db.Decimal(10, 2)
-  stock        Int            @default(0)
+  price        Decimal            @db.Decimal(10, 2)
+  comparePrice Decimal?           @db.Decimal(10, 2)
+  stock        Int                @default(0)
   images       String[]
   tags         String[]
-  isActive     Boolean        @default(true)
+  isActive     Boolean            @default(true)
   categoryId   String
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  category     Category       @relation(fields: [categoryId], references: [id])
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  category     Category           @relation(fields: [categoryId], references: [id])
   cartItems    CartItem[]
   orderItems   OrderItem[]
   reviews      Review[]
   wishlist     WishlistItem[]
   views        ProductView[]
+  variants     ProductVariant[]
+}
+
+// One variant = one unique combination of color + size (or either alone)
+// e.g. color=Black, size=Large → price=9.99, stock=20, images=[...]
+model ProductVariant {
+  id           String      @id @default(cuid())
+  productId    String
+  color        String?     // e.g. "Black", "Rose Gold", "Ivory"
+  colorHex     String?     // e.g. "#1a1a1a" – for the color swatch on the frontend
+  size         String?     // e.g. "Small", "Medium", "Large", "One Size"
+  price        Decimal     @db.Decimal(10, 2)
+  comparePrice Decimal?    @db.Decimal(10, 2)
+  stock        Int         @default(0)
+  images       String[]    // variant-specific images (falls back to product images if empty)
+  sku          String?     @unique
+  isActive     Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  product      Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  cartItems    CartItem[]
+  orderItems   OrderItem[]
+
+  @@unique([productId, color, size]) // prevent duplicate combinations
+  @@index([productId])
 }
 
 model CartItem {
-  id        String   @id @default(cuid())
+  id        String          @id @default(cuid())
   userId    String
   productId String
-  quantity  Int      @default(1)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantId String?         // null = no variant selected (product has no variants)
+  quantity  Int             @default(1)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, productId])
+  @@unique([userId, productId, variantId]) // same product + same variant = one row
 }
 
 model Order {
@@ -114,13 +141,17 @@ model Order {
 }
 
 model OrderItem {
-  id        String  @id @default(cuid())
-  orderId   String
-  productId String
-  quantity  Int
-  price     Decimal @db.Decimal(10, 2)
-  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product   Product @relation(fields: [productId], references: [id])
+  id              String          @id @default(cuid())
+  orderId         String
+  productId       String
+  variantId       String?
+  // Snapshot variant attributes at order time so they survive future edits
+  variantSnapshot Json?           // { color, size, colorHex }
+  quantity        Int
+  price           Decimal         @db.Decimal(10, 2)
+  order           Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product         Product         @relation(fields: [productId], references: [id])
+  variant         ProductVariant? @relation(fields: [variantId], references: [id])
 }
 
 model Review {
@@ -151,7 +182,7 @@ model WishlistItem {
 model ProductView {
   id        String   @id @default(cuid())
   productId String
-  sessionId String   // anonymous session fingerprint (IP+UA hash or frontend-generated UUID)
+  sessionId String
   viewedAt  DateTime @default(now())
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 

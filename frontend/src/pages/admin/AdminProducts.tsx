@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { Plus, Pencil, Trash2, X } from 'lucide-react';
+import { Boxes, Plus, Pencil, Trash2, X } from 'lucide-react';
 import {
   useGetProductsQuery,
   useCreateProductMutation,
@@ -15,8 +15,9 @@ import { useUploadImageMutation } from '../../features/admin/adminApi';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { VariantManager } from './VariantManager';
 import { formatCurrency, slugify } from '../../utils';
-import type { Product } from '../../types';
+import type { Product } from '../../types/types.index';
 
 const schema = z.object({
   name: z.string().min(2),
@@ -32,6 +33,7 @@ type FormValues = z.infer<typeof schema>;
 export function AdminProducts() {
   const [page, setPage] = useState(1);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
+  const [variantProduct, setVariantProduct] = useState<Product | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -169,8 +171,33 @@ export function AdminProducts() {
                   <td className="px-6 py-4 text-gray-500">{p.category?.name ?? '—'}</td>
                   <td className="px-6 py-4">
                     <div className="flex gap-2 justify-end">
-                      <button onClick={() => openEdit(p)} className="p-1.5 text-gray-400 hover:text-indigo-600"><Pencil className="w-4 h-4" /></button>
-                      <button onClick={() => handleDelete(p.id)} className="p-1.5 text-gray-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+                      <button
+                        type="button"
+                        onClick={() => setVariantProduct(p)}
+                        title="Manage variants"
+                        aria-label={`Manage variants for ${p.name}`}
+                        className="p-1.5 text-gray-400 hover:text-indigo-600"
+                      >
+                        <Boxes className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openEdit(p)}
+                        title="Edit product"
+                        aria-label={`Edit ${p.name}`}
+                        className="p-1.5 text-gray-400 hover:text-indigo-600"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(p.id)}
+                        title="Delete product"
+                        aria-label={`Delete ${p.name}`}
+                        className="p-1.5 text-gray-400 hover:text-red-600"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -252,6 +279,29 @@ export function AdminProducts() {
                 <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {variantProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div>
+                <h2 className="font-semibold text-gray-900">Manage Variants</h2>
+                <p className="text-sm text-gray-500 mt-0.5">{variantProduct.name}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setVariantProduct(null)}
+                aria-label="Close variants"
+              >
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+            <div className="p-6">
+              <VariantManager productId={variantProduct.id} />
+            </div>
           </div>
         </div>
       )}

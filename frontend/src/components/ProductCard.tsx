@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ShoppingCart, Heart } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import type { Product } from '../types';
+import type { Product } from '../types/types.index';
 import { StarRating } from './ui/StarRating';
 import { Button } from './ui/Button';
 import { formatCurrency, getDiscountPercent } from '../utils';
@@ -90,7 +90,7 @@ export function ProductCard({ product }: ProductCardProps) {
           )}
           <button
             onClick={handleAddToWishlist}
-            className="absolute top-2 right-2 p-2 bg-white rounded-full shadow opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
+            className="absolute top-2 right-2 p-2 bg-white rounded-full shadow opacity-0 curson-pointer group-hover:opacity-100 transition-opacity hover:bg-red-50"
             aria-label="Add to wishlist"
           >
             <Heart className="w-4 h-4 text-gray-400 hover:text-red-500" />

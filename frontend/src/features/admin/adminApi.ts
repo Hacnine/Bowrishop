@@ -1,5 +1,5 @@
 import { baseApi } from '../api/baseApi';
-import type { AdminStats, User } from '../../types';
+import type { AdminStats, User } from '../../types/types.index';
 
 export const adminApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({

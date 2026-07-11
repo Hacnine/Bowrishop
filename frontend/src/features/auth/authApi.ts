@@ -1,5 +1,5 @@
 import { baseApi } from '../api/baseApi';
-import type { AuthTokens, User } from '../../types';
+import type { AuthTokens, User } from '../../types/types.index';
 
 export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({

@@ -14,7 +14,7 @@ import { useUploadImageMutation } from '../../features/admin/adminApi';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Skeleton } from '../../components/ui/Skeleton';
-import type { Category } from '../../types';
+import type { Category } from '../../types/types.index';
 
 const schema = z.object({
   name: z.string().min(2, 'Name required'),

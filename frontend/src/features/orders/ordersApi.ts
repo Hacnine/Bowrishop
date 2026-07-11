@@ -1,5 +1,5 @@
 import { baseApi } from '../api/baseApi';
-import type { Order, PaginatedResponse, ShippingAddress } from '../../types';
+import type { Order, PaginatedResponse, ShippingAddress } from '../../types/types.index';
 
 export const ordersApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({

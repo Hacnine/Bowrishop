@@ -5,7 +5,7 @@ import { useGetInquiriesQuery, useRespondInquiryMutation } from '../../features/
 import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { formatDate, getInquiryStatusColor } from '../../utils';
-import type { Inquiry } from '../../types';
+import type { Inquiry } from '../../types/types.index';
 
 export function AdminInquiries() {
   const { data: inquiries, isLoading } = useGetInquiriesQuery();

@@ -1,5 +1,5 @@
 import { baseApi } from '../api/baseApi';
-import type { Coupon } from '../../types';
+import type { Coupon } from '../../types/types.index';
 
 export const couponsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({

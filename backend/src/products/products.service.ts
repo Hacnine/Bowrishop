@@ -1,229 +1,266 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateProductDto, UpdateProductDto, ProductQueryDto } from './dto/product.dto';
-import { Prisma } from '@prisma/client';
+import {
+  CreateProductDto, UpdateProductDto, ProductQueryDto,
+  CreateVariantDto, UpdateVariantDto,
+} from './dto/product.dto';
+
+const VARIANT_SELECT = {
+  id: true,
+  color: true,
+  colorHex: true,
+  size: true,
+  price: true,
+  comparePrice: true,
+  stock: true,
+  images: true,
+  sku: true,
+  isActive: true,
+};
+
+const PRODUCT_WITH_VARIANTS = {
+  category: { select: { id: true, name: true, slug: true } },
+  variants: { where: { isActive: true }, select: VARIANT_SELECT, orderBy: [{ color: 'asc' as const }, { size: 'asc' as const }] },
+  _count: { select: { reviews: true } },
+};
+
+function slugify(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
 
 @Injectable()
 export class ProductsService {
   constructor(private prisma: PrismaService) {}
 
+  // ─── Product CRUD ────────────────────────────────────────────────────────────
+
+  async create(dto: CreateProductDto) {
+    const slug = slugify(dto.name);
+    const existing = await this.prisma.product.findUnique({ where: { slug } });
+    if (existing) throw new ConflictException('A product with this name already exists');
+
+    return this.prisma.product.create({
+      data: {
+        name: dto.name,
+        slug,
+        description: dto.description,
+        price: dto.price,
+        comparePrice: dto.comparePrice,
+        stock: dto.stock,
+        images: dto.images,
+        tags: dto.tags ?? [],
+        categoryId: dto.categoryId,
+        isActive: dto.isActive ?? true,
+        variants: dto.variants?.length
+          ? { create: dto.variants.map((v) => ({ ...v, images: v.images ?? [] })) }
+          : undefined,
+      },
+      include: PRODUCT_WITH_VARIANTS,
+    });
+  }
+
+  async update(id: string, dto: UpdateProductDto) {
+    const product = await this.prisma.product.findUnique({ where: { id } });
+    if (!product) throw new NotFoundException('Product not found');
+
+    const data: any = { ...dto };
+    if (dto.name) data.slug = slugify(dto.name);
+
+    return this.prisma.product.update({
+      where: { id },
+      data,
+      include: PRODUCT_WITH_VARIANTS,
+    });
+  }
+
+  async remove(id: string) {
+    const product = await this.prisma.product.findUnique({ where: { id } });
+    if (!product) throw new NotFoundException('Product not found');
+    return this.prisma.product.delete({ where: { id } });
+  }
+
   async findAll(query: ProductQueryDto) {
-    const { q, categoryId, minPrice, maxPrice, minRating, inStock, sort, page = 1, limit = 12 } = query;
+    const page = parseInt(query.page ?? '1');
+    const limit = parseInt(query.limit ?? '12');
     const skip = (page - 1) * limit;
 
-    const where: Prisma.ProductWhereInput = {
-      isActive: true,
-      ...(q && {
-        OR: [
-          { name: { contains: q, mode: 'insensitive' } },
-          { description: { contains: q, mode: 'insensitive' } },
-          { tags: { has: q } },
-        ],
-      }),
-      ...(categoryId && { categoryId }),
-      ...(minPrice !== undefined || maxPrice !== undefined
-        ? { price: { ...(minPrice !== undefined && { gte: minPrice }), ...(maxPrice !== undefined && { lte: maxPrice }) } }
-        : {}),
-      ...(inStock && { stock: { gt: 0 } }),
-    };
+    const where: any = { isActive: true };
 
-    const orderBy: Prisma.ProductOrderByWithRelationInput =
-      sort === 'price_asc' ? { price: 'asc' }
-      : sort === 'price_desc' ? { price: 'desc' }
-      : { createdAt: 'desc' };
+    if (query.search) {
+      where.OR = [
+        { name: { contains: query.search, mode: 'insensitive' } },
+        { description: { contains: query.search, mode: 'insensitive' } },
+        { tags: { has: query.search } },
+      ];
+    }
+    if (query.categoryId) where.categoryId = query.categoryId;
+    if (query.category) {
+      where.category = { slug: { equals: query.category, mode: 'insensitive' } };
+    }
+    if (query.minPrice || query.maxPrice) {
+      where.price = {};
+      if (query.minPrice) where.price.gte = parseFloat(query.minPrice);
+      if (query.maxPrice) where.price.lte = parseFloat(query.maxPrice);
+    }
+    if (query.featured === 'true') where.isFeatured = true;
+    if (query.sale === 'true') where.comparePrice = { not: null };
+
+    let orderBy: any = { createdAt: 'desc' };
+    if (query.sort === 'price_asc') orderBy = { price: 'asc' };
+    if (query.sort === 'price_desc') orderBy = { price: 'desc' };
+    if (query.sort === 'name_asc') orderBy = { name: 'asc' };
+    if (query.sort === 'popular') orderBy = { reviews: { _count: 'desc' } };
 
     const [products, total] = await Promise.all([
       this.prisma.product.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy,
-        include: {
-          category: { select: { id: true, name: true, slug: true } },
-          reviews: { select: { rating: true } },
-        },
+        where, skip, take: limit, orderBy,
+        include: PRODUCT_WITH_VARIANTS,
       }),
       this.prisma.product.count({ where }),
     ]);
 
-    const enriched = products.map((p) => ({
-      ...p,
-      averageRating: p.reviews.length
-        ? p.reviews.reduce((sum, r) => sum + r.rating, 0) / p.reviews.length
-        : 0,
-      reviewCount: p.reviews.length,
-      reviews: undefined,
-    }));
-
-    // Filter by minRating after aggregation
-    const filtered = minRating
-      ? enriched.filter((p) => p.averageRating >= minRating)
-      : enriched;
-
-    return { products: filtered, total, page, limit, totalPages: Math.ceil(total / limit) };
+    return { products, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findBySlug(slug: string, sessionId?: string) {
     const product = await this.prisma.product.findUnique({
       where: { slug },
       include: {
-        category: true,
+        ...PRODUCT_WITH_VARIANTS,
+        // include ALL variants (incl inactive) for admin, only active for storefront
+        variants: {
+          select: VARIANT_SELECT,
+          orderBy: [{ color: 'asc' }, { size: 'asc' }],
+        },
         reviews: {
           include: { user: { select: { id: true, name: true, avatar: true } } },
           orderBy: { createdAt: 'desc' },
+          take: 20,
         },
       },
     });
     if (!product) throw new NotFoundException('Product not found');
 
-    // Record view fire-and-forget (never block the response)
+    // Track view
     if (sessionId) {
-      this.prisma.productView.create({
-        data: { productId: product.id, sessionId },
-      }).catch(() => {}); // silently ignore duplicates or errors
+      this.prisma.productView.upsert({
+        where: { productId_sessionId: { productId: product.id, sessionId } } as any,
+        update: { viewedAt: new Date() },
+        create: { productId: product.id, sessionId },
+      }).catch(() => {});
     }
 
-    const averageRating = product.reviews.length
+    const avgRating = product.reviews.length
       ? product.reviews.reduce((s, r) => s + r.rating, 0) / product.reviews.length
       : 0;
 
-    return { ...product, averageRating, reviewCount: product.reviews.length };
-  }
-
-  async findById(id: string) {
-    const product = await this.prisma.product.findUnique({ where: { id } });
-    if (!product) throw new NotFoundException('Product not found');
-    return product;
-  }
-
-  async create(dto: CreateProductDto) {
-    return this.prisma.product.create({ data: { ...dto } });
-  }
-
-  async update(id: string, dto: UpdateProductDto) {
-    await this.findById(id);
-    return this.prisma.product.update({ where: { id }, data: { ...dto } });
-  }
-
-  async remove(id: string) {
-    await this.findById(id);
-    return this.prisma.product.delete({ where: { id } });
+    return { ...product, averageRating: avgRating, reviewCount: product.reviews.length };
   }
 
   async getFeatured(limit = 8) {
-    const products = await this.prisma.product.findMany({
-      where: { isActive: true, stock: { gt: 0 } },
+    return this.prisma.product.findMany({
+      where: { isActive: true },
       take: limit,
       orderBy: { createdAt: 'desc' },
-      include: { category: { select: { name: true, slug: true } }, reviews: { select: { rating: true } } },
+      include: PRODUCT_WITH_VARIANTS,
     });
-    return products.map((p) => ({
-      ...p,
-      averageRating: p.reviews.length ? p.reviews.reduce((s, r) => s + r.rating, 0) / p.reviews.length : 0,
-      reviewCount: p.reviews.length,
-      reviews: undefined,
-    }));
-  }
-
-  private enrich(products: any[]) {
-    return products.map((p) => ({
-      ...p,
-      averageRating: p.reviews?.length
-        ? p.reviews.reduce((s: number, r: any) => s + r.rating, 0) / p.reviews.length
-        : 0,
-      reviewCount: p.reviews?.length ?? 0,
-      reviews: undefined,
-    }));
   }
 
   async getBestSelling(limit = 10) {
-    // Products ordered most frequently → rank by total quantity sold via OrderItem
-    const topItems = await this.prisma.orderItem.groupBy({
+    const items = await this.prisma.orderItem.groupBy({
       by: ['productId'],
       _sum: { quantity: true },
       orderBy: { _sum: { quantity: 'desc' } },
       take: limit,
     });
-
-    if (!topItems.length) {
-      // Fallback: newest active products when no orders exist yet
-      return this.getFeatured(limit);
-    }
-
-    const ids = topItems.map((i) => i.productId);
+    const ids = items.map((i) => i.productId);
     const products = await this.prisma.product.findMany({
-      where: { id: { in: ids }, isActive: true, stock: { gt: 0 } },
-      include: { category: { select: { name: true, slug: true } }, reviews: { select: { rating: true } } },
+      where: { id: { in: ids }, isActive: true },
+      include: PRODUCT_WITH_VARIANTS,
     });
-
-    // Preserve the best-selling order
-    const sorted = ids
-      .map((id) => products.find((p) => p.id === id))
-      .filter(Boolean);
-
-    return this.enrich(sorted);
+    return ids.map((id) => products.find((p) => p.id === id)).filter(Boolean);
   }
 
   async getOnSale(limit = 10) {
-    // Products that have a comparePrice higher than price (i.e. discounted)
-    const products = await this.prisma.product.findMany({
-      where: {
-        isActive: true,
-        stock: { gt: 0 },
-        comparePrice: { not: null },
-      },
+    return this.prisma.product.findMany({
+      where: { isActive: true, comparePrice: { not: null } },
       take: limit,
       orderBy: { createdAt: 'desc' },
-      include: { category: { select: { name: true, slug: true } }, reviews: { select: { rating: true } } },
+      include: PRODUCT_WITH_VARIANTS,
     });
-
-    // Filter in JS: comparePrice must be strictly greater than price
-    const onSale = products.filter(
-      (p) => p.comparePrice && Number(p.comparePrice) > Number(p.price),
-    );
-
-    return this.enrich(onSale);
   }
 
   async getNewArrivals(limit = 10) {
-    const products = await this.prisma.product.findMany({
-      where: { isActive: true, stock: { gt: 0 } },
+    return this.prisma.product.findMany({
+      where: { isActive: true },
       take: limit,
       orderBy: { createdAt: 'desc' },
-      include: { category: { select: { name: true, slug: true } }, reviews: { select: { rating: true } } },
+      include: PRODUCT_WITH_VARIANTS,
     });
-    return this.enrich(products);
   }
 
   async getMostViewed(limit = 10) {
-    // Aggregate view counts from ProductView table, last 30 days for relevance
-    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-
-    const topViewed = await this.prisma.productView.groupBy({
+    const views = await this.prisma.productView.groupBy({
       by: ['productId'],
-      where: { viewedAt: { gte: since } },
-      _count: { id: true },
-      orderBy: { _count: { id: 'desc' } },
+      _count: { sessionId: true },
+      orderBy: { _count: { sessionId: 'desc' } },
       take: limit,
     });
+    const ids = views.map((v) => v.productId);
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: ids }, isActive: true },
+      include: PRODUCT_WITH_VARIANTS,
+    });
+    return ids.map((id) => products.find((p) => p.id === id)).filter(Boolean);
+  }
 
-    if (!topViewed.length) {
-      // Fallback: best selling when no view data yet
-      return this.getBestSelling(limit);
+  // ─── Variant CRUD ─────────────────────────────────────────────────────────────
+
+  async createVariant(productId: string, dto: CreateVariantDto) {
+    const product = await this.prisma.product.findUnique({ where: { id: productId } });
+    if (!product) throw new NotFoundException('Product not found');
+
+    // Prevent duplicate color+size combo
+    if (dto.color || dto.size) {
+      const dupe = await this.prisma.productVariant.findFirst({
+        where: {
+          productId,
+          color: dto.color ?? null,
+          size: dto.size ?? null,
+        },
+      });
+      if (dupe) throw new ConflictException(
+        `A variant with color "${dto.color ?? '—'}" and size "${dto.size ?? '—'}" already exists`,
+      );
     }
 
-    const ids = topViewed.map((v) => v.productId);
-    const products = await this.prisma.product.findMany({
-      where: { id: { in: ids }, isActive: true, stock: { gt: 0 } },
-      include: { category: { select: { name: true, slug: true } }, reviews: { select: { rating: true } } },
+    return this.prisma.productVariant.create({
+      data: { productId, ...dto, images: dto.images ?? [] },
     });
+  }
 
-    // Preserve view-count order
-    const sorted = ids
-      .map((id) => products.find((p) => p.id === id))
-      .filter(Boolean);
+  async updateVariant(variantId: string, dto: UpdateVariantDto) {
+    const variant = await this.prisma.productVariant.findUnique({ where: { id: variantId } });
+    if (!variant) throw new NotFoundException('Variant not found');
 
-    return this.enrich(sorted);
+    return this.prisma.productVariant.update({
+      where: { id: variantId },
+      data: dto,
+    });
+  }
+
+  async deleteVariant(variantId: string) {
+    const variant = await this.prisma.productVariant.findUnique({ where: { id: variantId } });
+    if (!variant) throw new NotFoundException('Variant not found');
+    return this.prisma.productVariant.delete({ where: { id: variantId } });
+  }
+
+  async getVariants(productId: string) {
+    const product = await this.prisma.product.findUnique({ where: { id: productId } });
+    if (!product) throw new NotFoundException('Product not found');
+    return this.prisma.productVariant.findMany({
+      where: { productId },
+      orderBy: [{ color: 'asc' }, { size: 'asc' }],
+    });
   }
 }
-

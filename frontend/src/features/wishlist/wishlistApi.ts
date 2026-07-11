@@ -1,5 +1,5 @@
 import { baseApi } from '../api/baseApi';
-import type { WishlistItem } from '../../types';
+import type { WishlistItem } from '../../types/types.index';
 
 export const wishlistApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({

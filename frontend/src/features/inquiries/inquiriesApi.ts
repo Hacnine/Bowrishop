@@ -1,5 +1,5 @@
 import { baseApi } from '../api/baseApi';
-import type { Inquiry } from '../../types';
+import type { Inquiry } from '../../types/types.index';
 
 export const inquiriesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({

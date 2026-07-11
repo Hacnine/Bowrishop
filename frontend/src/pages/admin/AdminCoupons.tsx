@@ -14,7 +14,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { formatCurrency, formatDate } from '../../utils';
-import type { Coupon } from '../../types';
+import type { Coupon } from '../../types/types.index';
 
 const schema = z.object({
   code: z.string().optional(),

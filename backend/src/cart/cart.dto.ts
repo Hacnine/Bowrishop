@@ -7,7 +7,7 @@ export class AddToCartDto {
   @IsString()
   productId: string;
 
-  @ApiProperty({ required: false, nullable: true })
+  @ApiProperty({ required: false, description: 'Variant ID — required if the product has variants' })
   @IsOptional()
   @IsString()
   variantId?: string;
