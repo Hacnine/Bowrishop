@@ -36,6 +36,7 @@ export interface Product {
   tags: string[];
   isActive: boolean;
   categoryId: string;
+  userId?: string;
   category?: Category;
   variants?: ProductVariant[];
   averageRating?: number;
