@@ -30,6 +30,18 @@ export const productsApi = baseApi.injectEndpoints({
       providesTags: ['Products'],
     }),
 
+    getAdminProducts: builder.query<PaginatedResponse<Product>, ProductsQuery>({
+      query: (params) => ({ url: '/products/admin/search', params }),
+      transformResponse: (res: BackendProductsResponse) => ({
+        data: res.products,
+        total: res.total,
+        page: res.page,
+        limit: res.limit,
+        totalPages: res.totalPages,
+      }),
+      providesTags: ['Products'],
+    }),
+
     getFeaturedProducts: builder.query<Product[], number | void>({
       query: (limit) => ({ url: '/products/featured', params: limit ? { limit } : {} }),
       providesTags: ['Products'],
@@ -111,6 +123,7 @@ export const productsApi = baseApi.injectEndpoints({
 
 export const {
   useGetProductsQuery,
+  useGetAdminProductsQuery,
   useGetFeaturedProductsQuery,
   useGetBestSellingProductsQuery,
   useGetOnSaleProductsQuery,

@@ -6,7 +6,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
 import {
-  CreateProductDto, UpdateProductDto, ProductQueryDto,
+  AdminProductQueryDto, CreateProductDto, UpdateProductDto, ProductQueryDto,
   CreateVariantDto, UpdateVariantDto,
 } from './dto/product.dto';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -48,6 +48,14 @@ export class ProductsController {
   @Get('most-viewed')
   getMostViewed(@Query('limit') limit?: string) {
     return this.productsService.getMostViewed(limit ? parseInt(limit) : 10);
+  }
+
+  @Get('admin/search')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.ADMIN)
+  searchAdminProducts(@Query() query: AdminProductQueryDto) {
+    return this.productsService.searchAdminProducts(query);
   }
 
   @Get(':slug')

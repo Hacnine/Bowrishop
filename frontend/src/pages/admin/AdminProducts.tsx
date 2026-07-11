@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { Boxes, Plus, Pencil, Trash2, X } from 'lucide-react';
+import { Boxes, Plus, Pencil, Trash2, X, AlertTriangle, Search } from 'lucide-react';
 import {
-  useGetProductsQuery,
+  useGetAdminProductsQuery,
   useCreateProductMutation,
   useUpdateProductMutation,
   useDeleteProductMutation,
@@ -31,14 +32,24 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export function AdminProducts() {
-  const [page, setPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Read page and search from URL
+  const page = parseInt(searchParams.get('page') ?? '1', 10);
+  const searchQuery = searchParams.get('q') ?? '';
+
+  // Local input state so we don't fire on every keystroke
+  const [searchInput, setSearchInput] = useState(searchQuery);
+
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [variantProduct, setVariantProduct] = useState<Product | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  const { data, isLoading } = useGetProductsQuery({ page, limit: 15 });
+  const { data, isLoading } = useGetAdminProductsQuery({ page, limit: 15, q: searchQuery || undefined });
   const { data: categories } = useGetCategoriesQuery();
   const [createProduct, { isLoading: creating }] = useCreateProductMutation();
   const [updateProduct, { isLoading: updating }] = useUpdateProductMutation();
@@ -48,6 +59,36 @@ export function AdminProducts() {
   const { register, handleSubmit, formState: { errors }, reset } = useForm<FormValues>({
     resolver: zodResolver(schema) as any,
   });
+
+  // Sync local input if URL param changes externally (e.g. browser back)
+  useEffect(() => {
+    setSearchInput(searchQuery);
+  }, [searchQuery]);
+
+  // Debounce search — wait 400ms after user stops typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (searchInput.trim()) {
+          next.set('q', searchInput.trim());
+        } else {
+          next.delete('q');
+        }
+        next.set('page', '1'); // reset to page 1 on new search
+        return next;
+      });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const setPage = (p: number) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('page', String(p));
+      return next;
+    });
+  };
 
   const openCreate = () => {
     setEditProduct(null);
@@ -78,18 +119,14 @@ export function AdminProducts() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      console.log('Uploading file:', file.name, file.size);
       const url = await uploadImage(formData).unwrap();
-      console.log('Upload response:', url);
       if (url && typeof url === 'string') {
         setImageUrls((prev) => [...prev, url]);
         toast.success('Image uploaded');
       } else {
-        console.error('Invalid URL response:', url);
         toast.error('Upload failed: Invalid response');
       }
     } catch (error: any) {
-      console.error('Upload error:', error);
       toast.error(error?.data?.message || 'Upload failed');
     } finally {
       setUploading(false);
@@ -104,7 +141,7 @@ export function AdminProducts() {
       stock: Number(data.stock),
       images: imageUrls,
       tags: data.tags ? data.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
-};
+    };
     try {
       if (editProduct) {
         await updateProduct({ id: editProduct.id, ...payload }).unwrap();
@@ -121,106 +158,183 @@ export function AdminProducts() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this product?')) return;
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await deleteProduct(id).unwrap();
+      await deleteProduct(deleteTarget.id).unwrap();
       toast.success('Product deleted');
+      setDeleteTarget(null);
     } catch {
       toast.error('Could not delete product');
+    } finally {
+      setDeleting(false);
     }
   };
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Products</h1>
         <Button onClick={openCreate}><Plus className="w-4 h-4 mr-2" />Add Product</Button>
+      </div>
+
+      {/* Search bar */}
+      <div className="relative mb-4 w-full">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        <input
+          type="text"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Search products…"
+          className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        {searchInput && (
+          <button
+            type="button"
+            onClick={() => setSearchInput('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="p-6 space-y-3">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-12" />)}</div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50">
-              <tr className="text-left text-gray-500">
-                <th className="px-6 py-4 font-medium">Product</th>
-                <th className="px-6 py-4 font-medium">Price</th>
-                <th className="px-6 py-4 font-medium">Stock</th>
-                <th className="px-6 py-4 font-medium">Category</th>
-                <th className="px-6 py-4 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {data?.data.map((p) => (
-                <tr key={p.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <img src={p.images[0] ?? '/placeholder.jpg'} alt="" className="w-10 h-10 rounded-lg object-cover" />
-                      <span className="font-medium text-gray-900 line-clamp-1">{p.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-gray-700">{formatCurrency(p.price)}</td>
-                  <td className="px-6 py-4">
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-full ${p.stock > 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                      {p.stock > 0 ? p.stock : 'Out of stock'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-gray-500">{p.category?.name ?? '—'}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-2 justify-end">
-                      <button
-                        type="button"
-                        onClick={() => setVariantProduct(p)}
-                        title="Manage variants"
-                        aria-label={`Manage variants for ${p.name}`}
-                        className="p-1.5 text-gray-400 hover:text-indigo-600"
-                      >
-                        <Boxes className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openEdit(p)}
-                        title="Edit product"
-                        aria-label={`Edit ${p.name}`}
-                        className="p-1.5 text-gray-400 hover:text-indigo-600"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(p.id)}
-                        title="Delete product"
-                        aria-label={`Delete ${p.name}`}
-                        className="p-1.5 text-gray-400 hover:text-red-600"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
+          <>
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr className="text-left text-gray-500">
+                  <th className="px-6 py-4 font-medium">Product</th>
+                  <th className="px-6 py-4 font-medium">Price</th>
+                  <th className="px-6 py-4 font-medium">Stock</th>
+                  <th className="px-6 py-4 font-medium">Category</th>
+                  <th className="px-6 py-4 font-medium"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {data?.data.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-400">
+                      {searchQuery ? `No products found for "${searchQuery}"` : 'No products yet.'}
+                    </td>
+                  </tr>
+                ) : (
+                  data?.data.map((p) => (
+                    <tr key={p.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <img src={p.images[0] ?? '/placeholder.jpg'} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                          <span className="font-medium text-gray-900 line-clamp-1">{p.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-gray-700">{formatCurrency(p.price)}</td>
+                      <td className="px-6 py-4">
+                        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${p.stock > 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                          {p.stock > 0 ? p.stock : 'Out of stock'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-gray-500">{p.category?.name ?? '—'}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex gap-2 justify-end">
+                          <button type="button" onClick={() => setVariantProduct(p)} title="Manage variants" aria-label={`Manage variants for ${p.name}`} className="p-1.5 text-gray-400 hover:text-indigo-600">
+                            <Boxes className="w-4 h-4" />
+                          </button>
+                          <button type="button" onClick={() => openEdit(p)} title="Edit product" aria-label={`Edit ${p.name}`} className="p-1.5 text-gray-400 hover:text-indigo-600">
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button type="button" onClick={() => setDeleteTarget(p)} title="Delete product" aria-label={`Delete ${p.name}`} className="p-1.5 text-gray-400 hover:text-red-600">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
 
-        {data && data.totalPages > 1 && (
-          <div className="flex justify-center gap-2 py-4 border-t border-gray-100">
-            {Array.from({ length: data.totalPages }, (_, i) => i + 1).map((p) => (
-              <button
-                key={p}
-                onClick={() => setPage(p)}
-                className={`w-8 h-8 rounded-lg text-sm ${p === page ? 'bg-indigo-600 text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'}`}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
+            {/* Pagination */}
+            {data && data.totalPages > 1 && (
+              <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
+                <p className="text-sm text-gray-500">
+                  Page {page} of {data.totalPages} · {data.total} products
+                </p>
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={() => setPage(page - 1)}
+                    disabled={page === 1}
+                    className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    ← Prev
+                  </button>
+                  {Array.from({ length: data.totalPages }, (_, i) => i + 1)
+                    .filter((p) => p === 1 || p === data.totalPages || Math.abs(p - page) <= 1)
+                    .reduce<(number | '...')[]>((acc, p, idx, arr) => {
+                      if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push('...');
+                      acc.push(p);
+                      return acc;
+                    }, [])
+                    .map((p, idx) =>
+                      p === '...' ? (
+                        <span key={`ellipsis-${idx}`} className="px-2 py-1.5 text-sm text-gray-400">…</span>
+                      ) : (
+                        <button
+                          key={p}
+                          onClick={() => setPage(p as number)}
+                          className={`w-8 h-8 rounded-lg text-sm ${p === page ? 'bg-indigo-600 text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                        >
+                          {p}
+                        </button>
+                      )
+                    )}
+                  <button
+                    onClick={() => setPage(page + 1)}
+                    disabled={page === data.totalPages}
+                    className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Next →
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* Modal */}
+      {/* ── Delete confirmation dialog ── */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="flex-shrink-0 w-11 h-11 bg-red-50 rounded-full flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-red-500" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Delete product?</h3>
+                <p className="text-sm text-gray-500 mt-0.5">This action cannot be undone.</p>
+              </div>
+            </div>
+            <div className="bg-gray-50 rounded-xl px-4 py-3 mb-6">
+              <div className="flex items-center gap-3">
+                {deleteTarget.images[0] && (
+                  <img src={deleteTarget.images[0]} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+                )}
+                <p className="text-sm font-medium text-gray-900 line-clamp-2">{deleteTarget.name}</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</Button>
+              <Button className="flex-1 bg-red-600 hover:bg-red-700 text-white border-red-600" onClick={confirmDelete} isLoading={deleting}>Delete</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Create / Edit modal ── */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
@@ -251,19 +365,13 @@ export function AdminProducts() {
                 </div>
               </div>
               <Input label="Tags (comma separated)" placeholder="fashion, summer, sale" {...register('tags')} />
-
-              {/* Image upload */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Images</label>
                 <div className="flex flex-wrap gap-2 mb-2">
                   {imageUrls.map((url, i) => (
                     <div key={i} className="relative w-16 h-16">
                       <img src={url} alt="" className="w-full h-full object-cover rounded-lg" />
-                      <button
-                        type="button"
-                        onClick={() => setImageUrls((prev) => prev.filter((_, idx) => idx !== i))}
-                        className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs"
-                      >×</button>
+                      <button type="button" onClick={() => setImageUrls((prev) => prev.filter((_, idx) => idx !== i))} className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs">×</button>
                     </div>
                   ))}
                   <label className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-indigo-400">
@@ -272,7 +380,6 @@ export function AdminProducts() {
                   </label>
                 </div>
               </div>
-
               <div className="flex gap-3 pt-2">
                 <Button type="submit" isLoading={creating || updating}>{editProduct ? 'Save changes' : 'Create product'}</Button>
                 <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
@@ -282,6 +389,7 @@ export function AdminProducts() {
         </div>
       )}
 
+      {/* ── Variants modal ── */}
       {variantProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -290,13 +398,7 @@ export function AdminProducts() {
                 <h2 className="font-semibold text-gray-900">Manage Variants</h2>
                 <p className="text-sm text-gray-500 mt-0.5">{variantProduct.name}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setVariantProduct(null)}
-                aria-label="Close variants"
-              >
-                <X className="w-5 h-5 text-gray-400" />
-              </button>
+              <button type="button" onClick={() => setVariantProduct(null)} aria-label="Close variants"><X className="w-5 h-5 text-gray-400" /></button>
             </div>
             <div className="p-6">
               <VariantManager productId={variantProduct.id} />

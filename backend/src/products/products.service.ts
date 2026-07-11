@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
-  CreateProductDto, UpdateProductDto, ProductQueryDto,
+  AdminProductQueryDto, CreateProductDto, UpdateProductDto, ProductQueryDto,
   CreateVariantDto, UpdateVariantDto,
 } from './dto/product.dto';
 
@@ -26,6 +26,11 @@ const PRODUCT_WITH_VARIANTS = {
 
 function slugify(name: string) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
+function normalizeSearch(value?: string) {
+  const normalized = value?.trim().toLocaleLowerCase();
+  return normalized ? normalized : undefined;
 }
 
 @Injectable()
@@ -85,17 +90,18 @@ export class ProductsService {
     const skip = (page - 1) * limit;
 
     const where: any = { isActive: true };
+    const search = normalizeSearch(query.search ?? query.q);
 
-    if (query.search) {
+    if (search) {
       where.OR = [
-        { name: { contains: query.search, mode: 'insensitive' } },
-        { description: { contains: query.search, mode: 'insensitive' } },
-        { tags: { has: query.search } },
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { tags: { has: search } },
       ];
     }
     if (query.categoryId) where.categoryId = query.categoryId;
     if (query.category) {
-      where.category = { slug: { equals: query.category, mode: 'insensitive' } };
+      where.category = { slug: { equals: normalizeSearch(query.category), mode: 'insensitive' } };
     }
     if (query.minPrice || query.maxPrice) {
       where.price = {};
@@ -114,6 +120,30 @@ export class ProductsService {
     const [products, total] = await Promise.all([
       this.prisma.product.findMany({
         where, skip, take: limit, orderBy,
+        include: PRODUCT_WITH_VARIANTS,
+      }),
+      this.prisma.product.count({ where }),
+    ]);
+
+    return { products, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
+  async searchAdminProducts(query: AdminProductQueryDto) {
+    const page = parseInt(query.page ?? '1');
+    const limit = parseInt(query.limit ?? '15');
+    const skip = (page - 1) * limit;
+    const q = normalizeSearch(query.q);
+
+    const where: any = q
+      ? { name: { contains: q, mode: 'insensitive' } }
+      : {};
+
+    const [products, total] = await Promise.all([
+      this.prisma.product.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
         include: PRODUCT_WITH_VARIANTS,
       }),
       this.prisma.product.count({ where }),

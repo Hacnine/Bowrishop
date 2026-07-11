@@ -149,6 +149,9 @@ export class UpdateProductDto {
 
 export class ProductQueryDto {
   @IsOptional() @IsString()
+  q?: string;
+
+  @IsOptional() @IsString()
   search?: string;
 
   @IsOptional() @IsString()
@@ -177,4 +180,15 @@ export class ProductQueryDto {
 
   @IsOptional() @IsString()
   sale?: string;
+}
+
+export class AdminProductQueryDto {
+  @IsOptional() @IsString()
+  q?: string;
+
+  @IsOptional() @IsString()
+  page?: string;
+
+  @IsOptional() @IsString()
+  limit?: string;
 }
