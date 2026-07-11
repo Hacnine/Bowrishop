@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, Check, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, ChevronDown, ChevronUp, ImagePlus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   useGetVariantsQuery,
@@ -7,8 +7,9 @@ import {
   useUpdateVariantMutation,
   useDeleteVariantMutation,
 } from '../../features/products/productsApi';
+import { useUploadImageMutation } from '../../features/admin/adminApi';
 import { formatCurrency } from '../../utils';
-import type { ProductVariant , CreateVariantPayload} from '../../types/types.index';
+import type { ProductVariant, CreateVariantPayload } from '../../types/types.index';
 
 const EMPTY_FORM: CreateVariantPayload = {
   color: '',
@@ -18,9 +19,85 @@ const EMPTY_FORM: CreateVariantPayload = {
   comparePrice: undefined,
   stock: 0,
   sku: '',
+  images: [],
   isActive: true,
 };
 
+// ─── Image uploader strip used inside the variant form ────────────────────────
+function VariantImageUploader({
+  images,
+  onChange,
+}: {
+  images: string[];
+  onChange: (urls: string[]) => void;
+}) {
+  const [uploadImage] = useUploadImageMutation();
+  const [uploading, setUploading] = useState(false);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const url = await uploadImage(fd).unwrap();
+      if (url) onChange([...images, url]);
+      else toast.error('Upload failed: no URL returned');
+    } catch {
+      toast.error('Image upload failed');
+    } finally {
+      setUploading(false);
+      // reset input so same file can be re-selected
+      e.target.value = '';
+    }
+  };
+
+  const remove = (idx: number) => onChange(images.filter((_, i) => i !== idx));
+
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-600 mb-1">
+        Variant images{' '}
+        <span className="text-gray-400">(shown when this color is selected)</span>
+      </label>
+      <div className="flex flex-wrap gap-2">
+        {images.map((url, i) => (
+          <div key={i} className="relative w-16 h-16 flex-shrink-0">
+            <img src={url} alt="" className="w-full h-full object-cover rounded-lg border border-gray-200" />
+            <button
+              type="button"
+              onClick={() => remove(i)}
+              className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-xs leading-none"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+
+        <label className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-indigo-400 transition-colors flex-shrink-0">
+          {uploading ? (
+            <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <>
+              <ImagePlus className="w-5 h-5 text-gray-400" />
+              <span className="text-[10px] text-gray-400 mt-0.5">Upload</span>
+            </>
+          )}
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleUpload}
+            disabled={uploading}
+          />
+        </label>
+      </div>
+    </div>
+  );
+}
+
+// ─── Variant form (add + edit) ────────────────────────────────────────────────
 function VariantForm({
   initial,
   onSave,
@@ -32,13 +109,17 @@ function VariantForm({
   onCancel: () => void;
   isSaving: boolean;
 }) {
-  const [form, setForm] = useState<CreateVariantPayload>(initial);
-  const set = (k: keyof CreateVariantPayload, v: any) => setForm((f) => ({ ...f, [k]: v }));
+  const [form, setForm] = useState<CreateVariantPayload>({
+    ...initial,
+    images: initial.images ?? [],
+  });
+  const set = (k: keyof CreateVariantPayload, v: any) =>
+    setForm((f) => ({ ...f, [k]: v }));
 
   return (
     <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 space-y-4">
       <div className="grid grid-cols-2 gap-4">
-        {/* Color */}
+        {/* Color name */}
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Color name</label>
           <input
@@ -48,7 +129,8 @@ function VariantForm({
             onChange={(e) => set('color', e.target.value)}
           />
         </div>
-        {/* Color hex */}
+
+        {/* Color swatch */}
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Color swatch</label>
           <div className="flex items-center gap-2">
@@ -66,6 +148,7 @@ function VariantForm({
             />
           </div>
         </div>
+
         {/* Size */}
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Size</label>
@@ -76,9 +159,12 @@ function VariantForm({
             onChange={(e) => set('size', e.target.value)}
           />
         </div>
+
         {/* SKU */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">SKU <span className="text-gray-400">(optional)</span></label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            SKU <span className="text-gray-400">(optional)</span>
+          </label>
           <input
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
             placeholder="e.g. SKU-001-BLK-LG"
@@ -86,11 +172,14 @@ function VariantForm({
             onChange={(e) => set('sku', e.target.value)}
           />
         </div>
+
         {/* Price */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Price <span className="text-red-400">*</span></label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Price <span className="text-red-400">*</span>
+          </label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">৳</span>
             <input
               type="number"
               min={0}
@@ -101,11 +190,14 @@ function VariantForm({
             />
           </div>
         </div>
+
         {/* Compare price */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Compare-at price <span className="text-gray-400">(optional)</span></label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Compare-at price <span className="text-gray-400">(optional)</span>
+          </label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">৳</span>
             <input
               type="number"
               min={0}
@@ -113,13 +205,18 @@ function VariantForm({
               className="w-full border border-gray-200 rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="0.00"
               value={form.comparePrice ?? ''}
-              onChange={(e) => set('comparePrice', e.target.value ? parseFloat(e.target.value) : undefined)}
+              onChange={(e) =>
+                set('comparePrice', e.target.value ? parseFloat(e.target.value) : undefined)
+              }
             />
           </div>
         </div>
+
         {/* Stock */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Stock <span className="text-red-400">*</span></label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Stock <span className="text-red-400">*</span>
+          </label>
           <input
             type="number"
             min={0}
@@ -128,7 +225,8 @@ function VariantForm({
             onChange={(e) => set('stock', parseInt(e.target.value) || 0)}
           />
         </div>
-        {/* Active */}
+
+        {/* Active toggle */}
         <div className="flex items-end pb-1">
           <label className="flex items-center gap-2 cursor-pointer select-none">
             <input
@@ -141,6 +239,12 @@ function VariantForm({
           </label>
         </div>
       </div>
+
+      {/* ── Image uploader (full width row) ─────────────────────────────── */}
+      <VariantImageUploader
+        images={form.images ?? []}
+        onChange={(urls) => set('images', urls)}
+      />
 
       <div className="flex justify-end gap-2 pt-1">
         <button
@@ -164,6 +268,7 @@ function VariantForm({
   );
 }
 
+// ─── Main VariantManager ──────────────────────────────────────────────────────
 export function VariantManager({ productId }: { productId: string }) {
   const { data: variants = [], isLoading } = useGetVariantsQuery(productId);
   const [createVariant, { isLoading: creating }] = useCreateVariantMutation();
@@ -210,7 +315,7 @@ export function VariantManager({ productId }: { productId: string }) {
         <div>
           <h3 className="font-semibold text-gray-900">Product Variants</h3>
           <p className="text-xs text-gray-400 mt-0.5">
-            Each variant = a unique color + size combo with its own price & stock
+            Each variant = a unique color + size combo with its own price, stock & images
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -268,6 +373,7 @@ export function VariantManager({ productId }: { productId: string }) {
                       comparePrice: v.comparePrice ? Number(v.comparePrice) : undefined,
                       stock: v.stock,
                       sku: v.sku,
+                      images: v.images ?? [],
                       isActive: v.isActive,
                     }}
                     onSave={(data) => handleUpdate(v.id, data)}
@@ -279,26 +385,49 @@ export function VariantManager({ productId }: { productId: string }) {
                     key={v.id}
                     className="flex items-center justify-between gap-4 px-4 py-3 rounded-xl border border-gray-100 hover:border-gray-200 bg-gray-50 hover:bg-white transition-colors"
                   >
+                    {/* Color swatch + name/sku */}
                     <div className="flex items-center gap-3 min-w-0">
                       {v.colorHex && (
                         <span
-                          className="w-5 h-5 rounded-full border border-gray-200 flex-shrink-0"
+                          className="w-5 h-5 rounded-full border border-gray-300 flex-shrink-0"
                           style={{ backgroundColor: v.colorHex }}
                         />
                       )}
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-gray-800 truncate">
-                          {[v.color, v.size].filter(Boolean).join(' / ') || 'No color or size set'}
+                          {[v.color, v.size].filter(Boolean).join(' / ') || 'No color or size'}
                         </p>
                         {v.sku && <p className="text-xs text-gray-400 font-mono">{v.sku}</p>}
                       </div>
                     </div>
 
+                    {/* Variant images preview strip */}
+                    {v.images && v.images.length > 0 && (
+                      <div className="flex gap-1 flex-shrink-0">
+                        {v.images.slice(0, 4).map((img, i) => (
+                          <img
+                            key={i}
+                            src={img}
+                            alt=""
+                            className="w-8 h-8 rounded object-cover border border-gray-200"
+                          />
+                        ))}
+                        {v.images.length > 4 && (
+                          <div className="w-8 h-8 rounded border border-gray-200 bg-gray-100 flex items-center justify-center text-[10px] text-gray-500 font-medium">
+                            +{v.images.length - 4}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Price / stock / status */}
                     <div className="flex items-center gap-6 text-sm flex-shrink-0">
                       <div className="text-right">
                         <p className="font-semibold text-gray-900">{formatCurrency(Number(v.price))}</p>
                         {v.comparePrice && (
-                          <p className="text-xs text-gray-400 line-through">{formatCurrency(Number(v.comparePrice))}</p>
+                          <p className="text-xs text-gray-400 line-through">
+                            {formatCurrency(Number(v.comparePrice))}
+                          </p>
                         )}
                       </div>
                       <div className="text-right w-14">
@@ -307,11 +436,16 @@ export function VariantManager({ productId }: { productId: string }) {
                         </p>
                         <p className="text-xs text-gray-400">in stock</p>
                       </div>
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${v.isActive ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+                      <span
+                        className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                          v.isActive ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400'
+                        }`}
+                      >
                         {v.isActive ? 'Active' : 'Hidden'}
                       </span>
                     </div>
 
+                    {/* Actions */}
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <button
                         type="button"
