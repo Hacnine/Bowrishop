@@ -16,10 +16,21 @@ export class UploadService {
 
     return new Promise((resolve, reject) => {
       cloudinary.uploader
-        .upload_stream({ folder, resource_type: 'image' }, (error, result) => {
-          if (error) reject(new BadRequestException(error.message));
-          else resolve(result!.secure_url);
-        })
+        .upload_stream(
+          {
+            folder,
+            resource_type: 'image',
+            format: 'webp',           // convert to WebP on Cloudinary's side
+            transformation: [
+              { quality: 'auto:good' }, // smart compression
+              { fetch_format: 'auto' }, // serve best format per browser
+            ],
+          },
+          (error, result) => {
+            if (error) reject(new BadRequestException(error.message));
+            else resolve(result!.secure_url);
+          },
+        )
         .end(file.buffer);
     });
   }
