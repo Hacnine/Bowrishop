@@ -1,25 +1,24 @@
 # =============================================================================
 # CI/CD Pipeline for Trendora
 # =============================================================================
-# TRIGGER: push/PR to 'main' or 'develop' branches
+# FEATURES:
+#   ✓ Parallel test jobs (backend + frontend run simultaneously)
+#   ✓ Change detection (only rebuilds the image that actually changed)
+#   ✓ Docker layer caching (faster builds via GitHub Actions cache)
+#   ✓ Batched VPS deployment (single SSH session, ordered restart)
+#   ✓ Prisma migration before restart (safe, no race condition)
+#   ✓ Health check before declaring success
 #
-# WORKFLOW STAGES:
-# 1. TEST   – Build frontend & backend to validate code
-# 2. BUILD  – Build Docker images and push to Docker Hub (main only)
-# 3. DEPLOY – SSH into VPS, pull images, migrate DB, restart containers (main only)
-#
-# REQUIRED GITHUB SECRETS  (Settings → Secrets and variables → Actions):
-# ┌─────────────────────┬──────────────────────────────────────────────────────┐
-# │ Secret name         │ Value                                                │
-# ├─────────────────────┼──────────────────────────────────────────────────────┤
-# │ DOCKERHUB_USERNAME  │ Your Docker Hub username                             │
-# │ DOCKERHUB_TOKEN     │ Docker Hub access token (not your password)          │
-# │ VITE_API_URL        │ /api  (Nginx rewrites, so relative URL is fine)      │
-# │ VPS_HOST            │ Your VPS IP address  e.g. 123.45.67.89               │
-# │ VPS_USER            │ SSH user on VPS  e.g. root                           │
-# │ VPS_SSH_KEY         │ Private SSH key (see VPS setup guide below)          │
-# │ VPS_PORT            │ SSH port, usually 22                                 │
-# └─────────────────────┴──────────────────────────────────────────────────────┘
+# REQUIRED GITHUB SECRETS:
+# ┌─────────────────────┬────────────────────────────────────────────────────┐
+# │ DOCKERHUB_USERNAME  │ Your Docker Hub username                           │
+# │ DOCKERHUB_TOKEN     │ Docker Hub access token (not your password)        │
+# │ VITE_API_URL        │ /api (relative — Nginx rewrites it)                │
+# │ VPS_HOST            │ VPS IP address                                     │
+# │ VPS_USER            │ SSH user on VPS (e.g. root)                        │
+# │ VPS_SSH_KEY         │ Private SSH key content (see setup guide)          │
+# │ VPS_PORT            │ SSH port (usually 22)                              │
+# └─────────────────────┴────────────────────────────────────────────────────┘
 # =============================================================================
 
 name: CI/CD Pipeline
@@ -32,308 +31,441 @@ on:
 
 env:
   NODE_VERSION: '24.x'
+  PNPM_VERSION: '11.9.0'
 
+# ===========================================================================
+# CHANGE DETECTION
+# Detects which part of the codebase changed so we only rebuild what we need.
+# ===========================================================================
 jobs:
-  # ===========================================================================
-  # JOB 1: TEST
-  # Validates the code can build. Runs on every push and every PR.
-  # ===========================================================================
-  test:
-    name: Test
+  detect-changes:
+    name: Detect Changed Services
     runs-on: ubuntu-latest
+    outputs:
+      backend:  ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'pnpm-workspace.yaml'
+              - 'pnpm-lock.yaml'
+            frontend:
+              - 'frontend/**'
+              - 'pnpm-workspace.yaml'
+              - 'pnpm-lock.yaml'
+
+  # ===========================================================================
+  # PARALLEL TEST JOBS
+  # Backend and frontend tests run at the same time, not sequentially.
+  # ===========================================================================
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    # Always test on PRs; on push only test if backend changed
+    if: |
+      github.event_name == 'pull_request' ||
+      needs.detect-changes.outputs.backend == 'true'
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v5
-      with:
-        node-version: ${{ env.NODE_VERSION }}
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
 
-    - name: Install pnpm
-      run: npm install -g pnpm
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
 
-    # ── Backend ──────────────────────────────────────────────────────────────
-    - name: Backend – Install dependencies
-      run: pnpm install --frozen-lockfile --filter backend
+      # Cache pnpm store so dependencies don't re-download every run
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: pnpm-backend-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-backend-${{ runner.os }}-
 
-    - name: Backend – Validate Prisma schema
-      env:
-        DATABASE_URL: postgresql://trendora:trendora@localhost:5432/trendora
-      run: cd backend && npx prisma validate
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --filter backend
 
-    - name: Backend – Generate Prisma client
-      env:
-        DATABASE_URL: postgresql://trendora:trendora@localhost:5432/trendora
-      run: cd backend && npx prisma generate
+      - name: Validate Prisma schema
+        env:
+          DATABASE_URL: postgresql://trendora:trendora@localhost:5432/trendora
+        run: cd backend && npx prisma validate
 
-    - name: Backend – Build NestJS
-      env:
-        DATABASE_URL: postgresql://trendora:trendora@localhost:5432/trendora
-      run: cd backend && pnpm run build
+      - name: Generate Prisma client
+        env:
+          DATABASE_URL: postgresql://trendora:trendora@localhost:5432/trendora
+        run: cd backend && npx prisma generate
 
-    # ── Frontend ─────────────────────────────────────────────────────────────
-    - name: Frontend – Install dependencies
-      run: pnpm install --frozen-lockfile --filter frontend
+      - name: Build NestJS
+        env:
+          DATABASE_URL: postgresql://trendora:trendora@localhost:5432/trendora
+        run: cd backend && pnpm run build
 
-    - name: Frontend – Lint
-      run: echo "Linter passed – skipping for now"
-
-    - name: Frontend – Tests
-      run: echo "Tests passed – skipping for now"
-
-    - name: Frontend – Test build
-      env:
-        VITE_API_URL: /api
-      run: cd frontend && pnpm run build
-
-  # ===========================================================================
-  # JOB 2: BUILD DOCKER IMAGES
-  # Builds and pushes images to Docker Hub. Runs only on main after tests pass.
-  # ===========================================================================
-  build:
-    name: Build Docker Images
+  test-frontend:
+    name: Test Frontend
     runs-on: ubuntu-latest
-    needs: test
-    if: github.ref == 'refs/heads/main'
+    needs: detect-changes
+    if: |
+      github.event_name == 'pull_request' ||
+      needs.detect-changes.outputs.frontend == 'true'
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
-    - name: Validate Docker Hub secrets
-      run: |
-        if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ] || [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
-          echo "DOCKERHUB_USERNAME and DOCKERHUB_TOKEN must be configured in GitHub repository secrets."
-          exit 1
-        fi
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
 
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
 
-    # Write VITE_API_URL into a .env file so the Docker build arg picks it up
-    - name: Write frontend .env
-      run: echo "VITE_API_URL=${{ secrets.VITE_API_URL }}" > frontend/.env
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: pnpm-frontend-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-frontend-${{ runner.os }}-
 
-    # Backend image – uses root context so Dockerfile can access pnpm workspace files
-    - name: Build and push backend image
-      uses: docker/build-push-action@v6
-      with:
-        context: .
-        file: ./backend/Dockerfile
-        push: true
-        tags: ${{ secrets.DOCKERHUB_USERNAME }}/trendora-backend:latest
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --filter frontend
 
-    # Frontend image – pass VITE_API_URL as a build arg (Vite bakes it in at build time)
-    - name: Build and push frontend image
-      uses: docker/build-push-action@v6
-      with:
-        context: .
-        file: ./frontend/Dockerfile-production
-        push: true
-        tags: ${{ secrets.DOCKERHUB_USERNAME }}/trendora-frontend:latest
-        build-args: |
-          VITE_API_URL=${{ secrets.VITE_API_URL }}
+      - name: Lint
+        run: echo "Linter passed – skipping for now"
 
-    - name: Build complete
-      run: echo "Docker images built and pushed to Docker Hub successfully"
+      - name: Tests
+        run: echo "Tests passed – skipping for now"
+
+      - name: Build
+        env:
+          VITE_API_URL: /api
+        run: cd frontend && pnpm run build
 
   # ===========================================================================
-  # JOB 3: DEPLOY TO VPS
-  # SSHs into the VPS and deploys the new images. Runs only on main.
+  # PARALLEL BUILD JOBS (main branch only)
+  # Each service builds independently with Docker layer caching.
+  # Only the service that changed gets rebuilt.
+  # ===========================================================================
+  build-backend:
+    name: Build Backend Image
+    runs-on: ubuntu-latest
+    needs: [ detect-changes, test-backend ]
+    # Run if: on main AND (backend changed OR test-backend was skipped)
+    if: |
+      github.ref == 'refs/heads/main' &&
+      (needs.detect-changes.outputs.backend == 'true' ||
+       needs.test-backend.result == 'skipped')
+    # Mark as success even if test was skipped (change detection skipped it)
+    outputs:
+      pushed: ${{ steps.set-pushed.outputs.pushed }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Docker Hub secrets
+        run: |
+          if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ] || [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            echo "ERROR: DOCKERHUB_USERNAME or DOCKERHUB_TOKEN is not configured"
+            exit 1
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/trendora-backend:latest
+          # Layer cache: pull previous layers from Docker Hub to speed up builds
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/trendora-backend:cache
+          cache-to:   type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/trendora-backend:cache,mode=max
+
+      - name: Mark as pushed
+        id: set-pushed
+        run: echo "pushed=true" >> $GITHUB_OUTPUT
+
+  build-frontend:
+    name: Build Frontend Image
+    runs-on: ubuntu-latest
+    needs: [ detect-changes, test-frontend ]
+    if: |
+      github.ref == 'refs/heads/main' &&
+      (needs.detect-changes.outputs.frontend == 'true' ||
+       needs.test-frontend.result == 'skipped')
+    outputs:
+      pushed: ${{ steps.set-pushed.outputs.pushed }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Docker Hub secrets
+        run: |
+          if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ] || [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            echo "ERROR: DOCKERHUB_USERNAME or DOCKERHUB_TOKEN is not configured"
+            exit 1
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./frontend/Dockerfile-production
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/trendora-frontend:latest
+          build-args: |
+            VITE_API_URL=${{ secrets.VITE_API_URL }}
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/trendora-frontend:cache
+          cache-to:   type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/trendora-frontend:cache,mode=max
+
+      - name: Mark as pushed
+        id: set-pushed
+        run: echo "pushed=true" >> $GITHUB_OUTPUT
+
+  # ===========================================================================
+  # DEPLOY (main branch only)
+  # Waits for whichever build jobs ran, then does a single batched SSH session.
+  # If only frontend changed, only the frontend image is pulled & restarted.
   # ===========================================================================
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/main'
+    # Wait for both build jobs — but they may have been skipped (no change)
+    needs: [ detect-changes, build-backend, build-frontend ]
+    if: |
+      github.ref == 'refs/heads/main' &&
+      always() &&
+      (needs.build-backend.result == 'success' || needs.build-frontend.result == 'success')
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
-    - name: Deploy to VPS
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.VPS_HOST }}
-        username: ${{ secrets.VPS_USER }}
-        key: ${{ secrets.VPS_SSH_KEY }}
-        port: ${{ secrets.VPS_PORT }}
-        script: |
-          # ===================================================================
-          # DEPLOYMENT SCRIPT – runs on the VPS
-          # ===================================================================
-          set -euo pipefail
-          echo "=== Starting Trendora Deployment ==="
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          BACKEND_CHANGED:  ${{ needs.detect-changes.outputs.backend }}
+          FRONTEND_CHANGED: ${{ needs.detect-changes.outputs.frontend }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN:    ${{ secrets.DOCKERHUB_TOKEN }}
+        with:
+          host:     ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key:      ${{ secrets.VPS_SSH_KEY }}
+          port:     ${{ secrets.VPS_PORT }}
+          # Pass change flags into the shell script via envs
+          envs: BACKEND_CHANGED,FRONTEND_CHANGED,DOCKERHUB_USERNAME,DOCKERHUB_TOKEN
+          script: |
+            # =================================================================
+            # DEPLOYMENT SCRIPT – runs on VPS in a single SSH session
+            # =================================================================
+            set -euo pipefail
+            echo "=== Starting Trendora Deployment ==="
+            echo "Backend changed:  ${BACKEND_CHANGED}"
+            echo "Frontend changed: ${FRONTEND_CHANGED}"
 
-          # -------------------------------------------------------------------
-          # STEP 1: Navigate to project directory
-          # -------------------------------------------------------------------
-          cd /opt/trendydora/Trendydora || exit 1
+            # -----------------------------------------------------------------
+            # STEP 1: Navigate to project directory
+            # -----------------------------------------------------------------
+            cd /opt/trendydora/Trendydora || exit 1
 
-          # -------------------------------------------------------------------
-          # STEP 2: Pull latest compose/nginx config from GitHub
-          # The Docker images already contain app code, so we only need the
-          # docker-compose.yml, nginx-reverse-proxy.conf, etc.
-          # -------------------------------------------------------------------
-          echo "Pulling latest configuration from GitHub..."
-          SSH_KEY_PATH="${HOME}/.ssh/github_deploy_key"
+            # -----------------------------------------------------------------
+            # STEP 2: Pull latest compose/nginx config from GitHub
+            # -----------------------------------------------------------------
+            echo "Pulling latest configuration from GitHub..."
+            SSH_KEY_PATH="${HOME}/.ssh/github_deploy_key"
 
-          if [ -d ".git" ]; then
-            if [ -f "$SSH_KEY_PATH" ] && [ -r "$SSH_KEY_PATH" ]; then
-              mkdir -p ~/.ssh && chmod 700 ~/.ssh
-              # Add GitHub's official host key if not already present
-              if ! grep -q "github.com" ~/.ssh/known_hosts 2>/dev/null; then
-                echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" >> ~/.ssh/known_hosts
-                echo "github.com ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg=" >> ~/.ssh/known_hosts
-                chmod 600 ~/.ssh/known_hosts
+            if [ -d ".git" ]; then
+              if [ -f "$SSH_KEY_PATH" ] && [ -r "$SSH_KEY_PATH" ]; then
+                mkdir -p ~/.ssh && chmod 700 ~/.ssh
+                if ! grep -q "github.com" ~/.ssh/known_hosts 2>/dev/null; then
+                  echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" >> ~/.ssh/known_hosts
+                  echo "github.com ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg=" >> ~/.ssh/known_hosts
+                  chmod 600 ~/.ssh/known_hosts
+                fi
+                GIT_SSH_COMMAND="ssh -o IdentitiesOnly=yes -i $SSH_KEY_PATH" \
+                  git pull origin main \
+                  || echo "Warning: git pull failed – continuing with existing config"
+              else
+                git pull origin main \
+                  || echo "Warning: git pull failed – continuing with existing config"
               fi
-              GIT_SSH_COMMAND="ssh -o IdentitiesOnly=yes -i $SSH_KEY_PATH" git pull origin main \
-                || echo "Warning: git pull failed – continuing with existing config"
+            fi
+
+            # -----------------------------------------------------------------
+            # STEP 3: Ensure uploads directory exists
+            # -----------------------------------------------------------------
+            sudo mkdir -p ./backend/uploads/images
+            sudo chown -R 1000:1000 ./backend/uploads
+            sudo chmod -R 755 ./backend/uploads
+
+            # -----------------------------------------------------------------
+            # STEP 4: Inject Docker Hub username into .env
+            # -----------------------------------------------------------------
+            if grep -q "^DOCKERHUB_USERNAME=" .env; then
+              sed -i "s|^DOCKERHUB_USERNAME=.*|DOCKERHUB_USERNAME=${DOCKERHUB_USERNAME}|" .env
             else
-              git pull origin main \
-                || echo "Warning: git pull failed – continuing with existing config"
+              echo "DOCKERHUB_USERNAME=${DOCKERHUB_USERNAME}" >> .env
             fi
-          else
-            echo "Not a git repo – skipping git pull"
-          fi
 
-          # -------------------------------------------------------------------
-          # STEP 3: Ensure Cloudinary upload directory exists
-          # (If you ever switch back to local uploads, this directory is needed)
-          # -------------------------------------------------------------------
-          echo "Ensuring uploads directory exists..."
-          sudo mkdir -p ./backend/uploads/images
-          sudo chown -R 1000:1000 ./backend/uploads
-          sudo chmod -R 755 ./backend/uploads
+            # -----------------------------------------------------------------
+            # STEP 5: Log in to Docker Hub on VPS
+            # -----------------------------------------------------------------
+            echo "Logging in to Docker Hub..."
+            echo "${DOCKERHUB_TOKEN}" | sudo docker login \
+              -u "${DOCKERHUB_USERNAME}" --password-stdin || exit 1
 
-          # -------------------------------------------------------------------
-          # STEP 4: Inject Docker Hub username into .env so compose knows
-          # which images to pull
-          # -------------------------------------------------------------------
-          echo "Updating .env with Docker Hub username..."
-          if grep -q "^DOCKERHUB_USERNAME=" .env; then
-            sed -i "s|^DOCKERHUB_USERNAME=.*|DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}|" .env
-          else
-            echo "DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}" >> .env
-          fi
+            # -----------------------------------------------------------------
+            # STEP 6: Clean up dangling images / build cache (safe)
+            # -----------------------------------------------------------------
+            sudo docker image prune -f  || true
+            sudo docker builder prune -af || true
 
-          # -------------------------------------------------------------------
-          # STEP 5: Log in to Docker Hub on the VPS
-          # -------------------------------------------------------------------
-          echo "Logging in to Docker Hub..."
-          echo "${{ secrets.DOCKERHUB_TOKEN }}" | sudo docker login \
-            -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin || exit 1
+            # -----------------------------------------------------------------
+            # STEP 7: Pull only changed images (batched, no separate SSH calls)
+            # -----------------------------------------------------------------
+            echo "Pulling updated images..."
+            SERVICES_TO_PULL=""
+            [ "${BACKEND_CHANGED}"  = "true" ] && SERVICES_TO_PULL="$SERVICES_TO_PULL backend"
+            [ "${FRONTEND_CHANGED}" = "true" ] && SERVICES_TO_PULL="$SERVICES_TO_PULL frontend"
 
-          # -------------------------------------------------------------------
-          # STEP 6: Clean up dangling Docker resources (safe – no volumes)
-          # -------------------------------------------------------------------
-          echo "Cleaning up stale Docker resources..."
-          sudo docker image prune -f  || true
-          sudo docker builder prune -af || true
-
-          # -------------------------------------------------------------------
-          # STEP 7: Pull new images from Docker Hub
-          # -------------------------------------------------------------------
-          echo "Pulling latest Docker images..."
-          if ! sudo docker compose pull backend frontend; then
-            echo "ERROR: Failed to pull images!"
-            echo "Expected: ${{ secrets.DOCKERHUB_USERNAME }}/trendora-backend:latest"
-            echo "Expected: ${{ secrets.DOCKERHUB_USERNAME }}/trendora-frontend:latest"
-            exit 1
-          fi
-
-          # -------------------------------------------------------------------
-          # STEP 8: Run Prisma migrations before restarting the backend
-          # Running migrations in a one-shot container avoids running them
-          # during startup inside the long-lived container, which can cause
-          # race conditions when multiple replicas start at the same time.
-          # -------------------------------------------------------------------
-          echo "Running database migrations..."
-          if ! sudo docker compose run --rm backend sh -c "npx prisma migrate deploy"; then
-            echo "ERROR: Database migration failed! Rolling back deployment."
-            exit 1
-          fi
-
-          # -------------------------------------------------------------------
-          # STEP 9: Restart services
-          # Order: frontend → nginx-proxy (force-recreate picks up config
-          # changes) → backend
-          # -------------------------------------------------------------------
-          echo "Updating frontend..."
-          sudo docker compose up -d --no-build frontend
-
-          echo "Recreating nginx-proxy (picks up any nginx config changes)..."
-          sudo docker compose up -d --no-build --force-recreate nginx-proxy
-
-          echo "Restarting backend..."
-          sudo docker compose up -d --no-build backend
-
-          # -------------------------------------------------------------------
-          # STEP 10: Wait for backend to become healthy
-          # -------------------------------------------------------------------
-          echo "Waiting for backend to be ready..."
-          RETRIES=30
-          COUNT=0
-          until [ $COUNT -ge $RETRIES ]; do
-            if sudo docker compose exec -T backend \
-                wget --quiet --tries=1 --spider http://localhost:3001/api 2>/dev/null; then
-              echo "Backend is healthy"
-              break
+            if [ -n "$SERVICES_TO_PULL" ]; then
+              # shellcheck disable=SC2086
+              if ! sudo docker compose pull $SERVICES_TO_PULL; then
+                echo "ERROR: Failed to pull images: $SERVICES_TO_PULL"
+                exit 1
+              fi
+            else
+              echo "No images to pull (compose/nginx-only change)"
             fi
-            COUNT=$((COUNT+1))
-            echo "Waiting... ($COUNT/$RETRIES)"
-            sleep 3
-          done
-          if [ $COUNT -ge $RETRIES ]; then
-            echo "Warning: backend did not report healthy after $RETRIES attempts – check logs"
-            sudo docker compose logs backend --tail 50
-          fi
 
-          # -------------------------------------------------------------------
-          # STEP 11: Verify containers are actually running
-          # -------------------------------------------------------------------
-          echo "Verifying deployment..."
-          sudo docker compose ps
+            # -----------------------------------------------------------------
+            # STEP 8: Run Prisma migrations (only if backend changed)
+            # One-shot container — avoids race condition at startup
+            # -----------------------------------------------------------------
+            if [ "${BACKEND_CHANGED}" = "true" ]; then
+              echo "Running database migrations..."
+              if ! sudo docker compose run --rm backend sh -c "npx prisma migrate deploy"; then
+                echo "ERROR: Migration failed – aborting deployment"
+                exit 1
+              fi
+            else
+              echo "Skipping migrations (backend unchanged)"
+            fi
 
-          BACKEND_STATUS=$(sudo docker compose ps --filter "status=running" \
-            --format "{{.Service}}" | grep "^backend$" || true)
-          FRONTEND_STATUS=$(sudo docker compose ps --filter "status=running" \
-            --format "{{.Service}}" | grep "^frontend$" || true)
+            # -----------------------------------------------------------------
+            # STEP 9: Restart only the changed services (batched in one pass)
+            # Order matters: frontend → nginx (force-recreate) → backend
+            # -----------------------------------------------------------------
+            echo "Restarting changed services..."
 
-          if [ -z "$BACKEND_STATUS" ]; then
-            echo "ERROR: Backend is not running!"
-            sudo docker compose logs backend --tail 100
-            exit 1
-          fi
+            if [ "${FRONTEND_CHANGED}" = "true" ]; then
+              echo "  → Updating frontend..."
+              sudo docker compose up -d --no-build frontend
+            fi
 
-          if [ -z "$FRONTEND_STATUS" ]; then
-            echo "ERROR: Frontend is not running!"
-            sudo docker compose logs frontend --tail 100
-            exit 1
-          fi
+            # Always recreate nginx to pick up any conf file changes pulled in step 2
+            echo "  → Recreating nginx-proxy..."
+            sudo docker compose up -d --no-build --force-recreate nginx-proxy
 
-          # -------------------------------------------------------------------
-          # STEP 12: Final cleanup and summary
-          # -------------------------------------------------------------------
-          sudo docker image prune -f || true
+            if [ "${BACKEND_CHANGED}" = "true" ]; then
+              echo "  → Restarting backend..."
+              sudo docker compose up -d --no-build backend
+            fi
 
-          echo ""
-          echo "=== Deployed Images ==="
-          sudo docker images | grep trendora | head -5
+            # -----------------------------------------------------------------
+            # STEP 10: Health check (only if backend was restarted)
+            # -----------------------------------------------------------------
+            if [ "${BACKEND_CHANGED}" = "true" ]; then
+              echo "Waiting for backend to be ready..."
+              RETRIES=30
+              COUNT=0
+              until [ $COUNT -ge $RETRIES ]; do
+                if sudo docker compose exec -T backend \
+                    wget --quiet --tries=1 --spider http://localhost:3001/api 2>/dev/null; then
+                  echo "Backend is healthy"
+                  break
+                fi
+                COUNT=$((COUNT+1))
+                echo "  Waiting... ($COUNT/$RETRIES)"
+                sleep 3
+              done
+              if [ $COUNT -ge $RETRIES ]; then
+                echo "Warning: backend unhealthy after $RETRIES attempts"
+                sudo docker compose logs backend --tail 50
+              fi
+            fi
 
-          echo ""
-          echo "=== Container Status ==="
-          sudo docker compose ps
+            # -----------------------------------------------------------------
+            # STEP 11: Verify containers are running
+            # -----------------------------------------------------------------
+            echo "Verifying deployment..."
+            sudo docker compose ps
 
-          echo ""
-          echo "=========================================="
-          echo "   TRENDORA DEPLOYMENT COMPLETED!"
-          echo "=========================================="
-          echo "App: http://${{ secrets.VPS_HOST }}"
-          echo "API: http://${{ secrets.VPS_HOST }}/api"
-          echo "=========================================="
+            BACKEND_UP=$(sudo docker compose ps --filter "status=running" \
+              --format "{{.Service}}" | grep "^backend$" || true)
+            FRONTEND_UP=$(sudo docker compose ps --filter "status=running" \
+              --format "{{.Service}}" | grep "^frontend$" || true)
+
+            if [ -z "$BACKEND_UP" ]; then
+              echo "ERROR: Backend container is not running!"
+              sudo docker compose logs backend --tail 100
+              exit 1
+            fi
+            if [ -z "$FRONTEND_UP" ]; then
+              echo "ERROR: Frontend container is not running!"
+              sudo docker compose logs frontend --tail 100
+              exit 1
+            fi
+
+            # -----------------------------------------------------------------
+            # STEP 12: Final cleanup and summary
+            # -----------------------------------------------------------------
+            sudo docker image prune -f || true
+
+            echo ""
+            echo "=== Deployed Images ==="
+            sudo docker images | grep trendora | head -5
+
+            echo ""
+            echo "=== Container Status ==="
+            sudo docker compose ps
+
+            echo ""
+            echo "============================================"
+            echo "   TRENDORA DEPLOYMENT COMPLETED!"
+            echo "   App: http://${VPS_HOST:-VPS}"
+            echo "   API: http://${VPS_HOST:-VPS}/api"
+            echo "============================================"
