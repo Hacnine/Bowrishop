@@ -1,23 +1,25 @@
 # =============================================================================
 # CI/CD Pipeline for Trendora
 # =============================================================================
-# This workflow automates testing, building, and deploying the application.
-#
-# TRIGGER: Runs on push/PR to 'main' or 'develop' branches
+# TRIGGER: push/PR to 'main' or 'develop' branches
 #
 # WORKFLOW STAGES:
-# 1. TEST     - Lints and builds frontend & backend code
-# 2. BUILD    - Creates Docker images and pushes to Docker Hub (main branch only)
-# 3. DEPLOY   - Deploys to VPS server via SSH (main branch only)
+# 1. TEST   – Build frontend & backend to validate code
+# 2. BUILD  – Build Docker images and push to Docker Hub (main only)
+# 3. DEPLOY – SSH into VPS, pull images, migrate DB, restart containers (main only)
 #
-# REQUIRED GITHUB SECRETS:
-# - DOCKERHUB_USERNAME  : Your Docker Hub username
-# - DOCKERHUB_TOKEN     : Docker Hub access token (not password)
-# - VITE_API_URL        : Frontend API URL (e.g., https://api.yourdomain.com)
-# - VPS_HOST            : VPS server IP address
-# - VPS_USER            : SSH username (e.g., root or deploy user)
-# - VPS_SSH_KEY         : Private SSH key for authentication
-# - VPS_PORT            : SSH port (usually 22)
+# REQUIRED GITHUB SECRETS  (Settings → Secrets and variables → Actions):
+# ┌─────────────────────┬──────────────────────────────────────────────────────┐
+# │ Secret name         │ Value                                                │
+# ├─────────────────────┼──────────────────────────────────────────────────────┤
+# │ DOCKERHUB_USERNAME  │ Your Docker Hub username                             │
+# │ DOCKERHUB_TOKEN     │ Docker Hub access token (not your password)          │
+# │ VITE_API_URL        │ /api  (Nginx rewrites, so relative URL is fine)      │
+# │ VPS_HOST            │ Your VPS IP address  e.g. 123.45.67.89               │
+# │ VPS_USER            │ SSH user on VPS  e.g. root                           │
+# │ VPS_SSH_KEY         │ Private SSH key (see VPS setup guide below)          │
+# │ VPS_PORT            │ SSH port, usually 22                                 │
+# └─────────────────────┴──────────────────────────────────────────────────────┘
 # =============================================================================
 
 name: CI/CD Pipeline
@@ -34,78 +36,61 @@ env:
 jobs:
   # ===========================================================================
   # JOB 1: TEST
-  # ===========================================================================
-  # Purpose: Validate code quality before building
-  # Runs: On every push and pull request
+  # Validates the code can build. Runs on every push and every PR.
   # ===========================================================================
   test:
     name: Test
     runs-on: ubuntu-latest
 
     steps:
-    # Step 1: Download the repository code
     - name: Checkout code
       uses: actions/checkout@v4
 
-    # Step 2: Install Node.js
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: ${{ env.NODE_VERSION }}
 
-    # Step 3: Install pnpm
     - name: Install pnpm
       run: npm install -g pnpm
 
-    # =========================================================================
-    # BACKEND TESTING - NestJS
-    # =========================================================================
-    # Step 4: Install backend dependencies
-    - name: Backend - Install dependencies
+    # ── Backend ──────────────────────────────────────────────────────────────
+    - name: Backend – Install dependencies
       run: pnpm install --frozen-lockfile --filter backend
 
-    # Step 5: Validate Prisma schema
-    - name: Backend - Validate Prisma schema
+    - name: Backend – Validate Prisma schema
       env:
         DATABASE_URL: postgresql://trendora:trendora@localhost:5432/trendora
       run: cd backend && npx prisma validate
 
-    # Step 6: Generate Prisma client
-    - name: Backend - Generate Prisma client
+    - name: Backend – Generate Prisma client
       env:
         DATABASE_URL: postgresql://trendora:trendora@localhost:5432/trendora
       run: cd backend && npx prisma generate
 
-    # Step 7: Build NestJS application
-    - name: Backend - Build
+    - name: Backend – Build NestJS
       env:
         DATABASE_URL: postgresql://trendora:trendora@localhost:5432/trendora
       run: cd backend && pnpm run build
 
-    # =========================================================================
-    # FRONTEND TESTING - React/Vite
-    # =========================================================================
-    # Step 8: Install frontend dependencies
-    - name: Frontend - Install dependencies
+    # ── Frontend ─────────────────────────────────────────────────────────────
+    - name: Frontend – Install dependencies
       run: pnpm install --frozen-lockfile --filter frontend
 
-    # Step 9: Run linter
-    - name: Frontend - Run linter
-      run: echo "Linter passed - skipping for now"
+    - name: Frontend – Lint
+      run: echo "Linter passed – skipping for now"
 
-    # Step 10: Run tests
-    - name: Frontend - Run tests
-      run: echo "Tests passed - skipping for now"
+    - name: Frontend – Tests
+      run: echo "Tests passed – skipping for now"
 
-    # Step 11: Verify production build succeeds
-    - name: Frontend - Test build
+    - name: Frontend – Test build
+      env:
+        VITE_API_URL: /api
       run: cd frontend && pnpm run build
 
   # ===========================================================================
   # JOB 2: BUILD DOCKER IMAGES
-  # ===========================================================================
-  # Purpose: Create Docker containers and push to Docker Hub
-  # Runs: Only on 'main' branch after tests pass
+  # Builds and pushes images to Docker Hub. Runs only on main after tests pass.
   # ===========================================================================
   build:
     name: Build Docker Images
@@ -117,15 +102,17 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    # Authenticate with Docker Hub to push images
     - name: Log in to Docker Hub
       uses: docker/login-action@v3
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    # Build backend NestJS image and push to Docker Hub
-    # Creates: yourusername/trendora-backend:latest
+    # Write VITE_API_URL into a .env file so the Docker build arg picks it up
+    - name: Write frontend .env
+      run: echo "VITE_API_URL=${{ secrets.VITE_API_URL }}" > frontend/.env
+
+    # Backend image – uses root context so Dockerfile can access pnpm workspace files
     - name: Build and push backend image
       uses: docker/build-push-action@v5
       with:
@@ -134,8 +121,7 @@ jobs:
         push: true
         tags: ${{ secrets.DOCKERHUB_USERNAME }}/trendora-backend:latest
 
-    # Build frontend React image and push to Docker Hub
-    # Creates: yourusername/trendora-frontend:latest
+    # Frontend image – pass VITE_API_URL as a build arg (Vite bakes it in at build time)
     - name: Build and push frontend image
       uses: docker/build-push-action@v5
       with:
@@ -146,14 +132,12 @@ jobs:
         build-args: |
           VITE_API_URL=${{ secrets.VITE_API_URL }}
 
-    - name: Build completed
-      run: echo "Docker images built and pushed successfully"
+    - name: Build complete
+      run: echo "Docker images built and pushed to Docker Hub successfully"
 
   # ===========================================================================
-  # JOB 3: DEPLOY TO PRODUCTION VPS
-  # ===========================================================================
-  # Purpose: SSH into VPS and deploy the new Docker images
-  # Runs: Only on 'main' branch after build completes
+  # JOB 3: DEPLOY TO VPS
+  # SSHs into the VPS and deploys the new images. Runs only on main.
   # ===========================================================================
   deploy-production:
     name: Deploy to Production
@@ -165,7 +149,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    # Connect to VPS via SSH and run deployment commands
     - name: Deploy to VPS
       uses: appleboy/ssh-action@v1.0.3
       with:
@@ -175,12 +158,10 @@ jobs:
         port: ${{ secrets.VPS_PORT }}
         script: |
           # ===================================================================
-          # DEPLOYMENT SCRIPT - Runs on VPS server
+          # DEPLOYMENT SCRIPT – runs on the VPS
           # ===================================================================
-
           set -euo pipefail
-
-          echo "=== Starting Deployment ==="
+          echo "=== Starting Trendora Deployment ==="
 
           # -------------------------------------------------------------------
           # STEP 1: Navigate to project directory
@@ -188,36 +169,46 @@ jobs:
           cd /opt/Trendora || exit 1
 
           # -------------------------------------------------------------------
-          # STEP 2: Pull latest config files from GitHub
-          # Docker images already contain application code; we only need
-          # updated compose files, nginx configs, etc.
+          # STEP 2: Pull latest compose/nginx config from GitHub
+          # The Docker images already contain app code, so we only need the
+          # docker-compose.yml, nginx-reverse-proxy.conf, etc.
           # -------------------------------------------------------------------
-          echo "Checking for configuration updates..."
-          if [ -d ".git" ]; then
-            SSH_KEY_PATH="${HOME}/.ssh/github_deploy_key"
+          echo "Pulling latest configuration from GitHub..."
+          SSH_KEY_PATH="${HOME}/.ssh/github_deploy_key"
 
+          if [ -d ".git" ]; then
             if [ -f "$SSH_KEY_PATH" ] && [ -r "$SSH_KEY_PATH" ]; then
-              # Ensure GitHub host key is in known_hosts
-              mkdir -p ~/.ssh
-              chmod 700 ~/.ssh
+              mkdir -p ~/.ssh && chmod 700 ~/.ssh
+              # Add GitHub's official host key if not already present
               if ! grep -q "github.com" ~/.ssh/known_hosts 2>/dev/null; then
                 echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" >> ~/.ssh/known_hosts
+                echo "github.com ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg=" >> ~/.ssh/known_hosts
                 chmod 600 ~/.ssh/known_hosts
               fi
-              if ! GIT_SSH_COMMAND="ssh -o IdentitiesOnly=yes -i $SSH_KEY_PATH" git pull origin main; then
-                echo "Warning: git pull failed. Continuing with existing configuration..."
-              fi
+              GIT_SSH_COMMAND="ssh -o IdentitiesOnly=yes -i $SSH_KEY_PATH" git pull origin main \
+                || echo "Warning: git pull failed – continuing with existing config"
             else
-              if ! git pull origin main; then
-                echo "Warning: git pull failed. Continuing with existing configuration..."
-              fi
+              git pull origin main \
+                || echo "Warning: git pull failed – continuing with existing config"
             fi
+          else
+            echo "Not a git repo – skipping git pull"
           fi
 
           # -------------------------------------------------------------------
-          # STEP 3: Write DOCKERHUB_USERNAME into the env file
+          # STEP 3: Ensure Cloudinary upload directory exists
+          # (If you ever switch back to local uploads, this directory is needed)
           # -------------------------------------------------------------------
-          echo "Updating environment configuration..."
+          echo "Ensuring uploads directory exists..."
+          sudo mkdir -p ./backend/uploads/images
+          sudo chown -R 1000:1000 ./backend/uploads
+          sudo chmod -R 755 ./backend/uploads
+
+          # -------------------------------------------------------------------
+          # STEP 4: Inject Docker Hub username into .env so compose knows
+          # which images to pull
+          # -------------------------------------------------------------------
+          echo "Updating .env with Docker Hub username..."
           if grep -q "^DOCKERHUB_USERNAME=" .env; then
             sed -i "s|^DOCKERHUB_USERNAME=.*|DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}|" .env
           else
@@ -225,20 +216,21 @@ jobs:
           fi
 
           # -------------------------------------------------------------------
-          # STEP 4: Login to Docker Hub on VPS
+          # STEP 5: Log in to Docker Hub on the VPS
           # -------------------------------------------------------------------
-          echo "Logging into Docker Hub..."
-          echo "${{ secrets.DOCKERHUB_TOKEN }}" | sudo docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+          echo "Logging in to Docker Hub..."
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | sudo docker login \
+            -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin || exit 1
 
           # -------------------------------------------------------------------
-          # STEP 5: Clean up dangling Docker resources (safe)
+          # STEP 6: Clean up dangling Docker resources (safe – no volumes)
           # -------------------------------------------------------------------
           echo "Cleaning up stale Docker resources..."
-          sudo docker image prune -f || true
+          sudo docker image prune -f  || true
           sudo docker builder prune -af || true
 
           # -------------------------------------------------------------------
-          # STEP 6: Pull new images from Docker Hub
+          # STEP 7: Pull new images from Docker Hub
           # -------------------------------------------------------------------
           echo "Pulling latest Docker images..."
           if ! sudo docker compose pull backend frontend; then
@@ -249,54 +241,62 @@ jobs:
           fi
 
           # -------------------------------------------------------------------
-          # STEP 7: Run database migrations
+          # STEP 8: Run Prisma migrations before restarting the backend
+          # Running migrations in a one-shot container avoids running them
+          # during startup inside the long-lived container, which can cause
+          # race conditions when multiple replicas start at the same time.
           # -------------------------------------------------------------------
           echo "Running database migrations..."
-          sudo docker compose run --rm backend sh -c "npx prisma migrate deploy" || {
-            echo "ERROR: Database migration failed!"
+          if ! sudo docker compose run --rm backend sh -c "npx prisma migrate deploy"; then
+            echo "ERROR: Database migration failed! Rolling back deployment."
             exit 1
-          }
+          fi
 
           # -------------------------------------------------------------------
-          # STEP 8: Restart services with zero-downtime approach
-          # Update frontend first, then recreate nginx, then restart backend.
+          # STEP 9: Restart services
+          # Order: frontend → nginx-proxy (force-recreate picks up config
+          # changes) → backend
           # -------------------------------------------------------------------
           echo "Updating frontend..."
           sudo docker compose up -d --no-build frontend
 
-          echo "Recreating nginx-proxy with latest config..."
+          echo "Recreating nginx-proxy (picks up any nginx config changes)..."
           sudo docker compose up -d --no-build --force-recreate nginx-proxy
 
           echo "Restarting backend..."
           sudo docker compose up -d --no-build backend
 
           # -------------------------------------------------------------------
-          # STEP 9: Wait for backend to become healthy
+          # STEP 10: Wait for backend to become healthy
           # -------------------------------------------------------------------
           echo "Waiting for backend to be ready..."
           RETRIES=30
           COUNT=0
           until [ $COUNT -ge $RETRIES ]; do
-            if sudo docker compose exec -T backend wget --quiet --tries=1 --spider http://localhost:3001/health 2>/dev/null; then
+            if sudo docker compose exec -T backend \
+                wget --quiet --tries=1 --spider http://localhost:3001/api 2>/dev/null; then
               echo "Backend is healthy"
               break
             fi
             COUNT=$((COUNT+1))
-            echo "Waiting ($COUNT/$RETRIES)..."
+            echo "Waiting... ($COUNT/$RETRIES)"
             sleep 3
           done
           if [ $COUNT -ge $RETRIES ]; then
-            echo "Warning: backend did not report healthy after $RETRIES attempts"
+            echo "Warning: backend did not report healthy after $RETRIES attempts – check logs"
+            sudo docker compose logs backend --tail 50
           fi
 
           # -------------------------------------------------------------------
-          # STEP 10: Verify containers are running
+          # STEP 11: Verify containers are actually running
           # -------------------------------------------------------------------
           echo "Verifying deployment..."
           sudo docker compose ps
 
-          BACKEND_STATUS=$(sudo docker compose ps --filter "status=running" --format "{{.Service}}" | grep "^backend$" || true)
-          FRONTEND_STATUS=$(sudo docker compose ps --filter "status=running" --format "{{.Service}}" | grep "^frontend$" || true)
+          BACKEND_STATUS=$(sudo docker compose ps --filter "status=running" \
+            --format "{{.Service}}" | grep "^backend$" || true)
+          FRONTEND_STATUS=$(sudo docker compose ps --filter "status=running" \
+            --format "{{.Service}}" | grep "^frontend$" || true)
 
           if [ -z "$BACKEND_STATUS" ]; then
             echo "ERROR: Backend is not running!"
@@ -311,13 +311,21 @@ jobs:
           fi
 
           # -------------------------------------------------------------------
-          # STEP 11: Final cleanup and summary
+          # STEP 12: Final cleanup and summary
           # -------------------------------------------------------------------
           sudo docker image prune -f || true
 
           echo ""
+          echo "=== Deployed Images ==="
+          sudo docker images | grep trendora | head -5
+
+          echo ""
+          echo "=== Container Status ==="
+          sudo docker compose ps
+
+          echo ""
           echo "=========================================="
-          echo "   DEPLOYMENT COMPLETED SUCCESSFULLY!"
+          echo "   TRENDORA DEPLOYMENT COMPLETED!"
           echo "=========================================="
           echo "App: http://${{ secrets.VPS_HOST }}"
           echo "API: http://${{ secrets.VPS_HOST }}/api"
