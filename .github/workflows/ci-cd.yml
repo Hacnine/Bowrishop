@@ -173,7 +173,7 @@ jobs:
           # -------------------------------------------------------------------
           # STEP 1: Navigate to project directory
           # -------------------------------------------------------------------
-          cd /opt/Trendora || exit 1
+          cd /opt/trendydora/Trendydora || exit 1
 
           # -------------------------------------------------------------------
           # STEP 2: Pull latest compose/nginx config from GitHub
