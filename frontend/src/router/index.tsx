@@ -3,6 +3,7 @@ import { MainLayout } from '../layouts/MainLayout';
 import { AdminLayout } from '../layouts/AdminLayout';
 import { ProtectedRoute, AdminRoute } from '../components/ProtectedRoute';
 import { lazy, Suspense } from 'react';
+import { AboutPage } from '../pages/AboutUs';
 
 const Loading = () => (
   <div className="flex items-center justify-center min-h-[60vh]">
@@ -52,6 +53,9 @@ export const router = createBrowserRouter([
       { path: 'products', element: wrap(ProductsPage) },
       { path: 'products/:slug', element: wrap(ProductDetailPage) },
       { path: 'contact', element: wrap(ContactPage) },
+      { path: 'about', element: wrap(AboutPage) },
+      { path: 'faq', element: wrap(lazy(() => import('../pages/Faq').then((m) => ({ default: m.FaqPage })))) },
+      { path: 'privacy-policy', element: wrap(lazy(() => import('../pages/PrivacyPolicy').then((m) => ({ default: m.PrivacyPolicyPage })))) },
       { path: 'login', element: wrap(LoginPage) },
       { path: 'register', element: wrap(RegisterPage) },
       { path: 'auth/callback', element: wrap(OAuthCallbackPage) },

@@ -24,7 +24,7 @@ export function Footer() {
   return (
     <footer className="bg-gray-900 text-gray-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           <div>
             <span className="text-2xl font-cormorant font-bold text-white">Bowri Shop</span>
             <p className="mt-3 text-sm leading-relaxed">Your one-stop destination for trending products at the best prices.</p>
@@ -54,8 +54,9 @@ export function Footer() {
             <h4 className="text-white font-semibold mb-3">Support</h4>
             <ul className="space-y-2 text-sm">
               <li><Link to="/contact" className="hover:text-white">Contact Us</Link></li>
-              <li><a href="#" className="hover:text-white">FAQ</a></li>
-              <li><a href="#" className="hover:text-white">Privacy Policy</a></li>
+              <li><Link to="/about" className="hover:text-white">About Us</Link></li>
+              <li><a href="/faq" className="hover:text-white">FAQ</a></li>
+              <li><a href="/privacy-policy" className="hover:text-white">Privacy Policy</a></li>
             </ul>
           </div>
         </div>
