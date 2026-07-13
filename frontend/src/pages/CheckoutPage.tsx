@@ -24,8 +24,7 @@ const schema = z.object({
   city: z.string().min(2, 'City required'),
   state: z.string().min(2, 'State required'),
   country: z.string().min(2, 'Country required'),
-  zipCode: z.string().min(3, 'Zip code required'),
-  transactionId: z.string().min(3, 'Transaction ID required'),
+  // transactionId: z.string().min(3, 'Transaction ID required'),
   guestEmail: z.string().optional(),
   guestName: z.string().optional(),
 });
@@ -67,9 +66,8 @@ export function CheckoutPage() {
             streetAddress: data.streetAddress,
             city: data.city,
             state: data.state,
-            zipCode: data.zipCode,
             country: data.country,
-            paymentTransactionId: data.transactionId,
+            // paymentTransactionId: data.transactionId,
           },
           couponCode: state?.couponCode,
         }).unwrap();
@@ -94,9 +92,8 @@ export function CheckoutPage() {
             streetAddress: data.streetAddress,
             city: data.city,
             state: data.state,
-            zipCode: data.zipCode,
             country: data.country,
-            paymentTransactionId: data.transactionId,
+            // paymentTransactionId: data.transactionId,
           },
           couponCode: state?.couponCode,
         }).unwrap();
@@ -149,13 +146,12 @@ export function CheckoutPage() {
               <Input label="State / Region" error={errors.state?.message} {...register('state')} />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <Input label="Zip code" error={errors.zipCode?.message} {...register('zipCode')} />
               <Input label="Country" error={errors.country?.message} {...register('country')} />
             </div>
           </div>
 
           {/* bKash payment instructions */}
-          <div className="bg-pink-50 border border-pink-200 rounded-2xl p-6 space-y-4">
+          {/* <div className="bg-pink-50 border border-pink-200 rounded-2xl p-6 space-y-4">
             <h2 className="font-semibold text-gray-900">Payment</h2>
             <p className="text-sm text-gray-700">
               To confirm your order, please send{' '}
@@ -176,7 +172,7 @@ export function CheckoutPage() {
               Enter the transaction ID you received by SMS after sending the payment. Your order will
               be confirmed once we verify it.
             </p>
-          </div>
+          </div> */}
         </div>
 
         {/* Summary */}

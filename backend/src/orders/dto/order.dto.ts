@@ -10,7 +10,6 @@ export class ShippingAddressDto {
   @IsString() streetAddress: string;
   @IsString() city: string;
   @IsString() state: string;
-  @IsString() zipCode: string;
   @IsString() country: string;
 
   @IsOptional()

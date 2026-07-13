@@ -90,9 +90,8 @@ export interface ShippingAddress {
   streetAddress: string;
   city: string;
   state: string;
-  zipCode: string;
   country: string;
-  paymentTransactionId?: string;
+  // paymentTransactionId?: string;
 }
 
 export type OrderStatus = 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';

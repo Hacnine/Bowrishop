@@ -55,12 +55,12 @@ export function OrdersPage() {
                   {order.shippingAddress?.phoneNumber ?? '—'}
                 </p>
               </div>
-              <div>
+              {/* <div>
                 <p className="text-gray-400 mb-0.5">bKash transaction ID</p>
                 <p className="font-mono font-medium text-gray-700">
                   {order.shippingAddress?.paymentTransactionId ?? '—'}
                 </p>
-              </div>
+              </div> */}
             </div>
           </div>
         ))}
