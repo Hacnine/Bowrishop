@@ -11,8 +11,8 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { formatCurrency } from '../utils';
 
-const BKASH_NUMBER = '01403041607';
-const BKASH_PAYMENT_AMOUNT = 50;
+// const BKASH_NUMBER = '01403041607';
+// const BKASH_PAYMENT_AMOUNT = 50;
 
 const schema = z.object({
   fullName: z.string().min(2, 'Full name required'),
