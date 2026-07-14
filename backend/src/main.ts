@@ -5,6 +5,7 @@ import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -23,6 +24,9 @@ async function bootstrap() {
       : [/^http:\/\/localhost:\d+$/],
     credentials: true,
   });
+
+  // Global Error Filter (must be before pipes)
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   // Global Validation
   app.useGlobalPipes(

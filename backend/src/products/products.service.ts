@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   AdminProductQueryDto, CreateProductDto, UpdateProductDto, ProductQueryDto,
@@ -35,53 +35,100 @@ function normalizeSearch(value?: string) {
 
 @Injectable()
 export class ProductsService {
+  private readonly logger = new Logger(ProductsService.name);
+
   constructor(private prisma: PrismaService) {}
 
   // ─── Product CRUD ────────────────────────────────────────────────────────────
 
   async create(dto: CreateProductDto) {
-    const slug = slugify(dto.name);
-    const existing = await this.prisma.product.findUnique({ where: { slug } });
-    if (existing) throw new ConflictException('A product with this name already exists');
+    try {
+      const slug = slugify(dto.name);
+      const existing = await this.prisma.product.findUnique({ where: { slug } });
+      if (existing) throw new ConflictException('A product with this name already exists');
 
-    return this.prisma.product.create({
-      data: {
-        name: dto.name,
-        slug,
-        description: dto.description,
-        price: dto.price,
-        comparePrice: dto.comparePrice,
-        stock: dto.stock,
-        images: dto.images,
-        tags: dto.tags ?? [],
-        categoryId: dto.categoryId,
-        isActive: dto.isActive ?? true,
-        variants: dto.variants?.length
-          ? { create: dto.variants.map((v) => ({ ...v, images: v.images ?? [] })) }
-          : undefined,
-      },
-      include: PRODUCT_WITH_VARIANTS,
-    });
+      const product = await this.prisma.product.create({
+        data: {
+          name: dto.name,
+          slug,
+          description: dto.description,
+          price: dto.price,
+          comparePrice: dto.comparePrice,
+          stock: dto.stock,
+          images: dto.images,
+          tags: dto.tags ?? [],
+          categoryId: dto.categoryId,
+          isActive: dto.isActive ?? true,
+          variants: dto.variants?.length
+            ? { create: dto.variants.map((v) => ({ ...v, images: v.images ?? [] })) }
+            : undefined,
+        },
+        include: PRODUCT_WITH_VARIANTS,
+      });
+
+      this.logger.log(`Product created successfully: ${product.id} (${product.name})`);
+      return product;
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        throw error;
+      }
+
+      this.logger.error(
+        `Error creating product:`,
+        error instanceof Error ? error.message : JSON.stringify(error),
+      );
+      throw error;
+    }
   }
 
   async update(id: string, dto: UpdateProductDto) {
-    const product = await this.prisma.product.findUnique({ where: { id } });
-    if (!product) throw new NotFoundException('Product not found');
+    try {
+      const product = await this.prisma.product.findUnique({ where: { id } });
+      if (!product) throw new NotFoundException('Product not found');
 
-    const data: any = { ...dto };
-    if (dto.name) data.slug = slugify(dto.name);
+      const data: any = { ...dto };
+      if (dto.name) data.slug = slugify(dto.name);
 
-    return this.prisma.product.update({
-      where: { id },
-      data,
-      include: PRODUCT_WITH_VARIANTS,
-    });
+      const updated = await this.prisma.product.update({
+        where: { id },
+        data,
+        include: PRODUCT_WITH_VARIANTS,
+      });
+
+      this.logger.log(`Product updated successfully: ${id}`);
+      return updated;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      this.logger.error(
+        `Error updating product ${id}:`,
+        error instanceof Error ? error.message : JSON.stringify(error),
+      );
+      throw error;
+    }
   }
 
   async remove(id: string) {
-    const product = await this.prisma.product.findUnique({ where: { id } });
-    if (!product) throw new NotFoundException('Product not found');
-    return this.prisma.product.delete({ where: { id } });
+    try {
+      const product = await this.prisma.product.findUnique({ where: { id } });
+      if (!product) throw new NotFoundException('Product not found');
+
+      const deleted = await this.prisma.product.delete({ where: { id } });
+      this.logger.log(`Product deleted successfully: ${id}`);
+      return deleted;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      this.logger.error(
+        `Error deleting product ${id}:`,
+        error instanceof Error ? error.message : JSON.stringify(error),
+      );
+      throw error;
+    }
   }
 
   async findAll(query: ProductQueryDto) {
@@ -247,42 +294,121 @@ export class ProductsService {
   // ─── Variant CRUD ─────────────────────────────────────────────────────────────
 
   async createVariant(productId: string, dto: CreateVariantDto) {
-    const product = await this.prisma.product.findUnique({ where: { id: productId } });
-    if (!product) throw new NotFoundException('Product not found');
+    try {
+      const product = await this.prisma.product.findUnique({ where: { id: productId } });
+      if (!product) throw new NotFoundException('Product not found');
 
-    // Prevent duplicate color+size combo
-    if (dto.color || dto.size) {
-      const dupe = await this.prisma.productVariant.findFirst({
-        where: {
-          productId,
-          color: dto.color ?? null,
-          size: dto.size ?? null,
-        },
+      // Check for duplicate color+size combo
+      // We need to handle the case where color or size could be null
+      const where: any = { productId };
+      if (dto.color !== undefined && dto.color !== null) {
+        where.color = dto.color;
+      } else {
+        where.color = null;
+      }
+      if (dto.size !== undefined && dto.size !== null) {
+        where.size = dto.size;
+      } else {
+        where.size = null;
+      }
+
+      const dupe = await this.prisma.productVariant.findFirst({ where });
+      if (dupe) {
+        throw new ConflictException(
+          `A variant with color "${dto.color ?? '—'}" and size "${dto.size ?? '—'}" already exists for this product`,
+        );
+      }
+
+      const variant = await this.prisma.productVariant.create({
+        data: { productId, ...dto, images: dto.images ?? [] },
       });
-      if (dupe) throw new ConflictException(
-        `A variant with color "${dto.color ?? '—'}" and size "${dto.size ?? '—'}" already exists`,
-      );
-    }
 
-    return this.prisma.productVariant.create({
-      data: { productId, ...dto, images: dto.images ?? [] },
-    });
+      this.logger.log(`Variant created successfully: ${variant.id} for product: ${productId}`);
+      return variant;
+    } catch (error) {
+      // Log the actual error
+      if (error instanceof ConflictException) {
+        throw error;
+      }
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      // Handle Prisma unique constraint errors
+      if (error?.code === 'P2002') {
+        const target = error?.meta?.target?.[0] || 'unknown';
+        this.logger.error(`Unique constraint violation on ${target}:`, error);
+        throw new ConflictException(
+          `A variant with this ${target} already exists`,
+        );
+      }
+
+      // Handle other Prisma errors
+      if (error?.code === 'P2025') {
+        this.logger.error('Record not found:', error);
+        throw new NotFoundException('Product or variant not found');
+      }
+
+      // Log any other unexpected errors
+      this.logger.error(
+        `Error creating variant for product ${productId}:`,
+        error instanceof Error ? error.message : JSON.stringify(error),
+      );
+
+      throw error;
+    }
   }
 
   async updateVariant(variantId: string, dto: UpdateVariantDto) {
-    const variant = await this.prisma.productVariant.findUnique({ where: { id: variantId } });
-    if (!variant) throw new NotFoundException('Variant not found');
+    try {
+      const variant = await this.prisma.productVariant.findUnique({ where: { id: variantId } });
+      if (!variant) throw new NotFoundException('Variant not found');
 
-    return this.prisma.productVariant.update({
-      where: { id: variantId },
-      data: dto,
-    });
+      const updated = await this.prisma.productVariant.update({
+        where: { id: variantId },
+        data: dto,
+      });
+
+      this.logger.log(`Variant updated successfully: ${variantId}`);
+      return updated;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      // Handle Prisma unique constraint errors
+      if (error?.code === 'P2002') {
+        this.logger.error(`Unique constraint violation updating variant ${variantId}:`, error);
+        throw new ConflictException('This variant configuration already exists');
+      }
+
+      this.logger.error(
+        `Error updating variant ${variantId}:`,
+        error instanceof Error ? error.message : JSON.stringify(error),
+      );
+      throw error;
+    }
   }
 
   async deleteVariant(variantId: string) {
-    const variant = await this.prisma.productVariant.findUnique({ where: { id: variantId } });
-    if (!variant) throw new NotFoundException('Variant not found');
-    return this.prisma.productVariant.delete({ where: { id: variantId } });
+    try {
+      const variant = await this.prisma.productVariant.findUnique({ where: { id: variantId } });
+      if (!variant) throw new NotFoundException('Variant not found');
+
+      const deleted = await this.prisma.productVariant.delete({ where: { id: variantId } });
+      this.logger.log(`Variant deleted successfully: ${variantId}`);
+      return deleted;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      this.logger.error(
+        `Error deleting variant ${variantId}:`,
+        error instanceof Error ? error.message : JSON.stringify(error),
+      );
+      throw error;
+    }
   }
 
   async getVariants(productId: string) {
