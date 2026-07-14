@@ -304,8 +304,9 @@ export class ProductsService {
         const dupe = await this.prisma.productVariant.findFirst({
           where: {
             productId,
-            color: dto.color || undefined,
-            size: dto.size || undefined,
+            // Explicitly pass the values (or null if not provided)
+            color: dto.color ?? null,
+            size: dto.size ?? null,
           },
         });
         if (dupe) {
