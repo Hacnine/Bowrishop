@@ -286,7 +286,7 @@ function Perks({ slide }) {
   if (!slide.perks?.length) return null;
 
   return (
-    <div className="absolute inset-x-0 bottom-0 z-30 px-4 sm:px-6 lg:px-8 pb-6">
+    <div className="absolute hidden sm:block inset-x-0 bottom-0 z-30 px-4 sm:px-6 lg:px-8 pb-6">
       <div
         className={`max-w-6xl mx-auto rounded-2xl grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 ${
           slide.perksDividerClass ?? 'divide-white/15'
@@ -407,7 +407,7 @@ export function Hero({ categories = [] }) {
       </div>
 
       {/* Category icon strip (below hero) */}
-      {categories.length > 0 && (
+      {/* {categories.length > 0 && (
         <div className="bg-[#F7F1EA] border-b border-gray-200">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-wrap items-center justify-center gap-x-10 gap-y-3">
             {categories.map((cat) => {
@@ -427,7 +427,7 @@ export function Hero({ categories = [] }) {
             })}
           </div>
         </div>
-      )}
+      )} */}
     </section>
   );
 }
