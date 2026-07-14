@@ -298,25 +298,21 @@ export class ProductsService {
       const product = await this.prisma.product.findUnique({ where: { id: productId } });
       if (!product) throw new NotFoundException('Product not found');
 
-      // Check for duplicate color+size combo
-      // We need to handle the case where color or size could be null
-      const where: any = { productId };
-      if (dto.color !== undefined && dto.color !== null) {
-        where.color = dto.color;
-      } else {
-        where.color = null;
-      }
-      if (dto.size !== undefined && dto.size !== null) {
-        where.size = dto.size;
-      } else {
-        where.size = null;
-      }
-
-      const dupe = await this.prisma.productVariant.findFirst({ where });
-      if (dupe) {
-        throw new ConflictException(
-          `A variant with color "${dto.color ?? '—'}" and size "${dto.size ?? '—'}" already exists for this product`,
-        );
+      // Only check for duplicates if color or size is provided
+      // This allows multiple variants with null color/size for the same product
+      if (dto.color || dto.size) {
+        const dupe = await this.prisma.productVariant.findFirst({
+          where: {
+            productId,
+            color: dto.color || undefined,
+            size: dto.size || undefined,
+          },
+        });
+        if (dupe) {
+          throw new ConflictException(
+            `A variant with color "${dto.color ?? '—'}" and size "${dto.size ?? '—'}" already exists for this product`,
+          );
+        }
       }
 
       const variant = await this.prisma.productVariant.create({
@@ -334,10 +330,10 @@ export class ProductsService {
         throw error;
       }
 
-      // Handle Prisma unique constraint errors
+      // Handle Prisma unique constraint errors (P2002)
       if (error?.code === 'P2002') {
-        const target = error?.meta?.target?.[0] || 'unknown';
-        this.logger.error(`Unique constraint violation on ${target}:`, error);
+        const target = error?.meta?.target?.[0] || 'variant attributes';
+        this.logger.error(`Unique constraint violation on ${target}:`, error?.message);
         throw new ConflictException(
           `A variant with this ${target} already exists`,
         );
@@ -345,7 +341,7 @@ export class ProductsService {
 
       // Handle other Prisma errors
       if (error?.code === 'P2025') {
-        this.logger.error('Record not found:', error);
+        this.logger.error('Record not found:', error?.message);
         throw new NotFoundException('Product or variant not found');
       }
 

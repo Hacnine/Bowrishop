@@ -102,9 +102,12 @@ model ProductVariant {
   product      Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
   cartItems    CartItem[]
   orderItems   OrderItem[]
+// @@unique([productId, color, size]) // prevent duplicate combinations
 
-  @@unique([productId, color, size]) // prevent duplicate combinations
   @@index([productId])
+  // Note: Unique constraint on [productId, color, size] is handled via PostgreSQL
+  // partial index in migration (only when color OR size is NOT null)
+  // This allows multiple variants with null color/size for the same product
 }
 
 model CartItem {
