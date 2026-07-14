@@ -208,6 +208,47 @@ export function ProductDetailPage() {
     }
   };
 
+  function DescriptionRenderer({ text }: { text: string }) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+  return (
+    <div className="space-y-2 text-gray-600 leading-relaxed text-sm">
+      {lines.map((line, i) => {
+        // Section headers like "প্রোডাক্ট ফিচার:" or "ব্যবহার:"
+        const isHeader = line.endsWith(':') && !line.startsWith('✅');
+
+        // Checklist items
+        const isCheck = line.startsWith('✅');
+
+        if (isHeader) {
+          return (
+            <p key={i} className="font-semibold text-gray-800 mt-4 mb-1">
+              {line}
+            </p>
+          );
+        }
+
+        if (isCheck) {
+          // Bold the label before " – "
+          const [label, ...rest] = line.replace('✅', '').trim().split(' – ');
+          const detail = rest.join(' – ');
+          return (
+            <div key={i} className="flex items-start gap-2">
+              <span className="text-green-500 mt-0.5 shrink-0">✅</span>
+              <p>
+                <span className="font-medium text-gray-800">{label}</span>
+                {detail && <span className="text-gray-500"> – {detail}</span>}
+              </p>
+            </div>
+          );
+        }
+
+        return <p key={i}>{line}</p>;
+      })}
+    </div>
+  );
+}
+
   // ── Loading / not found ─────────────────────────────────────────────────────
   if (isLoading) {
     return (
@@ -317,7 +358,9 @@ export function ProductDetailPage() {
               )}
             </div>
 
-            <p className="text-gray-600 leading-relaxed mb-6">{product.description}</p>
+            <div className="mb-6">
+              <DescriptionRenderer text={product.description} />
+            </div>
 
             {/* ── Color selector ──────────────────────────────────────────── */}
             {uniqueColors.length > 0 && (
