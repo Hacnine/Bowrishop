@@ -31,11 +31,23 @@ export function WishlistPage() {
   const [removingIds, setRemovingIds] = useState<Set<string>>(new Set());
   const [addingIds, setAddingIds] = useState<Set<string>>(new Set());
 
-  const handleAddToCart = async (productId: string, name: string) => {
+const handleAddToCart = async (productId: string, name: string, price?: number) => {
     setAddingIds((prev) => new Set(prev).add(productId));
     try {
       await addToCart({ productId, quantity: 1 }).unwrap();
       toast.success(`${name} added to cart`);
+
+      // 👈 মেটা পিক্সেল AddToCart ইভেন্ট ফায়ার করা হলো
+      if (typeof window !== 'undefined' && (window as any).fbq) {
+        (window as any).fbq('track', 'AddToCart', {
+          content_name: name,
+          content_ids: [productId],
+          content_type: 'product',
+          // যদি প্যারামিটার হিসেবে প্রাইস পাস করা থাকে তবে সেটি যাবে, নাহলে ওমিট করবে
+          ...(price ? { value: price, currency: 'BDT' } : {})
+        });
+      }
+
     } catch {
       toast.error('Could not add to cart');
     } finally {

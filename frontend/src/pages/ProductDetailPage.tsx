@@ -218,12 +218,25 @@ export function ProductDetailPage() {
   }, [selectedVariant, allProductImages]);
 
   // ── Cart / Wishlist / Review Handlers ───────────────────────────────
-  const handleAddToCart = async () => {
+const handleAddToCart = async () => {
     // 1. Guard clause: If there are variants, require selection
     if (hasVariants && !selectedVariant) {
       toast.error("Please select a color and size first");
       return;
     }
+
+    // Helper function to fire Meta Pixel AddToCart event
+    const firePixelAddToCart = () => {
+      if (typeof window !== 'undefined' && (window as any).fbq) {
+        (window as any).fbq('track', 'AddToCart', {
+          content_name: product.name,
+          content_ids: [product.id.toString()],
+          content_type: 'product',
+          value: Number(product.price) * qty, // টোটাল ভ্যালু (প্রাইস * কোয়ান্টিটি)
+          currency: 'BDT'
+        });
+      }
+    };
 
     // 2. Handle GUEST Cart (Not Authenticated)
     if (!isAuthenticated) {
@@ -248,6 +261,7 @@ export function ProductDetailPage() {
         }),
       );
       toast.success("Added to cart");
+      firePixelAddToCart(); 
       return;
     }
 
@@ -259,6 +273,7 @@ export function ProductDetailPage() {
         ...(selectedVariant ? { variantId: selectedVariant.id } : {}),
       } as any).unwrap();
       toast.success("Added to cart");
+      firePixelAddToCart(); // 👈 লগড-ইন ইউজারের জন্য পিক্সেল ফায়ার করা হলো
     } catch {
       toast.error("Could not add to cart");
     }

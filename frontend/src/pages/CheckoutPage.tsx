@@ -86,8 +86,21 @@ export function CheckoutPage() {
   const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
   const discount = state?.couponDiscount ?? 0;
   const total = Math.max(0, subtotal - discount + shippingCharge);
-
 const onSubmit = async (data: FormValues) => {
+    // Helper function to fire Meta Pixel Purchase event
+    const firePixelPurchase = (order: any) => {
+      if (typeof window !== 'undefined' && (window as any).fbq) {
+        (window as any).fbq('track', 'Purchase', {
+          // টোটাল অর্ডার ভ্যালু (প্রোডাক্টগুলোর দাম + ডেলিভারি চার্জ - ডিসকাউন্ট যদি থাকে)
+          value: Number(order.totalAmount || order.total || 0), 
+          currency: 'BDT',
+          content_type: 'product',
+          // অর্ডারে থাকা প্রোডাক্ট আইডিগুলোর অ্যারে ম্যাপ করে নেওয়া হলো
+          content_ids: order.items?.map((item: any) => (item.productId || item.product?.id || '').toString()) || []
+        });
+      }
+    };
+
     if (isAuthenticated) {
       try {
         const order = await createOrder({
@@ -101,6 +114,8 @@ const onSubmit = async (data: FormValues) => {
           },
           couponCode: state?.couponCode,
         }).unwrap();
+
+        firePixelPurchase(order); // 👈 রেজিস্টার্ড ইউজারের অর্ডার সফল হলে পিক্সেল ফায়ার
         navigate(`/orders/success/${order.id}`);
       } catch (err: unknown) {
         const e = err as { data?: { message?: string } };
@@ -115,10 +130,9 @@ const onSubmit = async (data: FormValues) => {
         const order = await createGuestOrder({
           guestEmail: data.guestEmail,
           guestName: data.guestName ?? data.fullName,
-          // ⚠️ FIX: Map properties to match the exact keys 'productId' and 'variantId' expected by the DTO
           items: guestItems.map((i) => ({ 
             productId: i.productId, 
-            variantId: i.variant?.id ?? undefined, // Use undefined instead of null to comply with NestJS DTO validation if optional
+            variantId: i.variant?.id ?? undefined,
             quantity: i.quantity 
           })),
           shippingAddress: {
@@ -131,6 +145,8 @@ const onSubmit = async (data: FormValues) => {
           },
           couponCode: state?.couponCode,
         }).unwrap();
+
+        firePixelPurchase(order); // 👈 গেস্ট ইউজারের অর্ডার সফল হলে পিক্সেল ফায়ার
         dispatch(clearGuestCart());
         navigate(`/orders/guest-success/${order.id}`);
       } catch (err: unknown) {

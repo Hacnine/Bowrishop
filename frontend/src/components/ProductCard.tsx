@@ -23,8 +23,22 @@ export function ProductCard({ product }: ProductCardProps) {
   const [addToCart, { isLoading: addingCart }] = useAddToCartMutation();
   const [addToWishlist] = useAddToWishlistMutation();
 
-  const handleAddToCart = async (e: React.MouseEvent) => {
+const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
+
+    // Helper function to fire Meta Pixel AddToCart event (with default qty: 1)
+    const firePixelAddToCart = () => {
+      if (typeof window !== 'undefined' && (window as any).fbq) {
+        (window as any).fbq('track', 'AddToCart', {
+          content_name: product.name,
+          content_ids: [product.id.toString()],
+          content_type: 'product',
+          value: Number(product.price) * 1, // যেহেতু এখানে সবসময় ১টা করেই এড হবে
+          currency: 'BDT'
+        });
+      }
+    };
+
     if (!isAuthenticated) {
       dispatch(addGuestItem({
         productId: product.id,
@@ -41,11 +55,13 @@ export function ProductCard({ product }: ProductCardProps) {
         },
       }));
       toast.success('Added to cart!');
+      firePixelAddToCart(); // 👈 গেস্ট ইউজারের জন্য পিক্সেল ফায়ার
       return;
     }
     try {
       await addToCart({ productId: product.id, quantity: 1 }).unwrap();
       toast.success('Added to cart!');
+      firePixelAddToCart(); // 👈 লগড-ইন ইউজারের জন্য পিক্সেল ফায়ার
     } catch (err: unknown) {
       const e = err as { data?: { message?: string } };
       toast.error(e?.data?.message ?? 'Failed to add to cart');
