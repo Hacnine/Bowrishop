@@ -7,7 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto, CreateGuestOrderDto, UpdateOrderStatusDto } from './dto/order.dto';
 import { EmailService } from '../email/email.service';
-import { OrderStatus } from '@prisma/client';
+import { Prisma, OrderStatus } from '@prisma/client';
 
 @Injectable()
 export class OrdersService {
@@ -17,10 +17,13 @@ export class OrdersService {
   ) {}
 
   async createOrder(userId: string, dto: CreateOrderDto) {
-    // Get cart
+    // Get cart with variant information
     const cartItems = await this.prisma.cartItem.findMany({
       where: { userId },
-      include: { product: true },
+      include: { 
+        product: true,
+        variant: true,
+      },
     });
     if (cartItems.length === 0) throw new BadRequestException('Cart is empty');
 
@@ -74,12 +77,20 @@ export class OrdersService {
           shippingAddress: dto.shippingAddress as any,
           notes: dto.notes,
           items: {
-            create: cartItems.map((item) => ({
-              productId: item.productId,
-              quantity: item.quantity,
-              price: item.product.price,
-            })),
-          },
+              create: cartItems.map((item):  Prisma.OrderItemUncheckedCreateWithoutOrderInput => ({
+                productId: item.productId,
+                variantId: item.variantId,
+                quantity: item.quantity,
+                price: item.variant ? item.variant.price : item.product.price, 
+                variantSnapshot: item.variant ? {
+                  color: item.variant.color,
+                  size: item.variant.size,
+                  colorHex: item.variant.colorHex,
+                  images: item.variant.images,
+                  price: item.variant.price,
+                } : Prisma.JsonNull,
+              })),
+            },
         },
         include: { items: { include: { product: true } } },
       });
@@ -168,12 +179,16 @@ export class OrdersService {
         orderBy: { createdAt: 'desc' },
         include: {
           user: { select: { id: true, name: true, email: true } },
-          items: { include: { product: { select: { name: true } } } },
+          items: { 
+            include: { 
+              product: { select: { name: true, images: true } },
+            }
+          },
         },
       }),
       this.prisma.order.count({ where }),
     ]);
-    return { orders, total, page, limit, totalPages: Math.ceil(total / limit) };
+    return { data: orders, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async createGuestOrder(dto: CreateGuestOrderDto) {
@@ -181,6 +196,14 @@ export class OrdersService {
 
     const productIds = items.map((i) => i.productId);
     const products = await this.prisma.product.findMany({ where: { id: { in: productIds } } });
+    
+    // Get variant information if variantIds provided
+    const variantIds = items
+      .map((i) => (i as any).variantId)
+      .filter((v) => v !== null && v !== undefined);
+    const variants = variantIds.length > 0
+      ? await this.prisma.productVariant.findMany({ where: { id: { in: variantIds } } })
+      : [];
 
     for (const item of items) {
       const product = products.find((p) => p.id === item.productId);
@@ -234,9 +257,22 @@ export class OrdersService {
           shippingAddress: shippingAddress as any,
           notes,
           items: {
-            create: items.map((item) => {
+            create: items.map((item):  Prisma.OrderItemUncheckedCreateWithoutOrderInput => {
               const product = products.find((p) => p.id === item.productId)!;
-              return { productId: item.productId, quantity: item.quantity, price: product.price };
+              const variant = variants.find((v) => v.id === (item as any).variantId);
+              return {
+                productId: item.productId,
+                variantId: (item as any).variantId,
+                quantity: item.quantity,
+                price: variant ? variant.price : product.price,
+                variantSnapshot: variant ? {
+                  color: variant.color,
+                  size: variant.size,
+                  colorHex: variant.colorHex,
+                  images: variant.images,
+                  price: variant.price,
+                } : Prisma.JsonNull,
+              };
             }),
           },
         },

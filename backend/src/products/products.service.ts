@@ -1,8 +1,18 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
-  AdminProductQueryDto, CreateProductDto, UpdateProductDto, ProductQueryDto,
-  CreateVariantDto, UpdateVariantDto,
+  AdminProductQueryDto,
+  CreateProductDto,
+  UpdateProductDto,
+  ProductQueryDto,
+  CreateVariantDto,
+  UpdateVariantDto,
 } from './dto/product.dto';
 
 const VARIANT_SELECT = {
@@ -20,12 +30,19 @@ const VARIANT_SELECT = {
 
 const PRODUCT_WITH_VARIANTS = {
   category: { select: { id: true, name: true, slug: true } },
-  variants: { where: { isActive: true }, select: VARIANT_SELECT, orderBy: [{ color: 'asc' as const }, { size: 'asc' as const }] },
+  variants: {
+    where: { isActive: true },
+    select: VARIANT_SELECT,
+    orderBy: [{ color: 'asc' as const }, { size: 'asc' as const }],
+  },
   _count: { select: { reviews: true } },
 };
 
 function slugify(name: string) {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
 }
 
 function normalizeSearch(value?: string) {
@@ -41,45 +58,74 @@ export class ProductsService {
 
   // ─── Product CRUD ────────────────────────────────────────────────────────────
 
-  async create(dto: CreateProductDto) {
-    try {
-      const slug = slugify(dto.name);
-      const existing = await this.prisma.product.findUnique({ where: { slug } });
-      if (existing) throw new ConflictException('A product with this name already exists');
+async create(dto: CreateProductDto) {
+  try {
+    const slug = slugify(dto.name);
+    const existing = await this.prisma.product.findUnique({ where: { slug } });
+    if (existing) throw new ConflictException('Product name already exists');
 
-      const product = await this.prisma.product.create({
-        data: {
-          name: dto.name,
-          slug,
-          description: dto.description,
+    // 1. Calculate base product aggregates
+    let totalStock = dto.stock;
+    let basePrice = dto.price;
+    let baseComparePrice = dto.comparePrice;
+
+    // 2. Build the variants array for the database
+    let variantData;
+
+    if (dto.variants && dto.variants.length > 0) {
+      // Scenario A: Admin explicitly provided custom variants (e.g., Red, Blue, Large)
+      totalStock = dto.variants.reduce((sum, v) => sum + v.stock, 0);
+      basePrice = Math.min(...dto.variants.map((v) => v.price));
+      
+      const variantComparePrices = dto.variants
+        .map((v) => v.comparePrice)
+        .filter((p): p is number => p !== undefined && p !== null);
+      baseComparePrice = variantComparePrices.length > 0 ? Math.min(...variantComparePrices) : undefined;
+
+      variantData = dto.variants.map((v) => ({
+        ...v,
+        images: v.images ?? [],
+      }));
+    } else {
+      // Scenario B: Admin created a simple product. 
+      // We automatically force-create ONE default variant row using the base fields!
+      variantData = [
+        {
           price: dto.price,
           comparePrice: dto.comparePrice,
-          stock: dto.stock,
-          images: dto.images,
-          tags: dto.tags ?? [],
-          categoryId: dto.categoryId,
-          isActive: dto.isActive ?? true,
-          variants: dto.variants?.length
-            ? { create: dto.variants.map((v) => ({ ...v, images: v.images ?? [] })) }
-            : undefined,
+          stock: dto.stock ?? 0,
+          images: dto.images ?? [],
+          // color and size remain null, perfectly representing a "Simple Product" under a variant framework
         },
-        include: PRODUCT_WITH_VARIANTS,
-      });
-
-      this.logger.log(`Product created successfully: ${product.id} (${product.name})`);
-      return product;
-    } catch (error) {
-      if (error instanceof ConflictException) {
-        throw error;
-      }
-
-      this.logger.error(
-        `Error creating product:`,
-        error instanceof Error ? error.message : JSON.stringify(error),
-      );
-      throw error;
+      ];
     }
+
+    // 3. Save everything to the database
+    const product = await this.prisma.product.create({
+      data: {
+        name: dto.name,
+        slug,
+        description: dto.description,
+        price: basePrice,          // Saved to base table for your old query logic
+        comparePrice: baseComparePrice,
+        stock: totalStock,        // Saved to base table for your old query logic
+        images: dto.images,
+        tags: dto.tags ?? [],
+        categoryId: dto.categoryId,
+        isActive: dto.isActive ?? true,
+        variants: {
+          create: variantData,    // GUARANTEED to create at least one variant row now
+        },
+      },
+      include: PRODUCT_WITH_VARIANTS,
+    });
+
+    return product;
+  } catch (error) {
+    this.logger.error(`Error creating product`, error);
+    throw error;
   }
+}
 
   async update(id: string, dto: UpdateProductDto) {
     try {
@@ -148,7 +194,9 @@ export class ProductsService {
     }
     if (query.categoryId) where.categoryId = query.categoryId;
     if (query.category) {
-      where.category = { slug: { equals: normalizeSearch(query.category), mode: 'insensitive' } };
+      where.category = {
+        slug: { equals: normalizeSearch(query.category), mode: 'insensitive' },
+      };
     }
     if (query.minPrice || query.maxPrice) {
       where.price = {};
@@ -166,13 +214,22 @@ export class ProductsService {
 
     const [products, total] = await Promise.all([
       this.prisma.product.findMany({
-        where, skip, take: limit, orderBy,
+        where,
+        skip,
+        take: limit,
+        orderBy,
         include: PRODUCT_WITH_VARIANTS,
       }),
       this.prisma.product.count({ where }),
     ]);
 
-    return { products, total, page, limit, totalPages: Math.ceil(total / limit) };
+    return {
+      products,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async searchAdminProducts(query: AdminProductQueryDto) {
@@ -181,9 +238,7 @@ export class ProductsService {
     const skip = (page - 1) * limit;
     const q = normalizeSearch(query.q);
 
-    const where: any = q
-      ? { name: { contains: q, mode: 'insensitive' } }
-      : {};
+    const where: any = q ? { name: { contains: q, mode: 'insensitive' } } : {};
 
     const [products, total] = await Promise.all([
       this.prisma.product.findMany({
@@ -196,7 +251,13 @@ export class ProductsService {
       this.prisma.product.count({ where }),
     ]);
 
-    return { products, total, page, limit, totalPages: Math.ceil(total / limit) };
+    return {
+      products,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findBySlug(slug: string, sessionId?: string) {
@@ -220,18 +281,27 @@ export class ProductsService {
 
     // Track view
     if (sessionId) {
-      this.prisma.productView.upsert({
-        where: { productId_sessionId: { productId: product.id, sessionId } } as any,
-        update: { viewedAt: new Date() },
-        create: { productId: product.id, sessionId },
-      }).catch(() => {});
+      this.prisma.productView
+        .upsert({
+          where: {
+            productId_sessionId: { productId: product.id, sessionId },
+          } as any,
+          update: { viewedAt: new Date() },
+          create: { productId: product.id, sessionId },
+        })
+        .catch(() => {});
     }
 
     const avgRating = product.reviews.length
-      ? product.reviews.reduce((s, r) => s + r.rating, 0) / product.reviews.length
+      ? product.reviews.reduce((s, r) => s + r.rating, 0) /
+        product.reviews.length
       : 0;
 
-    return { ...product, averageRating: avgRating, reviewCount: product.reviews.length };
+    return {
+      ...product,
+      averageRating: avgRating,
+      reviewCount: product.reviews.length,
+    };
   }
 
   async getFeatured(limit = 8) {
@@ -295,7 +365,9 @@ export class ProductsService {
 
   async createVariant(productId: string, dto: CreateVariantDto) {
     try {
-      const product = await this.prisma.product.findUnique({ where: { id: productId } });
+      const product = await this.prisma.product.findUnique({
+        where: { id: productId },
+      });
       if (!product) throw new NotFoundException('Product not found');
 
       // Only check for duplicates if color or size is provided
@@ -320,7 +392,9 @@ export class ProductsService {
         data: { productId, ...dto, images: dto.images ?? [] },
       });
 
-      this.logger.log(`Variant created successfully: ${variant.id} for product: ${productId}`);
+      this.logger.log(
+        `Variant created successfully: ${variant.id} for product: ${productId}`,
+      );
       return variant;
     } catch (error) {
       // Log the actual error
@@ -334,7 +408,10 @@ export class ProductsService {
       // Handle Prisma unique constraint errors (P2002)
       if (error?.code === 'P2002') {
         const target = error?.meta?.target?.[0] || 'variant attributes';
-        this.logger.error(`Unique constraint violation on ${target}:`, error?.message);
+        this.logger.error(
+          `Unique constraint violation on ${target}:`,
+          error?.message,
+        );
         throw new ConflictException(
           `A variant with this ${target} already exists`,
         );
@@ -358,7 +435,9 @@ export class ProductsService {
 
   async updateVariant(variantId: string, dto: UpdateVariantDto) {
     try {
-      const variant = await this.prisma.productVariant.findUnique({ where: { id: variantId } });
+      const variant = await this.prisma.productVariant.findUnique({
+        where: { id: variantId },
+      });
       if (!variant) throw new NotFoundException('Variant not found');
 
       const updated = await this.prisma.productVariant.update({
@@ -375,8 +454,13 @@ export class ProductsService {
 
       // Handle Prisma unique constraint errors
       if (error?.code === 'P2002') {
-        this.logger.error(`Unique constraint violation updating variant ${variantId}:`, error);
-        throw new ConflictException('This variant configuration already exists');
+        this.logger.error(
+          `Unique constraint violation updating variant ${variantId}:`,
+          error,
+        );
+        throw new ConflictException(
+          'This variant configuration already exists',
+        );
       }
 
       this.logger.error(
@@ -389,10 +473,14 @@ export class ProductsService {
 
   async deleteVariant(variantId: string) {
     try {
-      const variant = await this.prisma.productVariant.findUnique({ where: { id: variantId } });
+      const variant = await this.prisma.productVariant.findUnique({
+        where: { id: variantId },
+      });
       if (!variant) throw new NotFoundException('Variant not found');
 
-      const deleted = await this.prisma.productVariant.delete({ where: { id: variantId } });
+      const deleted = await this.prisma.productVariant.delete({
+        where: { id: variantId },
+      });
       this.logger.log(`Variant deleted successfully: ${variantId}`);
       return deleted;
     } catch (error) {
@@ -409,7 +497,9 @@ export class ProductsService {
   }
 
   async getVariants(productId: string) {
-    const product = await this.prisma.product.findUnique({ where: { id: productId } });
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+    });
     if (!product) throw new NotFoundException('Product not found');
     return this.prisma.productVariant.findMany({
       where: { productId },

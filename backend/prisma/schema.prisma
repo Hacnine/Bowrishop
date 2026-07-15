@@ -103,6 +103,7 @@ model ProductVariant {
   cartItems    CartItem[]
   orderItems   OrderItem[]
 
+  // @@unique([productId, color, size])
   @@index([productId])
   // Note: Unique constraint on [productId, color, size] is handled via PostgreSQL
   // partial index in migration (only when color OR size is NOT null)
