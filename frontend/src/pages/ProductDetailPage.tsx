@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ShoppingCart, Heart, ChevronLeft, Minus, Plus } from "lucide-react";
 import toast from "react-hot-toast";
-import { useGetProductBySlugQuery } from "../features/products/productsApi";
 import {
   useGetProductReviewsQuery,
   useCreateReviewMutation,
@@ -16,6 +15,12 @@ import { StarRating } from "../components/ui/StarRating";
 import { Skeleton } from "../components/ui/Skeleton";
 import { formatCurrency } from "../utils";
 import SEO from "../components/SEO";
+import { ProductCard } from "../components/ProductCard";
+import { ProductCardSkeleton } from "../components/ui/Skeleton";
+import {
+  useGetProductBySlugQuery,
+  useGetProductsQuery,
+} from "../features/products/productsApi";
 import type { ProductVariant } from "../types/types.index";
 
 export function ProductDetailPage() {
@@ -92,7 +97,6 @@ export function ProductDetailPage() {
   }, [product, hasVariants, selectedColor, selectedSize, allProductImages]);
 
   // Handles clicking on a thumbnail image
-// Handles clicking on a thumbnail image
   const handleThumbnailClick = (img: string, index: number) => {
     // 1. ALWAYS update the selected image index regardless of variants
     setSelectedImage(index);
@@ -103,7 +107,7 @@ export function ProductDetailPage() {
       const matchingVariant = product!.variants!.find((v) =>
         v.images?.includes(img),
       );
-      
+
       if (matchingVariant) {
         // If current selections don't match this variant, update them
         if (selectedColor !== matchingVariant.color) {
@@ -117,43 +121,45 @@ export function ProductDetailPage() {
     }
   };
 
- // Always resolves to a full, valid variant (color + size) after a click.
-// Previously, clicking a color could leave `selectedSize` as null when the
-// old size wasn't valid for the new color — and since `selectedVariant`
-// requires BOTH color and size to match, that made selectedVariant null,
-// which made the image-sync effect silently skip updating. That's why the
-// image/size only "sometimes" updated.
-const handleColorSelect = (color: string) => {
-  if (color === selectedColor) return;
+  // Always resolves to a full, valid variant (color + size) after a click.
+  // Previously, clicking a color could leave `selectedSize` as null when the
+  // old size wasn't valid for the new color — and since `selectedVariant`
+  // requires BOTH color and size to match, that made selectedVariant null,
+  // which made the image-sync effect silently skip updating. That's why the
+  // image/size only "sometimes" updated.
+  const handleColorSelect = (color: string) => {
+    if (color === selectedColor) return;
 
-  const variantsForColor =
-    product?.variants?.filter((v) => v.color === color) ?? [];
+    const variantsForColor =
+      product?.variants?.filter((v) => v.color === color) ?? [];
 
-  const stillValid = variantsForColor.some((v) => v.size === selectedSize);
-  const nextSize = stillValid
-    ? selectedSize
-    : (variantsForColor[0]?.size ?? null);
+    const stillValid = variantsForColor.some((v) => v.size === selectedSize);
+    const nextSize = stillValid
+      ? selectedSize
+      : (variantsForColor[0]?.size ?? null);
 
-  setSelectedColor(color);
-  setSelectedSize(nextSize);
-  setQty(1);
-};
+    setSelectedColor(color);
+    setSelectedSize(nextSize);
+    setQty(1);
+  };
 
-const handleSizeSelect = (size: string) => {
-  if (size === selectedSize) return;
+  // Handles selecting a size. Mirrors handleColorSelect: always resolves to a
+  // full, valid variant so the image/price/stock stay in sync every time.
+  const handleSizeSelect = (size: string) => {
+    if (size === selectedSize) return;
 
-  const variantsForSize =
-    product?.variants?.filter((v) => v.size === size) ?? [];
+    const variantsForSize =
+      product?.variants?.filter((v) => v.size === size) ?? [];
 
-  const stillValid = variantsForSize.some((v) => v.color === selectedColor);
-  const nextColor = stillValid
-    ? selectedColor
-    : (variantsForSize[0]?.color ?? null);
+    const stillValid = variantsForSize.some((v) => v.color === selectedColor);
+    const nextColor = stillValid
+      ? selectedColor
+      : (variantsForSize[0]?.color ?? null);
 
-  setSelectedSize(size);
-  setSelectedColor(nextColor);
-  setQty(1);
-};
+    setSelectedSize(size);
+    setSelectedColor(nextColor);
+    setQty(1);
+  };
 
   // The single matching variant (color + size must match)
   const selectedVariant = useMemo<ProductVariant | null>(() => {
@@ -182,7 +188,9 @@ const handleSizeSelect = (size: string) => {
   const displayComparePrice = selectedVariant
     ? selectedVariant.comparePrice
       ? Number(selectedVariant.comparePrice)
-      : undefined
+      : product?.comparePrice
+        ? Number(product.comparePrice)
+        : undefined
     : product?.comparePrice
       ? Number(product.comparePrice)
       : undefined;
@@ -209,8 +217,8 @@ const handleSizeSelect = (size: string) => {
     }
   }, [selectedVariant, allProductImages]);
 
-  // ── Cart / Wishlist / Review Handlers ──────────────f─────────────────
- const handleAddToCart = async () => {
+  // ── Cart / Wishlist / Review Handlers ───────────────────────────────
+  const handleAddToCart = async () => {
     // 1. Guard clause: If there are variants, require selection
     if (hasVariants && !selectedVariant) {
       toast.error("Please select a color and size first");
@@ -255,6 +263,20 @@ const handleSizeSelect = (size: string) => {
       toast.error("Could not add to cart");
     }
   };
+
+  // Related products: same category, excluding the current product
+  const { data: relatedData, isLoading: relatedLoading } = useGetProductsQuery(
+    {
+      categoryId: product?.category?.id,
+      limit: 8, // fetch a few extra since we filter the current product out
+    },
+    { skip: !product?.category?.id },
+  );
+
+  const relatedProducts = useMemo(() => {
+    if (!relatedData?.data || !product) return [];
+    return relatedData.data.filter((p) => p.id !== product.id).slice(0, 4);
+  }, [relatedData, product]);
 
   const handleAddToWishlist = async () => {
     if (!isAuthenticated) {
@@ -429,18 +451,22 @@ const handleSizeSelect = (size: string) => {
             </div>
 
             {/* Price section */}
-            <div className="flex items-baseline gap-3 mb-6">
-              <span className="text-3xl font-bold text-gray-900">
-                {formatCurrency(displayPrice)}
-              </span>
-              {displayComparePrice && (
+            <div className="mb-6">
+              <p className="text-sm text-gray-500 mb-1">
+                Regular Price:{" "}
+                <span className="text-3xl font-bold text-gray-900 align-middle">
+                  {formatCurrency(displayPrice)}
+                </span>
+              </p>
+              {displayComparePrice && displayComparePrice > displayPrice && (
                 <>
-                  <span className="text-lg text-gray-400 line-through">
+                  <p className="text-lg text-gray-400 line-through">
                     {formatCurrency(displayComparePrice)}
-                  </span>
-                  <span className="text-sm font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-                    -{discountPct}%
-                  </span>
+                  </p>
+                  <p className="text-sm font-semibold text-green-600 mt-1">
+                    You are saving{" "}
+                    {formatCurrency(displayComparePrice - displayPrice)}
+                  </p>
                 </>
               )}
             </div>
@@ -583,6 +609,24 @@ const handleSizeSelect = (size: string) => {
             )}
           </div>
         </div>
+
+        {/* ── Related products ──────────────────────────────────────────── */}
+        {(relatedLoading || relatedProducts.length > 0) && (
+          <div className="mt-16">
+            <h2 className="text-2xl font-bold text-gray-900 mb-8">
+              You may also like
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {relatedLoading
+                ? Array.from({ length: 4 }).map((_, i) => (
+                    <ProductCardSkeleton key={i} />
+                  ))
+                : relatedProducts.map((p) => (
+                    <ProductCard key={p.id} product={p} />
+                  ))}
+            </div>
+          </div>
+        )}
 
         {/* ── Reviews section ────────────────────────────────────────────────── */}
         <div className="mt-16">
