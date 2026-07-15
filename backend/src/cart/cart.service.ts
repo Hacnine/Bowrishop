@@ -89,6 +89,7 @@ export class CartService {
   }
 
   async updateItem(userId: string, cartItemId: string, dto: UpdateCartItemDto) {
+    console.log(cartItemId)
     const item = await this.prisma.cartItem.findUnique({
       where: { id: cartItemId },
       include: { product: true, variant: true },
@@ -106,6 +107,7 @@ export class CartService {
   }
 
   async removeItem(userId: string, cartItemId: string) {
+    console.log(cartItemId)
     const item = await this.prisma.cartItem.findUnique({ where: { id: cartItemId } });
     if (!item || item.userId !== userId) throw new NotFoundException('Cart item not found');
     return this.prisma.cartItem.delete({ where: { id: cartItemId } });

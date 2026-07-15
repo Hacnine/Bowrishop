@@ -24,49 +24,61 @@ export function ProductCard({ product }: ProductCardProps) {
   const [addToWishlist] = useAddToWishlistMutation();
 
 const handleAddToCart = async (e: React.MouseEvent) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    // Helper function to fire Meta Pixel AddToCart event (with default qty: 1)
-    const firePixelAddToCart = () => {
-      if (typeof window !== 'undefined' && (window as any).fbq) {
-        (window as any).fbq('track', 'AddToCart', {
-          content_name: product.name,
-          content_ids: [product.id.toString()],
-          content_type: 'product',
-          value: Number(product.price) * 1, // যেহেতু এখানে সবসময় ১টা করেই এড হবে
-          currency: 'BDT'
-        });
-      }
-    };
+  // If the product has variants, pick a sensible default automatically
+  // (first in-stock variant, falling back to the first variant) since
+  // the listing card has no UI for choosing color/size.
+  const defaultVariant =
+    product.variants && product.variants.length > 0
+      ? (product.variants.find((v) => v.stock > 0) ?? product.variants[0])
+      : null;
 
-    if (!isAuthenticated) {
-      dispatch(addGuestItem({
-        productId: product.id,
-        quantity: 1,
-        product: {
-          id: product.id,
-          name: product.name,
-          slug: product.slug,
-          price: product.price,
-          comparePrice: product.comparePrice,
-          images: product.images,
-          stock: product.stock,
-          isActive: product.isActive,
-        },
-      }));
-      toast.success('Added to cart!');
-      firePixelAddToCart(); // 👈 গেস্ট ইউজারের জন্য পিক্সেল ফায়ার
-      return;
-    }
-    try {
-      await addToCart({ productId: product.id, quantity: 1 }).unwrap();
-      toast.success('Added to cart!');
-      firePixelAddToCart(); // 👈 লগড-ইন ইউজারের জন্য পিক্সেল ফায়ার
-    } catch (err: unknown) {
-      const e = err as { data?: { message?: string } };
-      toast.error(e?.data?.message ?? 'Failed to add to cart');
+  const firePixelAddToCart = () => {
+    if (typeof window !== 'undefined' && (window as any).fbq) {
+      (window as any).fbq('track', 'AddToCart', {
+        content_name: product.name,
+        content_ids: [product.id.toString()],
+        content_type: 'product',
+        value: Number(defaultVariant?.price ?? product.price) * 1,
+        currency: 'BDT'
+      });
     }
   };
+
+  if (!isAuthenticated) {
+    dispatch(addGuestItem({
+      productId: product.id,
+      quantity: 1,
+      product: {
+        id: product.id,
+        name: product.name,
+        slug: product.slug,
+        price: product.price,
+        comparePrice: product.comparePrice,
+        images: product.images,
+        stock: product.stock,
+        isActive: product.isActive,
+      },
+      variant: defaultVariant,
+    }));
+    toast.success('Added to cart!');
+    firePixelAddToCart();
+    return;
+  }
+  try {
+    await addToCart({
+      productId: product.id,
+      quantity: 1,
+      ...(defaultVariant ? { variantId: defaultVariant.id } : {}),
+    } as any).unwrap();
+    toast.success('Added to cart!');
+    firePixelAddToCart();
+  } catch (err: unknown) {
+    const e = err as { data?: { message?: string } };
+    toast.error(e?.data?.message ?? 'Failed to add to cart');
+  }
+};
 
   const handleAddToWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();

@@ -13,7 +13,7 @@ import { formatCurrency } from '../utils';
 
 // বাংলাদেশের ৮টি বিভাগের তালিকা
 const BANGLADESH_DIVISIONS = [
-  { value: 'Dhaka', label: 'Dhaka (Free Delivery)' },
+  { value: 'Dhaka', label: 'Dhaka' },
   { value: 'Chattogram', label: 'Chattogram (Charge: ৳80)' },
   { value: 'Rajshahi', label: 'Rajshahi (Charge: ৳80)' },
   { value: 'Khulna', label: 'Khulna (Charge: ৳80)' },
@@ -67,7 +67,7 @@ export function CheckoutPage() {
 
   // ঢাকা বিভাগের ক্ষেত্রে চার্জ ০ টাকা, অন্য সব বিভাগের জন্য ৮০ টাকা। 
   // কোনো কিছু সিলেক্ট না করা থাকলে ডিফল্ট ৮০ টাকা দেখাবে।
-  const shippingCharge = selectedCity === 'Dhaka' ? 0 : 80;
+  const shippingCharge = selectedCity === 'Dhaka' ? 80 : 150;
 
   const items = isAuthenticated
     ? (cart?.items ?? []).map((i) => ({

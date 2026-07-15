@@ -1,42 +1,44 @@
-import { baseApi } from '../api/baseApi';
-import type { Cart } from '../../types/types.index';
+import { baseApi } from "../api/baseApi";
+import type { Cart } from "../../types/types.index";
 
 export const cartApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getCart: builder.query<Cart, void>({
-      query: () => '/cart',
-      providesTags: ['Cart'],
+      query: () => "/cart",
+      providesTags: ["Cart"],
     }),
 
-    addToCart: builder.mutation<any, { productId: string; variantId?: string | null; quantity: number }>({
-      query: (body) => ({ url: '/cart', method: 'POST', body }),
-      invalidatesTags: ['Cart'],
+    addToCart: builder.mutation<
+      any,
+      { productId: string; variantId?: string | null; quantity: number }
+    >({
+      query: (body) => ({ url: "/cart", method: "POST", body }),
+      invalidatesTags: ["Cart"],
     }),
 
     updateCartItem: builder.mutation<
-      any, 
-      { productId: string; variantId?: string | null; quantity: number }
+      any,
+      { cartItemId: string; quantity: number }
     >({
-      query: ({ productId, variantId, quantity }) => ({
-        url: `/cart/${productId}`,
-        method: 'PATCH',
-        body: { quantity, variantId }, 
+      query: ({ cartItemId, quantity }) => ({
+        url: `/cart/${cartItemId}`,
+        method: "PATCH",
+        body: { quantity },
       }),
-      invalidatesTags: ['Cart'],
+      invalidatesTags: ["Cart"],
     }),
 
-    removeCartItem: builder.mutation<any, { productId: string; variantId?: string | null }>({
-      query: ({ productId, variantId }) => ({ 
-        url: `/cart/${productId}`, 
-        method: 'DELETE',
-        body: { variantId } 
+    removeCartItem: builder.mutation<any, { cartItemId: string }>({
+      query: ({ cartItemId }) => ({
+        url: `/cart/${cartItemId}`,
+        method: "DELETE",
       }),
-      invalidatesTags: ['Cart'],
+      invalidatesTags: ["Cart"],
     }),
 
     clearCart: builder.mutation<any, void>({
-      query: () => ({ url: '/cart/clear', method: 'DELETE' }),
-      invalidatesTags: ['Cart'],
+      query: () => ({ url: "/cart/clear", method: "DELETE" }),
+      invalidatesTags: ["Cart"],
     }),
   }),
 });

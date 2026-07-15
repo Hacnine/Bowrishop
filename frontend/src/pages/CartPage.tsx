@@ -40,7 +40,7 @@ export function CartPage() {
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponDiscount, setCouponDiscount] = useState(0);
 
-  // Unified items list 
+  // Unified items list
   const items = isAuthenticated
     ? (cart?.items ?? [])
     : guestItems.map((gi) => ({
@@ -57,17 +57,26 @@ export function CartPage() {
   }, 0);
   const total = Math.max(0, subtotal - couponDiscount);
 
-  const handleUpdateQty = (productId: string, variantId: string | null | undefined, quantity: number) => {
+  const handleUpdateQty = (
+    cartItemId: string,
+    productId: string,
+    variantId: string | null | undefined,
+    quantity: number,
+  ) => {
     if (isAuthenticated) {
-      updateItem({ productId, quantity }); 
+      updateItem({ cartItemId, quantity });
     } else {
       dispatch(updateGuestItem({ productId, variantId, quantity }));
     }
   };
 
-  const handleRemove = (productId: string, variantId: string | null | undefined) => {
+  const handleRemove = (
+    cartItemId: string,
+    productId: string,
+    variantId: string | null | undefined,
+  ) => {
     if (isAuthenticated) {
-      removeItem({ productId }); 
+      removeItem({ cartItemId });
     } else {
       dispatch(removeGuestItem({ productId, variantId }));
     }
@@ -188,7 +197,10 @@ export function CartPage() {
                         <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600">
                           <span
                             className="w-3 h-3 rounded-full border border-gray-300"
-                            style={{ backgroundColor: item.variant.colorHex ?? undefined }}
+                            style={{
+                              backgroundColor:
+                                item.variant.colorHex ?? undefined,
+                            }}
                           />
                           {item.variant.color}
                         </span>
@@ -209,7 +221,9 @@ export function CartPage() {
 
                 <div className="flex flex-col items-end gap-3">
                   <button
-                    onClick={() => handleRemove(item.productId, item.variant?.id)}
+                    onClick={() =>
+                      handleRemove(item.id, item.productId, item.variant?.id)
+                    }
                     className="text-gray-400 hover:text-red-500"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -220,6 +234,7 @@ export function CartPage() {
                       className="px-2.5 py-1 hover:bg-gray-50 text-sm"
                       onClick={() =>
                         handleUpdateQty(
+                          item.id,
                           item.productId,
                           item.variant?.id,
                           Math.max(1, item.quantity - 1),
@@ -236,7 +251,12 @@ export function CartPage() {
                     <button
                       className="px-2.5 py-1 hover:bg-gray-50 text-sm"
                       onClick={() =>
-                        handleUpdateQty(item.productId, item.variant?.id, item.quantity + 1)
+                        handleUpdateQty(
+                          item.id,
+                          item.productId,
+                          item.variant?.id,
+                          item.quantity + 1,
+                        )
                       }
                     >
                       +
@@ -268,10 +288,10 @@ export function CartPage() {
                   <span>-{formatCurrency(couponDiscount)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-gray-600">
+              {/* <div className="flex justify-between text-gray-600">
                 <span>Shipping</span>
                 <span className="text-green-600">Free</span>
-              </div>
+              </div> */}
             </div>
 
             <div className="border-t border-gray-100 pt-3 mb-5">
