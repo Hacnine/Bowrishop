@@ -117,39 +117,43 @@ export function ProductDetailPage() {
     }
   };
 
-  // Handles selecting a color (only allowed if it belongs to a valid variant)
-  const handleColorSelect = (color: string) => {
-    const nextColor = color === selectedColor ? null : color;
-    setSelectedColor(nextColor);
+ // Always resolves to a full, valid variant (color + size) after a click.
+// Previously, clicking a color could leave `selectedSize` as null when the
+// old size wasn't valid for the new color — and since `selectedVariant`
+// requires BOTH color and size to match, that made selectedVariant null,
+// which made the image-sync effect silently skip updating. That's why the
+// image/size only "sometimes" updated.
+const handleColorSelect = (color: string) => {
+  if (color === selectedColor) return;
 
-    // If size was already selected, check if this new color-size combo exists
-    if (selectedSize) {
-      const isValidCombo = product?.variants?.some(
-        (v) => v.color === nextColor && v.size === selectedSize,
-      );
-      if (!isValidCombo) {
-        setSelectedSize(null); // Clear invalid size selection
-      }
-    }
-    setQty(1);
-  };
+  const variantsForColor =
+    product?.variants?.filter((v) => v.color === color) ?? [];
 
-  // Handles selecting a size (only allowed if it belongs to a valid variant)
-  const handleSizeSelect = (size: string) => {
-    const nextSize = size === selectedSize ? null : size;
-    setSelectedSize(nextSize);
+  const stillValid = variantsForColor.some((v) => v.size === selectedSize);
+  const nextSize = stillValid
+    ? selectedSize
+    : (variantsForColor[0]?.size ?? null);
 
-    // If color was already selected, check if this new color-size combo exists
-    if (selectedColor) {
-      const isValidCombo = product?.variants?.some(
-        (v) => v.color === selectedColor && v.size === nextSize,
-      );
-      if (!isValidCombo) {
-        setSelectedColor(null); // Clear invalid color selection
-      }
-    }
-    setQty(1);
-  };
+  setSelectedColor(color);
+  setSelectedSize(nextSize);
+  setQty(1);
+};
+
+const handleSizeSelect = (size: string) => {
+  if (size === selectedSize) return;
+
+  const variantsForSize =
+    product?.variants?.filter((v) => v.size === size) ?? [];
+
+  const stillValid = variantsForSize.some((v) => v.color === selectedColor);
+  const nextColor = stillValid
+    ? selectedColor
+    : (variantsForSize[0]?.color ?? null);
+
+  setSelectedSize(size);
+  setSelectedColor(nextColor);
+  setQty(1);
+};
 
   // The single matching variant (color + size must match)
   const selectedVariant = useMemo<ProductVariant | null>(() => {
@@ -205,7 +209,7 @@ export function ProductDetailPage() {
     }
   }, [selectedVariant, allProductImages]);
 
-  // ── Cart / Wishlist / Review Handlers ───────────────────────────────
+  // ── Cart / Wishlist / Review Handlers ──────────────f─────────────────
  const handleAddToCart = async () => {
     // 1. Guard clause: If there are variants, require selection
     if (hasVariants && !selectedVariant) {
