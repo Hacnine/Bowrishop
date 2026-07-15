@@ -1,20 +1,24 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Trash2, ShoppingBag, Tag } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Trash2, ShoppingBag, Tag } from "lucide-react";
+import toast from "react-hot-toast";
 import {
   useGetCartQuery,
   useUpdateCartItemMutation,
   useRemoveCartItemMutation,
   useClearCartMutation,
-} from '../features/cart/cartApi';
-import { useValidateCouponMutation } from '../features/coupons/couponsApi';
-import { useAppDispatch, useAppSelector } from '../app/hooks';
-import { updateGuestItem, removeGuestItem, clearGuestCart } from '../features/cart/guestCartSlice';
-import { Button } from '../components/ui/Button';
-import { Skeleton } from '../components/ui/Skeleton';
-import { formatCurrency } from '../utils';
-import type { Coupon } from '../types/types.index';
+} from "../features/cart/cartApi";
+import { useValidateCouponMutation } from "../features/coupons/couponsApi";
+import { useAppDispatch, useAppSelector } from "../app/hooks";
+import {
+  updateGuestItem,
+  removeGuestItem,
+  clearGuestCart,
+} from "../features/cart/guestCartSlice";
+import { Button } from "../components/ui/Button";
+import { Skeleton } from "../components/ui/Skeleton";
+import { formatCurrency } from "../utils";
+import type { Coupon } from "../types/types.index";
 
 export function CartPage() {
   const navigate = useNavigate();
@@ -23,13 +27,16 @@ export function CartPage() {
   const guestItems = useAppSelector((s) => s.guestCart.items);
 
   // Server cart (auth users)
-  const { data: cart, isLoading } = useGetCartQuery(undefined, { skip: !isAuthenticated });
+  const { data: cart, isLoading } = useGetCartQuery(undefined, {
+    skip: !isAuthenticated,
+  });
   const [updateItem] = useUpdateCartItemMutation();
   const [removeItem] = useRemoveCartItemMutation();
   const [clearCart] = useClearCartMutation();
-  const [validateCoupon, { isLoading: validatingCoupon }] = useValidateCouponMutation();
+  const [validateCoupon, { isLoading: validatingCoupon }] =
+    useValidateCouponMutation();
 
-  const [couponCode, setCouponCode] = useState('');
+  const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponDiscount, setCouponDiscount] = useState(0);
 
@@ -39,10 +46,14 @@ export function CartPage() {
     : guestItems.map((gi) => ({
         id: gi.productId,
         quantity: gi.quantity,
-        product: { ...gi.product, categoryId: '' },
+        product: { ...gi.product, categoryId: "" },
+        variant: gi.variant,
       }));
 
-  const subtotal = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const subtotal = items.reduce((sum, item) => {
+    const price = Number(item.variant?.price ?? item.product.price);
+    return sum + price * item.quantity;
+  }, 0);
   const total = Math.max(0, subtotal - couponDiscount);
 
   const handleUpdateQty = (productId: string, quantity: number) => {
@@ -67,27 +78,32 @@ export function CartPage() {
     } else {
       dispatch(clearGuestCart());
     }
-    toast.success('Cart cleared');
+    toast.success("Cart cleared");
   };
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
     try {
-      const result = await validateCoupon({ code: couponCode, orderTotal: subtotal }).unwrap();
+      const result = await validateCoupon({
+        code: couponCode,
+        orderTotal: subtotal,
+      }).unwrap();
       if (result.valid && result.coupon) {
         setAppliedCoupon(result.coupon);
         setCouponDiscount(result.discount);
-        toast.success(`Coupon applied! You save ${formatCurrency(result.discount)}`);
+        toast.success(
+          `Coupon applied! You save ${formatCurrency(result.discount)}`,
+        );
       } else {
-        toast.error('Invalid or expired coupon');
+        toast.error("Invalid or expired coupon");
       }
     } catch {
-      toast.error('Could not apply coupon');
+      toast.error("Could not apply coupon");
     }
   };
 
   const handleProceedToCheckout = () => {
-    navigate('/checkout', {
+    navigate("/checkout", {
       state: { couponCode: appliedCoupon?.code, couponDiscount },
     });
   };
@@ -95,7 +111,9 @@ export function CartPage() {
   if (isAuthenticated && isLoading) {
     return (
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-4">
-        {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-2xl" />)}
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-24 rounded-2xl" />
+        ))}
       </div>
     );
   }
@@ -104,9 +122,13 @@ export function CartPage() {
     return (
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
         <ShoppingBag className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Your cart is empty</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">
+          Your cart is empty
+        </h2>
         <p className="text-gray-500 mb-6">Add some products to get started.</p>
-        <Link to="/products"><Button>Browse products</Button></Link>
+        <Link to="/products">
+          <Button>Browse products</Button>
+        </Link>
       </div>
     );
   }
@@ -119,45 +141,113 @@ export function CartPage() {
         {/* Items list */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex justify-end">
-            <button onClick={handleClear} className="text-sm text-red-500 hover:text-red-700">
+            <button
+              onClick={handleClear}
+              className="text-sm text-red-500 hover:text-red-700"
+            >
               Clear all
             </button>
           </div>
 
-          {items.map((item) => (
-            <div key={item.id} className="bg-white border border-gray-100 rounded-2xl p-4 flex gap-4">
-              <Link to={`/products/${item.product.slug}`} className="flex-shrink-0">
-                <img
-                  src={item.product.images[0] ?? '/placeholder.jpg'}
-                  alt={item.product.name}
-                  className="w-20 h-20 rounded-xl object-cover"
-                />
-              </Link>
-              <div className="flex-1 min-w-0">
-                <Link to={`/products/${item.product.slug}`} className="font-semibold text-gray-900 hover:text-indigo-600 line-clamp-2">
-                  {item.product.name}
+          {items.map((item) => {
+            const image =
+              item.variant?.images?.[0] ??
+              item.product.images?.[0] ??
+              "/placeholder.jpg";
+
+            const price = Number(item.variant?.price ?? item.product.price);
+
+            return (
+              <div
+                key={item.id}
+                className="bg-white border border-gray-100 rounded-2xl p-4 flex gap-4"
+              >
+                <Link
+                  to={`/products/${item.product.slug}`}
+                  className="flex-shrink-0"
+                >
+                  <img
+                    src={image}
+                    alt={item.product.name}
+                    className="w-20 h-20 rounded-xl object-cover"
+                  />
                 </Link>
-                <p className="text-indigo-600 font-semibold mt-1">{formatCurrency(item.product.price)}</p>
-              </div>
-              <div className="flex flex-col items-end gap-3">
-                <button onClick={() => handleRemove(item.product.id)} className="text-gray-400 hover:text-red-500">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-                <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden">
-                  <button
-                    className="px-2.5 py-1 hover:bg-gray-50 text-sm"
-                    onClick={() => handleUpdateQty(item.product.id, Math.max(1, item.quantity - 1))}
-                  >−</button>
-                  <span className="px-3 py-1 text-sm font-medium">{item.quantity}</span>
-                  <button
-                    className="px-2.5 py-1 hover:bg-gray-50 text-sm"
-                    onClick={() => handleUpdateQty(item.product.id, item.quantity + 1)}
-                  >+</button>
+
+                <div className="flex-1 min-w-0">
+                  <Link
+                    to={`/products/${item.product.slug}`}
+                    className="font-semibold text-gray-900 hover:text-indigo-600 line-clamp-2"
+                  >
+                    {item.product.name}
+                  </Link>
+
+                  {(item.variant?.color || item.variant?.size) && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {item.variant?.color && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600">
+                          <span
+                            className="w-3 h-3 rounded-full border border-gray-300"
+                            style={{ backgroundColor: item.variant.colorHex }}
+                          />
+                          {item.variant.color}
+                        </span>
+                      )}
+
+                      {item.variant?.size && (
+                        <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600">
+                          Size: {item.variant.size}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  <p className="text-indigo-600 font-semibold mt-2">
+                    {formatCurrency(price)}
+                  </p>
                 </div>
-                <p className="text-sm text-gray-500">{formatCurrency(item.product.price * item.quantity)}</p>
+
+                <div className="flex flex-col items-end gap-3">
+                  <button
+                    onClick={() => handleRemove(item.product.id)}
+                    className="text-gray-400 hover:text-red-500"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+
+                  <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden">
+                    <button
+                      className="px-2.5 py-1 hover:bg-gray-50 text-sm"
+                      onClick={() =>
+                        handleUpdateQty(
+                          item.product.id,
+                          Math.max(1, item.quantity - 1),
+                        )
+                      }
+                    >
+                      −
+                    </button>
+
+                    <span className="px-3 py-1 text-sm font-medium">
+                      {item.quantity}
+                    </span>
+
+                    <button
+                      className="px-2.5 py-1 hover:bg-gray-50 text-sm"
+                      onClick={() =>
+                        handleUpdateQty(item.product.id, item.quantity + 1)
+                      }
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  <p className="text-sm text-gray-500">
+                    {formatCurrency(price * item.quantity)}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Summary */}
@@ -167,7 +257,8 @@ export function CartPage() {
 
             <div className="space-y-2 text-sm mb-4">
               <div className="flex justify-between text-gray-600">
-                <span>Subtotal</span><span>{formatCurrency(subtotal)}</span>
+                <span>Subtotal</span>
+                <span>{formatCurrency(subtotal)}</span>
               </div>
               {couponDiscount > 0 && (
                 <div className="flex justify-between text-green-600">
@@ -176,13 +267,15 @@ export function CartPage() {
                 </div>
               )}
               <div className="flex justify-between text-gray-600">
-                <span>Shipping</span><span className="text-green-600">Free</span>
+                <span>Shipping</span>
+                <span className="text-green-600">Free</span>
               </div>
             </div>
 
             <div className="border-t border-gray-100 pt-3 mb-5">
               <div className="flex justify-between font-bold text-gray-900">
-                <span>Total</span><span>{formatCurrency(total)}</span>
+                <span>Total</span>
+                <span>{formatCurrency(total)}</span>
               </div>
             </div>
 
@@ -195,11 +288,18 @@ export function CartPage() {
                     className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     placeholder="Coupon code"
                     value={couponCode}
-                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                    onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
+                    onChange={(e) =>
+                      setCouponCode(e.target.value.toUpperCase())
+                    }
+                    onKeyDown={(e) => e.key === "Enter" && handleApplyCoupon()}
                   />
                 </div>
-                <Button size="sm" variant="outline" onClick={handleApplyCoupon} isLoading={validatingCoupon}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleApplyCoupon}
+                  isLoading={validatingCoupon}
+                >
                   Apply
                 </Button>
               </div>
@@ -207,7 +307,11 @@ export function CartPage() {
 
             {!isAuthenticated && (
               <p className="text-xs text-gray-500 mb-4 text-center">
-                Checking out as guest. <Link to="/login" className="text-indigo-600 hover:underline">Sign in</Link> to save your order history.
+                Checking out as guest.{" "}
+                <Link to="/login" className="text-indigo-600 hover:underline">
+                  Sign in
+                </Link>{" "}
+                to save your order history.
               </p>
             )}
 
@@ -220,4 +324,3 @@ export function CartPage() {
     </div>
   );
 }
-
