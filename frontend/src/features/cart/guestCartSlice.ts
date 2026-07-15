@@ -15,6 +15,7 @@ export interface GuestCartProduct {
 export interface GuestCartItem {
   productId: string;
   quantity: number;
+  variant
   product: GuestCartProduct;
 }
 
