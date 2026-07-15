@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
@@ -11,8 +11,17 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { formatCurrency } from '../utils';
 
-// const BKASH_NUMBER = '01403041607';
-// const BKASH_PAYMENT_AMOUNT = 50;
+// বাংলাদেশের ৮টি বিভাগের তালিকা
+const BANGLADESH_DIVISIONS = [
+  { value: 'Dhaka', label: 'Dhaka (Free Delivery)' },
+  { value: 'Chattogram', label: 'Chattogram (Charge: ৳80)' },
+  { value: 'Rajshahi', label: 'Rajshahi (Charge: ৳80)' },
+  { value: 'Khulna', label: 'Khulna (Charge: ৳80)' },
+  { value: 'Barishal', label: 'Barishal (Charge: ৳80)' },
+  { value: 'Sylhet', label: 'Sylhet (Charge: ৳80)' },
+  { value: 'Rangpur', label: 'Rangpur (Charge: ৳80)' },
+  { value: 'Mymensingh', label: 'Mymensingh (Charge: ৳80)' },
+];
 
 const schema = z.object({
   fullName: z.string().min(2, 'Full name required'),
@@ -21,10 +30,8 @@ const schema = z.object({
     .min(11, 'Enter a valid phone number')
     .regex(/^01[0-9]{9}$/, 'Enter a valid 11-digit phone number'),
   streetAddress: z.string().min(3, 'Street address required'),
-  city: z.string().min(2, 'City required'),
-  state: z.string().min(2, 'State required'),
-  country: z.string().min(2, 'Country required'),
-  // transactionId: z.string().min(3, 'Transaction ID required'),
+  city: z.string().min(2, 'City/Division selection required'), // ড্রপডাউন ভ্যালিডেশন
+  state: z.string().min(2, 'State / District required'),
   guestEmail: z.string().optional(),
   guestName: z.string().optional(),
 });
@@ -44,19 +51,43 @@ export function CheckoutPage() {
   const [createGuestOrder, { isLoading: creatingGuest }] = useCreateGuestOrderMutation();
   const isLoading = creatingOrder || creatingGuest;
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
+  const { register, handleSubmit, control, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
+    defaultValues: {
+      city: '', // ডিফল্ট ফাঁকা থাকবে যাতে ইউজার সিলেক্ট করতে বাধ্য হয়
+    }
   });
 
+  // 'city' ড্রপডাউনের সিলেক্টেড ভ্যালু লাইভ ট্র্যাক করা
+  const selectedCity = useWatch({
+    control,
+    name: 'city',
+    defaultValue: '',
+  });
+
+  // ঢাকা বিভাগের ক্ষেত্রে চার্জ ০ টাকা, অন্য সব বিভাগের জন্য ৮০ টাকা। 
+  // কোনো কিছু সিলেক্ট না করা থাকলে ডিফল্ট ৮০ টাকা দেখাবে।
+  const shippingCharge = selectedCity === 'Dhaka' ? 0 : 80;
+
   const items = isAuthenticated
-    ? (cart?.items ?? []).map((i) => ({ id: i.product.id, name: i.product.name, price: i.product.price, quantity: i.quantity }))
-    : guestItems.map((i) => ({ id: i.productId, name: i.product.name, price: i.product.price, quantity: i.quantity }));
+    ? (cart?.items ?? []).map((i) => ({
+        id: i.product.id,
+        name: i.product.name,
+        price: Number(i.variant?.price ?? i.product.price),
+        quantity: i.quantity,
+      }))
+    : guestItems.map((i) => ({
+        id: i.productId,
+        name: i.product.name,
+        price: Number(i.variant?.price ?? i.product.price),
+        quantity: i.quantity,
+      }));
 
   const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
   const discount = state?.couponDiscount ?? 0;
-  const total = Math.max(0, subtotal - discount);
+  const total = Math.max(0, subtotal - discount + shippingCharge);
 
-  const onSubmit = async (data: FormValues) => {
+const onSubmit = async (data: FormValues) => {
     if (isAuthenticated) {
       try {
         const order = await createOrder({
@@ -66,8 +97,7 @@ export function CheckoutPage() {
             streetAddress: data.streetAddress,
             city: data.city,
             state: data.state,
-            country: data.country,
-            // paymentTransactionId: data.transactionId,
+            shippingCharge,
           },
           couponCode: state?.couponCode,
         }).unwrap();
@@ -85,15 +115,19 @@ export function CheckoutPage() {
         const order = await createGuestOrder({
           guestEmail: data.guestEmail,
           guestName: data.guestName ?? data.fullName,
-          items: guestItems.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+          // ⚠️ FIX: Map properties to match the exact keys 'productId' and 'variantId' expected by the DTO
+          items: guestItems.map((i) => ({ 
+            productId: i.productId, 
+            variantId: i.variant?.id ?? undefined, // Use undefined instead of null to comply with NestJS DTO validation if optional
+            quantity: i.quantity 
+          })),
           shippingAddress: {
             fullName: data.fullName,
             phoneNumber: data.phoneNumber,
             streetAddress: data.streetAddress,
             city: data.city,
             state: data.state,
-            country: data.country,
-            // paymentTransactionId: data.transactionId,
+            shippingCharge,
           },
           couponCode: state?.couponCode,
         }).unwrap();
@@ -141,38 +175,32 @@ export function CheckoutPage() {
               {...register('phoneNumber')}
             />
             <Input label="Street address" error={errors.streetAddress?.message} {...register('streetAddress')} />
+            
             <div className="grid grid-cols-2 gap-4">
-              <Input label="City" error={errors.city?.message} {...register('city')} />
-              <Input label="State / Region" error={errors.state?.message} {...register('state')} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Input label="Country" error={errors.country?.message} {...register('country')} />
-            </div>
-          </div>
+              {/* 👈 ড্রপডাউন সিলেক্ট ফিল্ড উইথ ট্র্যাডিশনাল টেইলউইন্ড ডিজাইন */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-gray-700">City / Division</label>
+                <select
+                  {...register('city')}
+                  className="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                >
+                  <option value="">Select Division</option>
+                  {BANGLADESH_DIVISIONS.map((div) => (
+                    <option key={div.value} value={div.value}>
+                      {div.label}
+                    </option>
+                  ))}
+                </select>
+                {errors.city?.message && (
+                  <p className="text-xs text-red-500">{errors.city.message}</p>
+                )}
+              </div>
 
-          {/* bKash payment instructions */}
-          {/* <div className="bg-pink-50 border border-pink-200 rounded-2xl p-6 space-y-4">
-            <h2 className="font-semibold text-gray-900">Payment</h2>
-            <p className="text-sm text-gray-700">
-              To confirm your order, please send{' '}
-              <span className="font-bold text-pink-700">{formatCurrency(BKASH_PAYMENT_AMOUNT)}</span> to
-              this bKash number:
-            </p>
-            <div className="flex items-center gap-2 bg-white border border-pink-200 rounded-xl px-4 py-3">
-              <span className="text-lg font-bold tracking-wide text-pink-700">{BKASH_NUMBER}</span>
-              <span className="text-xs text-gray-500">(Send Money)</span>
+              <Input label="State / District" placeholder="e.g. Gazipur, Mirpur" error={errors.state?.message} {...register('state')} />
             </div>
-            <Input
-              label="bKash transaction ID"
-              placeholder="e.g. 8N7A2XJ4K9"
-              error={errors.transactionId?.message}
-              {...register('transactionId')}
-            />
-            <p className="text-xs text-gray-500">
-              Enter the transaction ID you received by SMS after sending the payment. Your order will
-              be confirmed once we verify it.
-            </p>
-          </div> */}
+            
+            
+          </div>
         </div>
 
         {/* Summary */}
@@ -198,19 +226,24 @@ export function CheckoutPage() {
                   <span>Coupon</span><span>-{formatCurrency(discount)}</span>
                 </div>
               )}
+              
               <div className="flex justify-between text-gray-600">
-                <span>Shipping</span><span className="text-green-600">Free</span>
+                <span>Shipping</span>
+                {!selectedCity ? (
+                  <span className="text-gray-400">Select Division</span>
+                ) : shippingCharge === 0 ? (
+                  <span className="text-green-600 font-semibold">Free (Dhaka)</span>
+                ) : (
+                  <span>{formatCurrency(shippingCharge)}</span>
+                )}
               </div>
+
               <div className="flex justify-between font-bold text-gray-900 pt-2 border-t border-gray-100">
                 <span>Total</span><span>{formatCurrency(total)}</span>
               </div>
             </div>
 
-            {/* <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5 text-xs text-amber-800">
-              This is a demo store. No real payment is processed.
-            </div> */}
-
-            <Button type="submit" className="w-full" isLoading={isLoading}>
+            <Button type="submit" className="w-full" isLoading={isLoading} disabled={!selectedCity}>
               Place order
             </Button>
           </div>

@@ -50,14 +50,17 @@ model User {
 }
 
 model Category {
-  id          String    @id @default(cuid())
-  name        String    @unique
-  slug        String    @unique
-  description String?
-  image       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  products    Product[]
+  id           String     @id @default(cuid())
+  name         String     @unique
+  slug         String     @unique
+  description  String?
+  image        String?
+  parentId     String?    
+  parent       Category?  @relation("CategoryToSubCategory", fields: [parentId], references: [id], onDelete: Cascade)
+  subCategories Category[] @relation("CategoryToSubCategory")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  products     Product[]
 }
 
 model Product {
@@ -103,7 +106,7 @@ model ProductVariant {
   cartItems    CartItem[]
   orderItems   OrderItem[]
 
-  // @@unique([productId, color, size])
+  @@unique([productId, color, size])
   @@index([productId])
   // Note: Unique constraint on [productId, color, size] is handled via PostgreSQL
   // partial index in migration (only when color OR size is NOT null)
@@ -133,6 +136,7 @@ model Order {
   status          OrderStatus @default(PENDING)
   subtotal        Decimal     @db.Decimal(10, 2)
   discount        Decimal     @default(0) @db.Decimal(10, 2)
+  shippingCharge  Decimal     @default(0)
   total           Decimal     @db.Decimal(10, 2)
   couponCode      String?
   shippingAddress Json

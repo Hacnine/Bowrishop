@@ -89,9 +89,9 @@ export interface ShippingAddress {
   fullName: string;
   phoneNumber: string;
   streetAddress: string;
+  shippingCharge: number; 
   city: string;
   state: string;
-  country: string;
   // paymentTransactionId?: string;
 }
 

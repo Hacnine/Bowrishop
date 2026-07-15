@@ -30,16 +30,24 @@ export class OrdersService {
     // Validate stock
     for (const item of cartItems) {
       if (!item.product.isActive) throw new BadRequestException(`${item.product.name} is no longer available`);
-      if (item.product.stock < item.quantity)
+      
+      const currentStock = item.variant ? item.variant.stock : item.product.stock;
+      if (currentStock < item.quantity)
         throw new BadRequestException(`Insufficient stock for ${item.product.name}`);
     }
 
+    // Calculate subtotal correctly based on selected variant price or base product price
     const subtotal = cartItems.reduce(
-      (sum, item) => sum + Number(item.product.price) * item.quantity,
+      (sum, item) => {
+        const price = item.variant ? Number(item.variant.price) : Number(item.product.price);
+        return sum + price * item.quantity;
+      },
       0,
     );
 
-    // Coupon validation
+    // Extract shipping charge from nested shippingAddress object (defaulting to 80)
+    const shippingCharge = dto.shippingAddress?.shippingCharge ?? 80;
+
     let discount = 0;
     if (dto.couponCode) {
       const coupon = await this.prisma.coupon.findUnique({
@@ -63,7 +71,8 @@ export class OrdersService {
       });
     }
 
-    const total = Math.max(subtotal - discount, 0);
+    // Correct total calculation (Subtotal - Discount + Shipping Charge)
+    const total = Math.max(subtotal - discount + Number(shippingCharge), 0);
 
     // Create order in transaction
     const order = await this.prisma.$transaction(async (tx) => {
@@ -72,35 +81,43 @@ export class OrdersService {
           userId,
           subtotal,
           discount,
+          shippingCharge, 
           total,
           couponCode: dto.couponCode?.toUpperCase(),
           shippingAddress: dto.shippingAddress as any,
           notes: dto.notes,
           items: {
-              create: cartItems.map((item):  Prisma.OrderItemUncheckedCreateWithoutOrderInput => ({
-                productId: item.productId,
-                variantId: item.variantId,
-                quantity: item.quantity,
-                price: item.variant ? item.variant.price : item.product.price, 
-                variantSnapshot: item.variant ? {
-                  color: item.variant.color,
-                  size: item.variant.size,
-                  colorHex: item.variant.colorHex,
-                  images: item.variant.images,
-                  price: item.variant.price,
-                } : Prisma.JsonNull,
-              })),
-            },
+            create: cartItems.map((item): Prisma.OrderItemUncheckedCreateWithoutOrderInput => ({
+              productId: item.productId,
+              variantId: item.variantId,
+              quantity: item.quantity,
+              price: item.variant ? item.variant.price : item.product.price, 
+              variantSnapshot: item.variant ? {
+                color: item.variant.color,
+                size: item.variant.size,
+                colorHex: item.variant.colorHex,
+                images: item.variant.images,
+                price: item.variant.price,
+              } : Prisma.JsonNull,
+            })),
+          },
         },
         include: { items: { include: { product: true } } },
       });
 
-      // Update stock
+      // Update stock (variant specific or base product)
       for (const item of cartItems) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { stock: { decrement: item.quantity } },
-        });
+        if (item.variantId) {
+          await tx.productVariant.update({
+            where: { id: item.variantId },
+            data: { stock: { decrement: item.quantity } },
+          });
+        } else {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { decrement: item.quantity } },
+          });
+        }
       }
 
       // Clear cart
@@ -191,32 +208,44 @@ export class OrdersService {
     return { data: orders, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
-  async createGuestOrder(dto: CreateGuestOrderDto) {
+async createGuestOrder(dto: CreateGuestOrderDto) {
     const { items, guestEmail, guestName, shippingAddress, couponCode, notes } = dto;
 
     const productIds = items.map((i) => i.productId);
     const products = await this.prisma.product.findMany({ where: { id: { in: productIds } } });
     
-    // Get variant information if variantIds provided
+    // Fetch variant snapshots if variantId exists
     const variantIds = items
-      .map((i) => (i as any).variantId)
-      .filter((v) => v !== null && v !== undefined);
+      .map((i) => i.variantId)
+      .filter((v): v is string => v !== null && v !== undefined);
+    
     const variants = variantIds.length > 0
       ? await this.prisma.productVariant.findMany({ where: { id: { in: variantIds } } })
       : [];
 
+    // Validate items exist and check basic product stock
     for (const item of items) {
       const product = products.find((p) => p.id === item.productId);
       if (!product || !product.isActive)
         throw new BadRequestException(`Product not available`);
-      if (product.stock < item.quantity)
+
+      const variant = variants.find((v) => v.id === item.variantId);
+      const currentStock = variant ? variant.stock : product.stock;
+
+      if (currentStock < item.quantity)
         throw new BadRequestException(`Insufficient stock for ${product.name}`);
     }
 
+    // Calculate subtotal from database prices
     const subtotal = items.reduce((sum, item) => {
       const product = products.find((p) => p.id === item.productId)!;
-      return sum + Number(product.price) * item.quantity;
+      const variant = variants.find((v) => v.id === item.variantId);
+      const finalPrice = variant ? Number(variant.price) : Number(product.price);
+      return sum + finalPrice * item.quantity;
     }, 0);
+
+    // Extract shipping charge (defaults to 80)
+    const shippingCharge = shippingAddress?.shippingCharge ?? 80;
 
     let discount = 0;
     if (couponCode) {
@@ -231,10 +260,9 @@ export class OrdersService {
       if (subtotal < Number(coupon.minOrder))
         throw new BadRequestException(`Minimum order $${coupon.minOrder} required`);
 
-      discount =
-        coupon.discountType === 'PERCENTAGE'
-          ? (subtotal * Number(coupon.discount)) / 100
-          : Math.min(Number(coupon.discount), subtotal);
+      discount = coupon.discountType === 'PERCENTAGE'
+        ? (subtotal * Number(coupon.discount)) / 100
+        : Math.min(Number(coupon.discount), subtotal);
 
       await this.prisma.coupon.update({
         where: { code: coupon.code },
@@ -242,7 +270,8 @@ export class OrdersService {
       });
     }
 
-    const total = Math.max(subtotal - discount, 0);
+    // Correct total calculation including shipping charge for guests
+    const total = Math.max(subtotal - discount + Number(shippingCharge), 0);
 
     const order = await this.prisma.$transaction(async (tx) => {
       const newOrder = await tx.order.create({
@@ -252,17 +281,18 @@ export class OrdersService {
           guestName,
           subtotal,
           discount,
+          shippingCharge,
           total,
           couponCode: couponCode?.toUpperCase(),
           shippingAddress: shippingAddress as any,
           notes,
           items: {
-            create: items.map((item):  Prisma.OrderItemUncheckedCreateWithoutOrderInput => {
+            create: items.map((item): Prisma.OrderItemUncheckedCreateWithoutOrderInput => {
               const product = products.find((p) => p.id === item.productId)!;
-              const variant = variants.find((v) => v.id === (item as any).variantId);
+              const variant = variants.find((v) => v.id === item.variantId);
               return {
                 productId: item.productId,
-                variantId: (item as any).variantId,
+                variantId: item.variantId || null,
                 quantity: item.quantity,
                 price: variant ? variant.price : product.price,
                 variantSnapshot: variant ? {
@@ -279,11 +309,20 @@ export class OrdersService {
         include: { items: { include: { product: true } } },
       });
 
+      // Decrement stock in Transaction
       for (const item of items) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { stock: { decrement: item.quantity } },
-        });
+        const variantId = item.variantId;
+        if (variantId) {
+          await tx.productVariant.update({
+            where: { id: variantId },
+            data: { stock: { decrement: item.quantity } },
+          });
+        } else {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { decrement: item.quantity } },
+          });
+        }
       }
 
       return newOrder;

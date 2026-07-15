@@ -92,14 +92,18 @@ export function ProductDetailPage() {
   }, [product, hasVariants, selectedColor, selectedSize, allProductImages]);
 
   // Handles clicking on a thumbnail image
+// Handles clicking on a thumbnail image
   const handleThumbnailClick = (img: string, index: number) => {
+    // 1. ALWAYS update the selected image index regardless of variants
     setSelectedImage(index);
 
+    // 2. If the product has variants, try to auto-select the matching variant
     if (hasVariants) {
       // Look for a variant that uses this image
       const matchingVariant = product!.variants!.find((v) =>
         v.images?.includes(img),
       );
+      
       if (matchingVariant) {
         // If current selections don't match this variant, update them
         if (selectedColor !== matchingVariant.color) {
@@ -191,31 +195,30 @@ export function ProductDetailPage() {
       : 0;
 
   // Update selected main image when variant changes (if needed)
+  // Instantly push the big image to match the variant image on change
   useEffect(() => {
-    if (
-      selectedVariant &&
-      selectedVariant.images &&
-      selectedVariant.images.length > 0
-    ) {
+    if (selectedVariant?.images?.[0]) {
       const imageIndex = allProductImages.indexOf(selectedVariant.images[0]);
-      if (imageIndex !== -1 && imageIndex !== selectedImage) {
+      if (imageIndex !== -1) {
         setSelectedImage(imageIndex);
       }
     }
-  }, [selectedVariant, allProductImages, selectedImage]);
+  }, [selectedVariant, allProductImages]);
 
   // ── Cart / Wishlist / Review Handlers ───────────────────────────────
-  const handleAddToCart = async () => {
+ const handleAddToCart = async () => {
+    // 1. Guard clause: If there are variants, require selection
     if (hasVariants && !selectedVariant) {
       toast.error("Please select a color and size first");
       return;
     }
 
+    // 2. Handle GUEST Cart (Not Authenticated)
     if (!isAuthenticated) {
       dispatch(
         addGuestItem({
           productId: product.id,
-          quantity: 1,
+          quantity: qty, // 👈 Use the active quantity state here too!
           product: {
             id: product.id,
             name: product.name,
@@ -228,16 +231,15 @@ export function ProductDetailPage() {
             stock: product.stock,
             isActive: product.isActive,
           },
-          // যদি প্রোডাক্টের ভ্যারিয়েন্ট লিস্ট থাকে, তবে প্রথমটা অথবা ওল্ড প্রোডাক্ট হলে null দিন
-          variant:
-            product.variants && product.variants.length > 0
-              ? product.variants[0]
-              : null,
+          // 👈 FIX: Send the actively selected variant instead of the first index
+          variant: hasVariants ? selectedVariant : null,
         }),
       );
       toast.success("Added to cart");
       return;
     }
+
+    // 3. Handle AUTHENTICATED Cart (User Logged In)
     try {
       await addToCart({
         productId: product!.id,

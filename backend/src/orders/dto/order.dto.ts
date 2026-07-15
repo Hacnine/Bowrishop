@@ -10,7 +10,7 @@ export class ShippingAddressDto {
   @IsString() streetAddress: string;
   @IsString() city: string;
   @IsString() state: string;
-  @IsString() country: string;
+  @IsInt() shippingCharge: number;
 
   @IsOptional()
   @IsString()
@@ -35,8 +35,16 @@ export class CreateOrderDto {
 }
 
 export class GuestOrderItemDto {
-  @IsString() productId: string;
-  @IsInt() @Min(1) quantity: number;
+  @IsString() 
+  productId: string;
+
+  @IsOptional()
+  @IsString()
+  variantId?: string; // 👈 Add this so NestJS validation doesn't strip it!
+
+  @IsInt() 
+  @Min(1) 
+  quantity: number;
 }
 
 export class CreateGuestOrderDto {
