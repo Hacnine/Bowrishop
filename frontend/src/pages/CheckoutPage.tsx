@@ -14,13 +14,13 @@ import { formatCurrency } from '../utils';
 // বাংলাদেশের ৮টি বিভাগের তালিকা
 const BANGLADESH_DIVISIONS = [
   { value: 'Dhaka', label: 'Dhaka' },
-  { value: 'Chattogram', label: 'Chattogram (Charge: ৳80)' },
-  { value: 'Rajshahi', label: 'Rajshahi (Charge: ৳80)' },
-  { value: 'Khulna', label: 'Khulna (Charge: ৳80)' },
-  { value: 'Barishal', label: 'Barishal (Charge: ৳80)' },
-  { value: 'Sylhet', label: 'Sylhet (Charge: ৳80)' },
-  { value: 'Rangpur', label: 'Rangpur (Charge: ৳80)' },
-  { value: 'Mymensingh', label: 'Mymensingh (Charge: ৳80)' },
+  { value: 'Chattogram', label: 'Chattogram (Charge: ৳150)' },
+  { value: 'Rajshahi', label: 'Rajshahi (Charge: ৳150)' },
+  { value: 'Khulna', label: 'Khulna (Charge: ৳150)' },
+  { value: 'Barishal', label: 'Barishal (Charge: ৳150)' },
+  { value: 'Sylhet', label: 'Sylhet (Charge: ৳150)' },
+  { value: 'Rangpur', label: 'Rangpur (Charge: ৳150)' },
+  { value: 'Mymensingh', label: 'Mymensingh (Charge: ৳150)' },
 ];
 
 const schema = z.object({
@@ -247,8 +247,6 @@ const onSubmit = async (data: FormValues) => {
                 <span>Shipping</span>
                 {!selectedCity ? (
                   <span className="text-gray-400">Select Division</span>
-                ) : shippingCharge === 0 ? (
-                  <span className="text-green-600 font-semibold">Free (Dhaka)</span>
                 ) : (
                   <span>{formatCurrency(shippingCharge)}</span>
                 )}
