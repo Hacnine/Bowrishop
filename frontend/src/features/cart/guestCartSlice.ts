@@ -12,11 +12,23 @@ export interface GuestCartProduct {
   isActive: boolean;
 }
 
+export interface GuestCartVariant {
+  id: string;
+  color?: string | null;
+  colorHex?: string | null;
+  size?: string | null;
+  price: number;
+  comparePrice?: number | null;
+  stock: number;
+  images: string[];
+  sku?: string | null;
+}
+
 export interface GuestCartItem {
   productId: string;
   quantity: number;
-  variant
   product: GuestCartProduct;
+  variant?: GuestCartVariant | null; 
 }
 
 interface GuestCartState {
@@ -45,26 +57,42 @@ const guestCartSlice = createSlice({
   initialState: { items: load() } as GuestCartState,
   reducers: {
     addGuestItem(state, action: PayloadAction<GuestCartItem>) {
-      const existing = state.items.find((i) => i.productId === action.payload.productId);
+      const existing = state.items.find(
+        (i) => 
+          i.productId === action.payload.productId && 
+          i.variant?.id === action.payload.variant?.id
+      );
+
+      const maxStock = action.payload.variant 
+        ? action.payload.variant.stock 
+        : action.payload.product.stock;
+
       if (existing) {
         existing.quantity = Math.min(
           existing.quantity + action.payload.quantity,
-          action.payload.product.stock,
+          maxStock,
         );
       } else {
         state.items.push(action.payload);
       }
       save(state.items);
     },
-    updateGuestItem(state, action: PayloadAction<{ productId: string; quantity: number }>) {
-      const item = state.items.find((i) => i.productId === action.payload.productId);
+    updateGuestItem(state, action: PayloadAction<{ productId: string; variantId?: string | null; quantity: number }>) {
+      const item = state.items.find(
+        (i) => 
+          i.productId === action.payload.productId && 
+          i.variant?.id === action.payload.variantId
+      );
       if (item) {
         item.quantity = action.payload.quantity;
         save(state.items);
       }
     },
-    removeGuestItem(state, action: PayloadAction<string>) {
-      state.items = state.items.filter((i) => i.productId !== action.payload);
+    removeGuestItem(state, action: PayloadAction<{ productId: string; variantId?: string | null }>) {
+      state.items = state.items.filter(
+        (i) => 
+          !(i.productId === action.payload.productId && i.variant?.id === action.payload.variantId)
+      );
       save(state.items);
     },
     clearGuestCart(state) {
