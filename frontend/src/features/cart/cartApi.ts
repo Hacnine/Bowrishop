@@ -7,22 +7,33 @@ export const cartApi = baseApi.injectEndpoints({
       query: () => '/cart',
       providesTags: ['Cart'],
     }),
-    addToCart: builder.mutation<any, { productId: string; quantity: number }>({
+
+    addToCart: builder.mutation<any, { productId: string; variantId?: string | null; quantity: number }>({
       query: (body) => ({ url: '/cart', method: 'POST', body }),
       invalidatesTags: ['Cart'],
     }),
-    updateCartItem: builder.mutation<any, { productId: string; quantity: number }>({
-      query: ({ productId, quantity }) => ({
+
+    updateCartItem: builder.mutation<
+      any, 
+      { productId: string; variantId?: string | null; quantity: number }
+    >({
+      query: ({ productId, variantId, quantity }) => ({
         url: `/cart/${productId}`,
         method: 'PATCH',
-        body: { quantity },
+        body: { quantity, variantId }, 
       }),
       invalidatesTags: ['Cart'],
     }),
-    removeCartItem: builder.mutation<any, string>({
-      query: (productId) => ({ url: `/cart/${productId}`, method: 'DELETE' }),
+
+    removeCartItem: builder.mutation<any, { productId: string; variantId?: string | null }>({
+      query: ({ productId, variantId }) => ({ 
+        url: `/cart/${productId}`, 
+        method: 'DELETE',
+        body: { variantId } 
+      }),
       invalidatesTags: ['Cart'],
     }),
+
     clearCart: builder.mutation<any, void>({
       query: () => ({ url: '/cart/clear', method: 'DELETE' }),
       invalidatesTags: ['Cart'],

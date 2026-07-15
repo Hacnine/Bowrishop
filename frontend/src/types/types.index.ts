@@ -56,6 +56,7 @@ export interface Category {
 
 export interface CartItem {
   id: string;
+  productId: string;
   quantity: number;
   product: Pick<Product, 'id' | 'name' | 'slug' | 'price' | 'comparePrice' | 'images' | 'stock' | 'isActive'>;
   // Populated when a variant was selected
