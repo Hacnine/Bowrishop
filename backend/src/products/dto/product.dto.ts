@@ -6,6 +6,7 @@ import {
   IsArray,
   IsEnum,
   ValidateNested,
+  MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
@@ -67,7 +68,9 @@ export class UpdateVariantDto {
 }
 
 export class CreateProductDto {
-  @ApiProperty() @IsString()
+  @ApiProperty() 
+  @IsString() 
+  @MaxLength(80)
   name: string;
 
   @ApiProperty({ required: false }) @IsOptional() @IsString()

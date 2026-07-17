@@ -22,6 +22,7 @@ export interface GuestCartVariant {
   stock: number;
   images: string[];
   sku?: string | null;
+  isPreOrder: boolean;
 }
 
 export interface GuestCartItem {
