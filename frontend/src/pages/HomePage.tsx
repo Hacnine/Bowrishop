@@ -14,6 +14,13 @@ import {
   Eye,
 } from "lucide-react";
 
+// Import Swiper React components and styles
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Navigation, Pagination } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/navigation";
+import "swiper/css/pagination";
+
 import {
   useGetFeaturedProductsQuery,
   useGetBestSellingProductsQuery,
@@ -76,25 +83,52 @@ function SectionHeader({
   );
 }
 
-function ProductRow({
+function ProductCarousel({
   isLoading,
   products,
-  count = 5,
+  count = 10,
 }: {
   isLoading: boolean;
   products?: any[];
   count?: number;
 }) {
+  const sliderBreakpoints = {
+    320: { slidesPerView: 2, spaceBetween: 12 },
+    640: { slidesPerView: 3, spaceBetween: 16 },
+    1024: { slidesPerView: 5, spaceBetween: 16 },
+  };
+
+  if (isLoading) {
+    return (
+      <Swiper
+        modules={[Navigation]}
+        navigation
+        breakpoints={sliderBreakpoints}
+        className="product-swiper !pb-4"
+      >
+        {Array.from({ length: 5 }).map((_, i) => (
+          <SwiperSlide key={i}>
+            <ProductCardSkeleton />
+          </SwiperSlide>
+        ))}
+      </Swiper>
+    );
+  }
+
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-      {isLoading
-        ? Array.from({ length: count }).map((_, i) => (
-            <ProductCardSkeleton key={i} />
-          ))
-        : products
-            ?.slice(0, count)
-            .map((p) => <ProductCard key={p.id} product={p} />)}
-    </div>
+    <Swiper
+      modules={[Navigation, Pagination]}
+      navigation
+      pagination={{ clickable: true, dynamicBullets: true }}
+      breakpoints={sliderBreakpoints}
+      className="product-swiper !pb-10"
+    >
+      {products?.slice(0, count).map((p) => (
+        <SwiperSlide key={p.id} className="h-full">
+          <ProductCard product={p} />
+        </SwiperSlide>
+      ))}
+    </Swiper>
   );
 }
 
@@ -117,6 +151,27 @@ export function HomePage() {
         title="Bowri Shop | Home, Kitchen, Beauty, Electronics, Clothing & Footwear"
         description="Shop home essentials, kitchenware, beauty products, electronics, clothing, footwear and more at Bowri Shop. Fast delivery across Bangladesh."
       />
+
+      {/* Global Swiper Navigation Style Overrides */}
+      <style>{`
+        .product-swiper .swiper-button-next,
+        .product-swiper .swiper-button-prev {
+          color: #4A3328;
+          background: rgba(255, 255, 255, 0.9);
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .product-swiper .swiper-button-next:after,
+        .product-swiper .swiper-button-prev:after {
+          font-size: 14px;
+          font-weight: bold;
+        }
+        .product-swiper .swiper-pagination-bullet-active {
+          background-color: #C7927E !important;
+        }
+      `}</style>
 
       <div className="bg-[#FDFAF7]">
         {/* ── Hero ── */}
@@ -251,7 +306,7 @@ export function HomePage() {
             icon={Flame}
             href="/products?sort=best_selling"
           />
-          <ProductRow isLoading={loadingBest} products={bestSelling} />
+          <ProductCarousel isLoading={loadingBest} products={bestSelling} />
         </section>
 
         {/* ── Flash Sale Banner ── */}
@@ -289,7 +344,7 @@ export function HomePage() {
               icon={Tag}
               href="/products?sale=true"
             />
-            <ProductRow isLoading={loadingSale} products={onSale} />
+            <ProductCarousel isLoading={loadingSale} products={onSale} />
           </section>
         )}
 
@@ -301,22 +356,22 @@ export function HomePage() {
             icon={Sparkles}
             href="/products?featured=true"
           />
-          <ProductRow isLoading={loadingFeatured} products={featured} />
+          <ProductCarousel isLoading={loadingFeatured} products={featured} />
         </section>
 
         {/* ── New Arrivals ── */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-16">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <SectionHeader
             eyebrow="Just Landed"
             title="New Arrivals"
             icon={ArrowRight}
             href="/products?sort=newest"
           />
-          <ProductRow isLoading={loadingNew} products={newArrivals} />
+          <ProductCarousel isLoading={loadingNew} products={newArrivals} />
         </section>
 
         {/* ── Most Viewed ── */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-16">
           <SectionHeader
             eyebrow="Trending Now"
             title="Most Viewed"
@@ -325,51 +380,7 @@ export function HomePage() {
             accentColor="text-purple-500"
             bgColor="bg-purple-50"
           />
-          <ProductRow isLoading={loadingViewed} products={mostViewed} />
-        </section>
-
-        {/* ── Promo banners ── */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Link
-              to="/products?categoryId=1"
-              className="group relative h-44 rounded-3xl overflow-hidden bg-gradient-to-br from-[#F7EDE6] to-[#EDD5C5] flex items-center px-8"
-            >
-              <div className="relative z-10">
-                <p className="text-xs font-bold uppercase tracking-widest text-[#C7927E] mb-1">
-                  New Arrivals
-                </p>
-                <h3 className="text-2xl font-cormorant font-bold text-[#4A3328] leading-tight mb-3">
-                  Hair
-                  <br />
-                  Accessories
-                </h3>
-                <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#C7927E] group-hover:gap-2 transition-all">
-                  Shop now <ArrowRight className="w-4 h-4" />
-                </span>
-              </div>
-              <div className="absolute right-0 bottom-0 w-40 h-40 opacity-20 bg-[#C7927E] rounded-full translate-x-10 translate-y-10" />
-            </Link>
-            <Link
-              to="/products?categoryId=3"
-              className="group relative h-44 rounded-3xl overflow-hidden bg-gradient-to-br from-[#2C2118] to-[#4A3328] flex items-center px-8"
-            >
-              <div className="relative z-10">
-                <p className="text-xs font-bold uppercase tracking-widest text-[#C9A46A] mb-1">
-                  Home & Decor
-                </p>
-                <h3 className="text-2xl font-bold font-cormorant text-white leading-tight mb-3">
-                  Light Up
-                  <br />
-                  Your Space
-                </h3>
-                <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#C9A46A] group-hover:gap-2 transition-all">
-                  Explore <ArrowRight className="w-4 h-4" />
-                </span>
-              </div>
-              <div className="absolute right-6 top-1/2 -translate-y-1/2 w-32 h-32 opacity-10 bg-[#C9A46A] rounded-full" />
-            </Link>
-          </div>
+          <ProductCarousel isLoading={loadingViewed} products={mostViewed} />
         </section>
 
         {/* ── Why Choose Us ── */}

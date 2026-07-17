@@ -236,6 +236,9 @@ importers:
       react-router-dom:
         specifier: ^7.14.0
         version: 7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      swiper:
+        specifier: ^14.0.5
+        version: 14.0.5
       tailwind-merge:
         specifier: ^3.5.0
         version: 3.5.0
@@ -5055,6 +5058,10 @@ packages:
 
   swagger-ui-dist@5.32.2:
     resolution: {integrity: sha512-t6Ns52nS8LU2hqi0+rezMjFO1ZrCsCrnommXrU7Nfrg2va2dWahdvM6TuSwzdHpG29v6BHJyU1c/UWFhgVZzVQ==}
+
+  swiper@14.0.5:
+    resolution: {integrity: sha512-SMSKS0sj+lPIFzngfIKb5cyBtzmAuJw7rXgXdyYiDReb+pSpJXuNljHYgT4DXa5Stnl2Ew2/Lam5ipv4PIqZ7A==}
+    engines: {node: '>= 4.7.0'}
 
   symbol-observable@4.0.0:
     resolution: {integrity: sha512-b19dMThMV4HVFynSAM1++gBHAbk2Tc/osgLIBZMKsyqh34jb2e8Os7T6ZW/Bt3pJFdBTd2JwAnAAEQV7rSNvcQ==}
@@ -11127,6 +11134,8 @@ snapshots:
   swagger-ui-dist@5.32.2:
     dependencies:
       '@scarf/scarf': 1.4.0
+
+  swiper@14.0.5: {}
 
   symbol-observable@4.0.0: {}
 
