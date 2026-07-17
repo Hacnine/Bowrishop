@@ -1,24 +1,34 @@
-import { IsString, IsOptional, IsObject, ValidateNested, IsEmail, IsInt, Min, ArrayMinSize } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsArray,
+  IsNumber,
+  ValidateNested,
+  IsEmail,
+  Min,
+  IsInt
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ShippingAddressDto {
-  @IsString() fullName: string;
-
-  @IsString() phoneNumber: string;
-
-  @IsString() streetAddress: string;
+  @IsString() name: string;
+  @IsString() phone: string;
+  @IsString() address: string;
   @IsString() city: string;
-  @IsString() state: string;
-  @IsInt() shippingCharge: number;
+  @IsString() district: string;
+  @IsOptional() @IsString() postalCode?: string;
+  @IsOptional() @IsNumber() shippingCharge?: number;
+}
 
-  @IsOptional()
-  @IsString()
-  paymentTransactionId?: string;
+export class OrderItemInputDto {
+  @IsString() productId: string;
+  @IsOptional() @IsString() variantId?: string;
+  @IsNumber() quantity: number;
 }
 
 export class CreateOrderDto {
-  @ApiProperty()
+  @ApiProperty({ type: ShippingAddressDto })
   @ValidateNested()
   @Type(() => ShippingAddressDto)
   shippingAddress: ShippingAddressDto;
@@ -56,13 +66,13 @@ export class CreateGuestOrderDto {
   @IsString()
   guestName: string;
 
-  @ApiProperty({ type: [GuestOrderItemDto] })
+  @ApiProperty({ type: [OrderItemInputDto] })
+  @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => GuestOrderItemDto)
-  @ArrayMinSize(1)
-  items: GuestOrderItemDto[];
+  @Type(() => OrderItemInputDto)
+  items: OrderItemInputDto[];
 
-  @ApiProperty()
+  @ApiProperty({ type: ShippingAddressDto })
   @ValidateNested()
   @Type(() => ShippingAddressDto)
   shippingAddress: ShippingAddressDto;
@@ -79,7 +89,7 @@ export class CreateGuestOrderDto {
 }
 
 export class UpdateOrderStatusDto {
-  @ApiProperty({ enum: ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'] })
+  @ApiProperty()
   @IsString()
   status: string;
 }

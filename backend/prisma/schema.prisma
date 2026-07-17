@@ -65,7 +65,7 @@ model Category {
 
 model Product {
   id           String             @id @default(cuid())
-  name         String
+  name         String             @MaxLength(80)
   slug         String             @unique
   description  String
   price        Decimal            @db.Decimal(10, 2)
@@ -75,8 +75,7 @@ model Product {
   tags         String[]
   isActive     Boolean            @default(true)
   categoryId   String
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
+  isFeatured   Boolean            @default(false)
   category     Category           @relation(fields: [categoryId], references: [id])
   cartItems    CartItem[]
   orderItems   OrderItem[]
@@ -84,6 +83,11 @@ model Product {
   wishlist     WishlistItem[]
   views        ProductView[]
   variants     ProductVariant[]
+  isPreOrder    Boolean   @default(false)
+  preOrderNote  String?
+  preOrderDate  DateTime?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
 }
 
 // One variant = one unique combination of color + size (or either alone)
@@ -159,6 +163,7 @@ model OrderItem {
   order           Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product         Product         @relation(fields: [productId], references: [id])
   variant         ProductVariant? @relation(fields: [variantId], references: [id])
+  isPreOrder    Boolean   @default(false)
 }
 
 model Review {

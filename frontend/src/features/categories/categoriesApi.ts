@@ -3,10 +3,20 @@ import type { Category } from '../../types/types.index';
 
 export const categoriesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    // Tree structure — root categories + subCategories nested
+    // Navigation sidebar, AdminCategories tree view তে ব্যবহার হয়
     getCategories: builder.query<Category[], void>({
       query: () => '/categories',
       providesTags: ['Categories'],
     }),
+
+    // Flat list — সব categories parent info সহ
+    // Product form এর categoryId dropdown তে ব্যবহার হয়
+    getFlatCategories: builder.query<Category[], void>({
+      query: () => '/categories/flat',
+      providesTags: ['Categories'],
+    }),
+
     createCategory: builder.mutation<Category, Partial<Category>>({
       query: (body) => ({ url: '/categories', method: 'POST', body }),
       invalidatesTags: ['Categories'],
@@ -24,6 +34,7 @@ export const categoriesApi = baseApi.injectEndpoints({
 
 export const {
   useGetCategoriesQuery,
+  useGetFlatCategoriesQuery,
   useCreateCategoryMutation,
   useUpdateCategoryMutation,
   useDeleteCategoryMutation,

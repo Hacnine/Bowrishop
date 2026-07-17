@@ -35,12 +35,17 @@ export interface Product {
   images: string[];
   tags: string[];
   isActive: boolean;
+  isFeatured?: boolean;
   categoryId: string;
   userId?: string;
   category?: Category;
   variants?: ProductVariant[];
   averageRating?: number;
   reviewCount?: number;
+  // ─── Pre-order ───────────────────────────────
+  isPreOrder: boolean;
+  preOrderNote?: string;
+  preOrderDate?: string; // ISO string
   createdAt: string;
   updatedAt: string;
 }
@@ -51,6 +56,10 @@ export interface Category {
   slug: string;
   description?: string;
   image?: string;
+  // Nested category fields
+  parentId?: string | null;
+  parent?: { id: string; name: string } | null;
+  subCategories?: Category[];
   _count?: { products: number };
 }
 
@@ -58,8 +67,7 @@ export interface CartItem {
   id: string;
   productId: string;
   quantity: number;
-  product: Pick<Product, 'id' | 'name' | 'slug' | 'price' | 'comparePrice' | 'images' | 'stock' | 'isActive'>;
-  // Populated when a variant was selected
+  product: Pick<Product, 'id' | 'name' | 'slug' | 'price' | 'comparePrice' | 'images' | 'stock' | 'isActive' | 'isPreOrder'>;
   variant?: Pick<ProductVariant, 'id' | 'color' | 'colorHex' | 'size' | 'price' | 'comparePrice' | 'stock' | 'images'>;
 }
 
@@ -81,6 +89,7 @@ export interface OrderItem {
   variantSnapshot?: VariantSnapshot;
   quantity: number;
   price: number;
+  isPreOrder?: boolean;
   product?: Pick<Product, 'id' | 'name' | 'images' | 'slug'>;
   variant?: Pick<ProductVariant, 'id' | 'color' | 'colorHex' | 'size'>;
 }
@@ -89,10 +98,9 @@ export interface ShippingAddress {
   fullName: string;
   phoneNumber: string;
   streetAddress: string;
-  shippingCharge: number; 
+  shippingCharge: number;
   city: string;
   state: string;
-  // paymentTransactionId?: string;
 }
 
 export type OrderStatus = 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
@@ -121,9 +129,11 @@ export interface Review {
   productId: string;
   rating: number;
   comment?: string;
-  user: Pick<User, 'id' | 'name' | 'avatar'>;
+  user?: Pick<User, 'id' | 'name' | 'avatar'>;
   createdAt: string;
 }
+
+
 
 export interface WishlistItem {
   id: string;

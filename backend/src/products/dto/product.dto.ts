@@ -1,45 +1,38 @@
 import {
-  IsString, IsNumber, IsOptional, IsBoolean, IsArray,
-  IsInt, Min, ValidateNested, IsHexColor,
+  IsString,
+  IsOptional,
+  IsNumber,
+  IsBoolean,
+  IsArray,
+  IsEnum,
+  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateVariantDto {
-  @ApiProperty({ required: false, example: 'Black' })
   @IsOptional() @IsString()
   color?: string;
 
-  @ApiProperty({ required: false, example: '#c9748e' })
-  @IsOptional()
-  @IsString()
+  @IsOptional() @IsString()
   colorHex?: string;
 
-  @ApiProperty({ required: false, example: 'Large' })
   @IsOptional() @IsString()
   size?: string;
 
-  @ApiProperty({ example: 9.99 })
-  @IsNumber() @Min(0)
-  price: number;
+  @IsNumber() price: number;
 
-  @ApiProperty({ required: false, example: 12.99 })
-  @IsOptional() @IsNumber() @Min(0)
+  @IsOptional() @IsNumber()
   comparePrice?: number;
 
-  @ApiProperty({ example: 20 })
-  @IsInt() @Min(0)
-  stock: number;
+  @IsNumber() stock: number;
 
-  @ApiProperty({ required: false, type: [String] })
-  @IsOptional() @IsArray() @IsString({ each: true })
-  images?: string[];
-
-  @ApiProperty({ required: false, example: 'SKU-001-BLK-LG' })
   @IsOptional() @IsString()
   sku?: string;
 
-  @ApiProperty({ required: false, default: true })
+  @IsOptional() @IsArray()
+  images?: string[];
+
   @IsOptional() @IsBoolean()
   isActive?: boolean;
 }
@@ -48,74 +41,81 @@ export class UpdateVariantDto {
   @IsOptional() @IsString()
   color?: string;
 
-  @IsOptional() @IsHexColor()
+  @IsOptional() @IsString()
   colorHex?: string;
 
   @IsOptional() @IsString()
   size?: string;
 
-  @IsOptional() @IsNumber() @Min(0)
+  @IsOptional() @IsNumber()
   price?: number;
 
-  @IsOptional() @IsNumber() @Min(0)
+  @IsOptional() @IsNumber()
   comparePrice?: number;
 
-  @IsOptional() @IsInt() @Min(0)
+  @IsOptional() @IsNumber()
   stock?: number;
-
-  @IsOptional() @IsArray() @IsString({ each: true })
-  images?: string[];
 
   @IsOptional() @IsString()
   sku?: string;
+
+  @IsOptional() @IsArray()
+  images?: string[];
 
   @IsOptional() @IsBoolean()
   isActive?: boolean;
 }
 
 export class CreateProductDto {
-  @ApiProperty()
-  @IsString()
+  @ApiProperty() @IsString()
   name: string;
 
-  @ApiProperty()
-  @IsString()
-  description: string;
+  @ApiProperty({ required: false }) @IsOptional() @IsString()
+  description?: string;
 
-  @ApiProperty()
-  @IsNumber() @Min(0)
+  @ApiProperty() @IsNumber()
   price: number;
 
-  @ApiProperty({ required: false })
-  @IsOptional() @IsNumber() @Min(0)
+  @ApiProperty({ required: false }) @IsOptional() @IsNumber()
   comparePrice?: number;
 
-  @ApiProperty()
-  @IsInt() @Min(0)
+  @ApiProperty() @IsNumber()
   stock: number;
 
-  @ApiProperty({ type: [String] })
-  @IsArray() @IsString({ each: true })
-  images: string[];
+  @ApiProperty({ required: false }) @IsOptional() @IsArray()
+  images?: string[];
 
-  @ApiProperty({ required: false, type: [String] })
-  @IsOptional() @IsArray() @IsString({ each: true })
+  @ApiProperty({ required: false }) @IsOptional() @IsArray()
   tags?: string[];
 
-  @ApiProperty()
-  @IsString()
+  @ApiProperty() @IsString()
   categoryId: string;
 
-  @ApiProperty({ required: false, default: true })
-  @IsOptional() @IsBoolean()
+  @ApiProperty({ required: false }) @IsOptional() @IsBoolean()
   isActive?: boolean;
 
-  // Variants are optional on create — admin can add them after
+  @ApiProperty({ required: false }) @IsOptional() @IsBoolean()
+  isFeatured?: boolean;
+
   @ApiProperty({ required: false, type: [CreateVariantDto] })
   @IsOptional()
+  @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateVariantDto)
   variants?: CreateVariantDto[];
+
+  // ─── Pre-order fields ───────────────────────────────────────────
+  @ApiProperty({ required: false, description: 'Mark product as pre-order' })
+  @IsOptional() @IsBoolean()
+  isPreOrder?: boolean;
+
+  @ApiProperty({ required: false, description: 'e.g. "Ships in 2–3 weeks"' })
+  @IsOptional() @IsString()
+  preOrderNote?: string;
+
+  @ApiProperty({ required: false, description: 'Expected availability date (ISO string)' })
+  @IsOptional() @IsString()
+  preOrderDate?: string;
 }
 
 export class UpdateProductDto {
@@ -125,19 +125,19 @@ export class UpdateProductDto {
   @IsOptional() @IsString()
   description?: string;
 
-  @IsOptional() @IsNumber() @Min(0)
+  @IsOptional() @IsNumber()
   price?: number;
 
-  @IsOptional() @IsNumber() @Min(0)
+  @IsOptional() @IsNumber()
   comparePrice?: number;
 
-  @IsOptional() @IsInt() @Min(0)
+  @IsOptional() @IsNumber()
   stock?: number;
 
-  @IsOptional() @IsArray() @IsString({ each: true })
+  @IsOptional() @IsArray()
   images?: string[];
 
-  @IsOptional() @IsArray() @IsString({ each: true })
+  @IsOptional() @IsArray()
   tags?: string[];
 
   @IsOptional() @IsString()
@@ -145,50 +145,38 @@ export class UpdateProductDto {
 
   @IsOptional() @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional() @IsBoolean()
+  isFeatured?: boolean;
+
+  // ─── Pre-order fields ───────────────────────────────────────────
+  @IsOptional() @IsBoolean()
+  isPreOrder?: boolean;
+
+  @IsOptional() @IsString()
+  preOrderNote?: string;
+
+  @IsOptional() @IsString()
+  preOrderDate?: string;
 }
 
 export class ProductQueryDto {
-  @IsOptional() @IsString()
-  q?: string;
-
-  @IsOptional() @IsString()
-  search?: string;
-
-  @IsOptional() @IsString()
-  categoryId?: string;
-
-  @IsOptional() @IsString()
-  category?: string;
-
-  @IsOptional() @IsString()
-  minPrice?: string;
-
-  @IsOptional() @IsString()
-  maxPrice?: string;
-
-  @IsOptional() @IsString()
-  sort?: string;
-
-  @IsOptional() @IsString()
-  page?: string;
-
-  @IsOptional() @IsString()
-  limit?: string;
-
-  @IsOptional() @IsString()
-  featured?: string;
-
-  @IsOptional() @IsString()
-  sale?: string;
+  @IsOptional() @IsString() page?: string;
+  @IsOptional() @IsString() limit?: string;
+  @IsOptional() @IsString() search?: string;
+  @IsOptional() @IsString() q?: string;
+  @IsOptional() @IsString() categoryId?: string;
+  @IsOptional() @IsString() category?: string;
+  @IsOptional() @IsString() minPrice?: string;
+  @IsOptional() @IsString() maxPrice?: string;
+  @IsOptional() @IsString() featured?: string;
+  @IsOptional() @IsString() sale?: string;
+  @IsOptional() @IsString() preOrder?: string; // ?preOrder=true filter
+  @IsOptional() @IsString() sort?: string;
 }
 
 export class AdminProductQueryDto {
-  @IsOptional() @IsString()
-  q?: string;
-
-  @IsOptional() @IsString()
-  page?: string;
-
-  @IsOptional() @IsString()
-  limit?: string;
+  @IsOptional() @IsString() page?: string;
+  @IsOptional() @IsString() limit?: string;
+  @IsOptional() @IsString() q?: string;
 }
