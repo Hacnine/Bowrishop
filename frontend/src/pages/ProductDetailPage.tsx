@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, Heart, ChevronLeft, Minus, Plus } from "lucide-react";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
+import { ShoppingCart, Heart, ChevronLeft, Minus, Plus, Clock } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   useGetProductReviewsQuery,
@@ -29,6 +29,11 @@ export function ProductDetailPage() {
   const dispatch = useAppDispatch();
   const { isAuthenticated, user } = useAppSelector((s) => s.auth);
 
+  // ── URL search params for color/size ──────────────────────────────────
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlColor = searchParams.get("color");
+  const urlSize = searchParams.get("size");
+
   const { data: product, isLoading } = useGetProductBySlugQuery(slug!);
   const { data: reviews } = useGetProductReviewsQuery(product?.id ?? "", {
     skip: !product,
@@ -43,13 +48,12 @@ export function ProductDetailPage() {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
 
-  // Variant selection state
-  const [selectedColor, setSelectedColor] = useState<string | null>(null);
-  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  // Variant selection — driven by URL params
+  const [selectedColor, setSelectedColor] = useState<string | null>(urlColor);
+  const [selectedSize, setSelectedSize] = useState<string | null>(urlSize);
 
   const hasVariants = !!(product?.variants && product.variants.length > 0);
 
-  // Unique colors across all variants (preserving insertion order)
   const uniqueColors = useMemo<string[]>(() => {
     if (!hasVariants) return [];
     const seen = new Set<string>();
@@ -58,7 +62,6 @@ export function ProductDetailPage() {
       .filter((c): c is string => !!c && !seen.has(c) && !!seen.add(c));
   }, [product, hasVariants]);
 
-  // Unique sizes across all variants (preserving insertion order)
   const uniqueSizes = useMemo<string[]>(() => {
     if (!hasVariants) return [];
     const seen = new Set<string>();
@@ -67,7 +70,6 @@ export function ProductDetailPage() {
       .filter((s): s is string => !!s && !seen.has(s) && !!seen.add(s));
   }, [product, hasVariants]);
 
-  // ── Images to display (All main + variant images) ───────────────────────
   const allProductImages = useMemo<string[]>(() => {
     if (!product) return [];
     const uniqueImages = new Set([
@@ -77,91 +79,101 @@ export function ProductDetailPage() {
     return Array.from(uniqueImages);
   }, [product]);
 
-  // Initial setup: find first variant and set initial selected color/size/image
+  // ── Push color/size to URL ─────────────────────────────────────────────
+  const updateUrl = (color: string | null, size: string | null) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (color) next.set("color", color);
+        else next.delete("color");
+        if (size) next.set("size", size);
+        else next.delete("size");
+        return next;
+      },
+      { replace: true }, // history stack দূষিত না করতে replace
+    );
+  };
+
+  // Initial setup: URL params থাকলে সেটা use করো, নইলে first variant
   useEffect(() => {
-    if (!product || !hasVariants || selectedColor || selectedSize) return;
+    if (!product || !hasVariants) return;
 
-    const firstVariant = product.variants![0];
-    if (firstVariant) {
-      setSelectedColor(firstVariant.color ?? null);
-      setSelectedSize(firstVariant.size ?? null);
+    const variants = product.variants!;
 
-      // Try to find the image index that corresponds to the first variant
-      if (firstVariant.images && firstVariant.images.length > 0) {
-        const imageIndex = allProductImages.indexOf(firstVariant.images[0]);
-        if (imageIndex !== -1) {
-          setSelectedImage(imageIndex);
+    // URL তে color/size দেওয়া আছে এবং valid কিনা check করো
+    if (urlColor || urlSize) {
+      const match = variants.find(
+        (v) =>
+          (!urlColor || v.color === urlColor) &&
+          (!urlSize || v.size === urlSize),
+      );
+      if (match) {
+        setSelectedColor(match.color ?? null);
+        setSelectedSize(match.size ?? null);
+        if (match.images?.[0]) {
+          const idx = allProductImages.indexOf(match.images[0]);
+          if (idx !== -1) setSelectedImage(idx);
         }
+        return;
       }
     }
-  }, [product, hasVariants, selectedColor, selectedSize, allProductImages]);
 
-  // Handles clicking on a thumbnail image
+    // URL params নেই বা invalid — first variant দিয়ে শুরু করো
+    const first = variants[0];
+    if (first) {
+      setSelectedColor(first.color ?? null);
+      setSelectedSize(first.size ?? null);
+      updateUrl(first.color ?? null, first.size ?? null);
+      if (first.images?.[0]) {
+        const idx = allProductImages.indexOf(first.images[0]);
+        if (idx !== -1) setSelectedImage(idx);
+      }
+    }
+  }, [product, hasVariants, allProductImages]);
+
   const handleThumbnailClick = (img: string, index: number) => {
-    // 1. ALWAYS update the selected image index regardless of variants
     setSelectedImage(index);
-
-    // 2. If the product has variants, try to auto-select the matching variant
     if (hasVariants) {
-      // Look for a variant that uses this image
       const matchingVariant = product!.variants!.find((v) =>
         v.images?.includes(img),
       );
-
       if (matchingVariant) {
-        // If current selections don't match this variant, update them
-        if (selectedColor !== matchingVariant.color) {
-          setSelectedColor(matchingVariant.color ?? null);
-        }
-        if (selectedSize !== matchingVariant.size) {
-          setSelectedSize(matchingVariant.size ?? null);
-        }
-        setQty(1); // Reset quantity on variant change
+        setSelectedColor(matchingVariant.color ?? null);
+        setSelectedSize(matchingVariant.size ?? null);
+        updateUrl(matchingVariant.color ?? null, matchingVariant.size ?? null);
+        setQty(1);
       }
     }
   };
 
-  // Always resolves to a full, valid variant (color + size) after a click.
-  // Previously, clicking a color could leave `selectedSize` as null when the
-  // old size wasn't valid for the new color — and since `selectedVariant`
-  // requires BOTH color and size to match, that made selectedVariant null,
-  // which made the image-sync effect silently skip updating. That's why the
-  // image/size only "sometimes" updated.
   const handleColorSelect = (color: string) => {
     if (color === selectedColor) return;
-
     const variantsForColor =
       product?.variants?.filter((v) => v.color === color) ?? [];
-
     const stillValid = variantsForColor.some((v) => v.size === selectedSize);
     const nextSize = stillValid
       ? selectedSize
       : (variantsForColor[0]?.size ?? null);
-
     setSelectedColor(color);
     setSelectedSize(nextSize);
+    updateUrl(color, nextSize);
     setQty(1);
   };
 
-  // Handles selecting a size. Mirrors handleColorSelect: always resolves to a
-  // full, valid variant so the image/price/stock stay in sync every time.
   const handleSizeSelect = (size: string) => {
     if (size === selectedSize) return;
-
     const variantsForSize =
       product?.variants?.filter((v) => v.size === size) ?? [];
-
     const stillValid = variantsForSize.some((v) => v.color === selectedColor);
     const nextColor = stillValid
       ? selectedColor
       : (variantsForSize[0]?.color ?? null);
-
     setSelectedSize(size);
     setSelectedColor(nextColor);
+    updateUrl(nextColor, size);
     setQty(1);
   };
 
-  // The single matching variant (color + size must match)
   const selectedVariant = useMemo<ProductVariant | null>(() => {
     if (!hasVariants) return null;
     return (
@@ -171,7 +183,6 @@ export function ProductDetailPage() {
     );
   }, [product, hasVariants, selectedColor, selectedSize]);
 
-  // Color hex mapping for unique colors
   const colorHexMap = useMemo(() => {
     if (!hasVariants) return {} as Record<string, string>;
     return Object.fromEntries(
@@ -181,7 +192,6 @@ export function ProductDetailPage() {
     );
   }, [product, hasVariants]);
 
-  // Price / comparePrice / stock / image from selected variant (or base product fallback)
   const displayPrice = selectedVariant
     ? Number(selectedVariant.price)
     : Number(product?.price ?? 0);
@@ -206,8 +216,6 @@ export function ProductDetailPage() {
         )
       : 0;
 
-  // Update selected main image when variant changes (if needed)
-  // Instantly push the big image to match the variant image on change
   useEffect(() => {
     if (selectedVariant?.images?.[0]) {
       const imageIndex = allProductImages.indexOf(selectedVariant.images[0]);
@@ -217,56 +225,50 @@ export function ProductDetailPage() {
     }
   }, [selectedVariant, allProductImages]);
 
-  // ── Cart / Wishlist / Review Handlers ───────────────────────────────
-const handleAddToCart = async () => {
-    // 1. Guard clause: If there are variants, require selection
+  const handleAddToCart = async () => {
     if (hasVariants && !selectedVariant) {
       toast.error("Please select a color and size first");
       return;
     }
 
-    // Helper function to fire Meta Pixel AddToCart event
     const firePixelAddToCart = () => {
-      if (typeof window !== 'undefined' && (window as any).fbq) {
-        (window as any).fbq('track', 'AddToCart', {
-          content_name: product.name,
-          content_ids: [product.id.toString()],
-          content_type: 'product',
-          value: Number(product.price) * qty, // টোটাল ভ্যালু (প্রাইস * কোয়ান্টিটি)
-          currency: 'BDT'
+      if (typeof window !== "undefined" && (window as any).fbq) {
+        (window as any).fbq("track", "AddToCart", {
+          content_name: product!.name,
+          content_ids: [product!.id.toString()],
+          content_type: "product",
+          value: Number(product!.price) * qty,
+          currency: "BDT",
         });
       }
     };
 
-    // 2. Handle GUEST Cart (Not Authenticated)
     if (!isAuthenticated) {
       dispatch(
         addGuestItem({
-          productId: product.id,
-          quantity: qty, // 👈 Use the active quantity state here too!
+          productId: product!.id,
+          quantity: qty,
           product: {
-            id: product.id,
-            name: product.name,
-            slug: product.slug,
-            price: Number(product.price),
-            isPreOrder: product.isPreOrder,
-            comparePrice: product.comparePrice
-              ? Number(product.comparePrice)
+            id: product!.id,
+            name: product!.name,
+            slug: product!.slug,
+            price: Number(product!.price),
+            isPreOrder: product!.isPreOrder,
+            comparePrice: product!.comparePrice
+              ? Number(product!.comparePrice)
               : undefined,
-            images: product.images,
-            stock: product.stock,
-            isActive: product.isActive,
+            images: product!.images,
+            stock: product!.stock,
+            isActive: product!.isActive,
           },
-          // 👈 FIX: Send the actively selected variant instead of the first index
           variant: hasVariants ? selectedVariant : null,
         }),
       );
       toast.success("Added to cart");
-      firePixelAddToCart(); 
+      firePixelAddToCart();
       return;
     }
 
-    // 3. Handle AUTHENTICATED Cart (User Logged In)
     try {
       await addToCart({
         productId: product!.id,
@@ -274,18 +276,14 @@ const handleAddToCart = async () => {
         ...(selectedVariant ? { variantId: selectedVariant.id } : {}),
       } as any).unwrap();
       toast.success("Added to cart");
-      firePixelAddToCart(); // 👈 লগড-ইন ইউজারের জন্য পিক্সেল ফায়ার করা হলো
+      firePixelAddToCart();
     } catch {
       toast.error("Could not add to cart");
     }
   };
 
-  // Related products: same category, excluding the current product
   const { data: relatedData, isLoading: relatedLoading } = useGetProductsQuery(
-    {
-      categoryId: product?.category?.id,
-      limit: 8, // fetch a few extra since we filter the current product out
-    },
+    { categoryId: product?.category?.id, limit: 8 },
     { skip: !product?.category?.id },
   );
 
@@ -295,10 +293,7 @@ const handleAddToCart = async () => {
   }, [relatedData, product]);
 
   const handleAddToWishlist = async () => {
-    if (!isAuthenticated) {
-      navigate("/login");
-      return;
-    }
+    if (!isAuthenticated) { navigate("/login"); return; }
     try {
       await addToWishlist(product!.id).unwrap();
       toast.success("Added to wishlist");
@@ -325,25 +320,15 @@ const handleAddToCart = async () => {
   };
 
   function DescriptionRenderer({ text }: { text: string }) {
-    const lines = text
-      .split("\n")
-      .map((l) => l.trim())
-      .filter(Boolean);
-
+    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
     return (
       <div className="space-y-2 text-gray-600 leading-relaxed text-sm">
         {lines.map((line, i) => {
           const isHeader = line.endsWith(":") && !line.startsWith("✅");
           const isCheck = line.startsWith("✅");
-
           if (isHeader) {
-            return (
-              <p key={i} className="font-semibold text-gray-800 mt-4 mb-1">
-                {line}
-              </p>
-            );
+            return <p key={i} className="font-semibold text-gray-800 mt-4 mb-1">{line}</p>;
           }
-
           if (isCheck) {
             const [label, ...rest] = line.replace("✅", "").trim().split(" – ");
             const detail = rest.join(" – ");
@@ -357,14 +342,12 @@ const handleAddToCart = async () => {
               </div>
             );
           }
-
           return <p key={i}>{line}</p>;
         })}
       </div>
     );
   }
 
-  // ── Loading / not found states ──────────────────────────────────────────
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -384,12 +367,12 @@ const handleAddToCart = async () => {
     return (
       <div className="max-w-7xl mx-auto px-4 py-20 text-center">
         <p className="text-gray-500 text-lg mb-4">Product not found.</p>
-        <Link to="/products">
-          <Button variant="outline">Back to products</Button>
-        </Link>
+        <Link to="/products"><Button variant="outline">Back to products</Button></Link>
       </div>
     );
   }
+
+  const isOutOfStock = !product.isPreOrder && displayStock <= 0;
 
   return (
     <>
@@ -409,7 +392,7 @@ const handleAddToCart = async () => {
         </Link>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* ── Images Section ──────────────────────────── */}
+          {/* ── Images ── */}
           <div>
             <div className="aspect-square rounded-2xl overflow-hidden bg-gray-100 mb-3 relative">
               <img
@@ -417,6 +400,11 @@ const handleAddToCart = async () => {
                 alt={product.name}
                 className="w-full h-full object-cover transition-opacity duration-200"
               />
+              {product.isPreOrder && (
+                <span className="absolute top-3 left-3 bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5" /> Pre-order
+                </span>
+              )}
             </div>
             {allProductImages.length > 1 && (
               <div className="flex gap-2 flex-wrap">
@@ -430,18 +418,14 @@ const handleAddToCart = async () => {
                         : "border-transparent hover:border-gray-300"
                     }`}
                   >
-                    <img
-                      src={img}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={img} alt="" className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          {/* ── Details Section ───────────────────────────────────────────── */}
+          {/* ── Details ── */}
           <div>
             {product.category && (
               <Link
@@ -451,22 +435,37 @@ const handleAddToCart = async () => {
                 {product.category.name}
               </Link>
             )}
-            <h1 className="text-3xl font-bold text-gray-900 mb-3">
-              {product.name}
-            </h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-3">{product.name}</h1>
 
             <div className="flex items-center gap-3 mb-4">
-              <StarRating
-                value={product.averageRating ?? 0}
-                readonly
-                size="sm"
-              />
-              <span className="text-sm text-gray-500">
-                ({product.reviewCount ?? 0} reviews)
-              </span>
+              <StarRating value={product.averageRating ?? 0} readonly size="sm" />
+              <span className="text-sm text-gray-500">({product.reviewCount ?? 0} reviews)</span>
             </div>
 
-            {/* Price section */}
+            {/* Pre-order notice */}
+            {product.isPreOrder && (
+              <div className="mb-4 flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                <Clock className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">Pre-order item</p>
+                  {product.preOrderNote && (
+                    <p className="text-xs text-amber-700 mt-0.5">{product.preOrderNote}</p>
+                  )}
+                  {product.preOrderDate && (
+                    <p className="text-xs text-amber-600 mt-0.5">
+                      Expected:{" "}
+                      {new Date(product.preOrderDate).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Price */}
             <div className="mb-6">
               <p className="text-sm text-gray-500 mb-1">
                 Regular Price:{" "}
@@ -476,12 +475,9 @@ const handleAddToCart = async () => {
               </p>
               {displayComparePrice && displayComparePrice > displayPrice && (
                 <>
-                  <p className="text-lg text-gray-400 line-through">
-                    {formatCurrency(displayComparePrice)}
-                  </p>
+                  <p className="text-lg text-gray-400 line-through">{formatCurrency(displayComparePrice)}</p>
                   <p className="text-sm font-semibold text-green-600 mt-1">
-                    You are saving{" "}
-                    {formatCurrency(displayComparePrice - displayPrice)}
+                    You are saving {formatCurrency(displayComparePrice - displayPrice)}
                   </p>
                 </>
               )}
@@ -491,18 +487,15 @@ const handleAddToCart = async () => {
               <DescriptionRenderer text={product.description} />
             </div>
 
-            {/* ── Variant Selectors ──────────────────────────────────────────── */}
+            {/* ── Variant Selectors ── */}
             {hasVariants && (
               <>
-                {/* Color Selector */}
                 {uniqueColors.length > 0 && (
                   <div className="mb-5">
                     <p className="text-sm font-medium text-gray-700 mb-2">
                       Color
                       {selectedColor && (
-                        <span className="ml-2 font-normal text-gray-500">
-                          {selectedColor}
-                        </span>
+                        <span className="ml-2 font-normal text-gray-500">{selectedColor}</span>
                       )}
                     </p>
                     <div className="flex flex-wrap gap-2">
@@ -528,15 +521,12 @@ const handleAddToCart = async () => {
                   </div>
                 )}
 
-                {/* Size Selector */}
                 {uniqueSizes.length > 0 && (
                   <div className="mb-6">
                     <p className="text-sm font-medium text-gray-700 mb-2">
                       Size
                       {selectedSize && (
-                        <span className="ml-2 font-normal text-gray-500">
-                          {selectedSize}
-                        </span>
+                        <span className="ml-2 font-normal text-gray-500">{selectedSize}</span>
                       )}
                     </p>
                     <div className="flex flex-wrap gap-2">
@@ -563,46 +553,46 @@ const handleAddToCart = async () => {
               </>
             )}
 
-            {/* ── Stock / qty / CTA section ─────────────────────────────── */}
-            {hasVariants && (selectedVariant ? displayStock <= 0 : false) ? (
-              <p className="text-red-500 font-medium mb-4">Out of stock</p>
-            ) : !hasVariants && product.stock <= 0 ? (
+            {/* ── Stock / CTA ── */}
+            {isOutOfStock ? (
               <p className="text-red-500 font-medium mb-4">Out of stock</p>
             ) : (
               <>
-                <div className="flex items-center gap-4 mb-6">
-                  <label className="text-sm font-medium text-gray-700">
-                    Quantity
-                  </label>
-                  <div className="flex items-center border border-gray-300 rounded-xl overflow-hidden">
-                    <button
-                      className="px-3 py-2 hover:bg-gray-50 text-lg flex items-center justify-center"
-                      onClick={() => setQty(Math.max(1, qty - 1))}
-                    >
-                      <Minus className="w-4 h-4" />
-                    </button>
-                    <span className="px-4 py-2 text-sm font-medium">{qty}</span>
-                    <button
-                      className="px-3 py-2 hover:bg-gray-50 text-lg flex items-center justify-center"
-                      onClick={() =>
-                        setQty(Math.min(displayStock || 99, qty + 1))
-                      }
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
+                {!product.isPreOrder && (
+                  <div className="flex items-center gap-4 mb-6">
+                    <label className="text-sm font-medium text-gray-700">Quantity</label>
+                    <div className="flex items-center border border-gray-300 rounded-xl overflow-hidden">
+                      <button
+                        className="px-3 py-2 hover:bg-gray-50 flex items-center justify-center"
+                        onClick={() => setQty(Math.max(1, qty - 1))}
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <span className="px-4 py-2 text-sm font-medium">{qty}</span>
+                      <button
+                        className="px-3 py-2 hover:bg-gray-50 flex items-center justify-center"
+                        onClick={() => setQty(Math.min(displayStock || 99, qty + 1))}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <span className="text-sm text-gray-400">
+                      {displayStock > 0 ? `${displayStock} in stock` : ""}
+                    </span>
                   </div>
-                  <span className="text-sm text-gray-400">
-                    {displayStock > 0 ? `${displayStock} in stock` : ""}
-                  </span>
-                </div>
+                )}
 
                 <div className="flex gap-3">
                   <Button
                     onClick={handleAddToCart}
                     isLoading={addingCart}
-                    className="flex-1"
+                    className={`flex-1 ${product.isPreOrder ? "bg-amber-500 hover:bg-amber-600 border-amber-500" : ""}`}
                   >
-                    <ShoppingCart className="w-4 h-4 mr-2" /> Add to cart
+                    {product.isPreOrder ? (
+                      <><Clock className="w-4 h-4 mr-2" /> Pre-order Now</>
+                    ) : (
+                      <><ShoppingCart className="w-4 h-4 mr-2" /> Add to cart</>
+                    )}
                   </Button>
                   <Button variant="outline" onClick={handleAddToWishlist}>
                     <Heart className="w-4 h-4" />
@@ -614,10 +604,7 @@ const handleAddToCart = async () => {
             {product.tags?.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-6">
                 {product.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full"
-                  >
+                  <span key={tag} className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full">
                     {tag}
                   </span>
                 ))}
@@ -626,53 +613,35 @@ const handleAddToCart = async () => {
           </div>
         </div>
 
-        {/* ── Related products ──────────────────────────────────────────── */}
+        {/* ── Related products ── */}
         {(relatedLoading || relatedProducts.length > 0) && (
           <div className="mt-16">
-            <h2 className="text-2xl font-bold text-gray-900 mb-8">
-              You may also like
-            </h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-8">You may also like</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {relatedLoading
-                ? Array.from({ length: 4 }).map((_, i) => (
-                    <ProductCardSkeleton key={i} />
-                  ))
-                : relatedProducts.map((p) => (
-                    <ProductCard key={p.id} product={p} />
-                  ))}
+                ? Array.from({ length: 4 }).map((_, i) => <ProductCardSkeleton key={i} />)
+                : relatedProducts.map((p) => <ProductCard key={p.id} product={p} />)}
             </div>
           </div>
         )}
 
-        {/* ── Reviews section ────────────────────────────────────────────────── */}
+        {/* ── Reviews ── */}
         <div className="mt-16">
           <h2 className="text-2xl font-bold text-gray-900 mb-8">Reviews</h2>
           {reviews && reviews.reviews && reviews.reviews.length > 0 ? (
             <div className="space-y-6 mb-12">
               {reviews.reviews.map((review) => (
-                <div
-                  key={review.id}
-                  className="bg-white border border-gray-100 rounded-2xl p-6"
-                >
+                <div key={review.id} className="bg-white border border-gray-100 rounded-2xl p-6">
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <p className="font-semibold text-gray-900">
-                        {review.user?.name ?? "Anonymous"}
-                      </p>
-                      <StarRating
-                        value={review.rating}
-                        readonly
-                        size="sm"
-                        className="mt-1"
-                      />
+                      <p className="font-semibold text-gray-900">{review.user?.name ?? "Anonymous"}</p>
+                      <StarRating value={review.rating} readonly size="sm" className="mt-1" />
                     </div>
                     <span className="text-xs text-gray-400">
                       {new Date(review.createdAt).toLocaleDateString()}
                     </span>
                   </div>
-                  {review.comment && (
-                    <p className="text-gray-600 mt-2">{review.comment}</p>
-                  )}
+                  {review.comment && <p className="text-gray-600 mt-2">{review.comment}</p>}
                 </div>
               ))}
             </div>
@@ -682,24 +651,14 @@ const handleAddToCart = async () => {
 
           {isAuthenticated && user?.id !== product.userId && (
             <div className="bg-white border border-gray-100 rounded-2xl p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">
-                Write a review
-              </h3>
+              <h3 className="font-semibold text-gray-900 mb-4">Write a review</h3>
               <form onSubmit={handleSubmitReview} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Rating
-                  </label>
-                  <StarRating
-                    value={reviewRating}
-                    onChange={setReviewRating}
-                    size="md"
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Rating</label>
+                  <StarRating value={reviewRating} onChange={setReviewRating} size="md" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Comment
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Comment</label>
                   <textarea
                     rows={4}
                     className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -708,9 +667,7 @@ const handleAddToCart = async () => {
                     placeholder="Share your experience…"
                   />
                 </div>
-                <Button type="submit" isLoading={submittingReview}>
-                  Submit review
-                </Button>
+                <Button type="submit" isLoading={submittingReview}>Submit review</Button>
               </form>
             </div>
           )}
