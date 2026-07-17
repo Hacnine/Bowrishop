@@ -249,6 +249,7 @@ const handleAddToCart = async () => {
             name: product.name,
             slug: product.slug,
             price: Number(product.price),
+            isPreOrder: product.isPreOrder,
             comparePrice: product.comparePrice
               ? Number(product.comparePrice)
               : undefined,

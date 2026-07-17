@@ -8,6 +8,7 @@ interface ProductsQuery {
   minPrice?: number;
   maxPrice?: number;
   minRating?: number;
+  preOrder?: boolean;
   inStock?: boolean;
   sort?: string;
   page?: number;
