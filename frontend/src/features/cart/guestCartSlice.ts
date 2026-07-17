@@ -30,6 +30,7 @@ export interface GuestCartItem {
   quantity: number;
   product: GuestCartProduct;
   variant?: GuestCartVariant | null; 
+  isPreOrder: boolean;
 }
 
 interface GuestCartState {
