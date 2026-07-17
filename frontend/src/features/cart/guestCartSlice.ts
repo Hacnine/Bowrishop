@@ -10,6 +10,7 @@ export interface GuestCartProduct {
   images: string[];
   stock: number;
   isActive: boolean;
+  isPreOrder: boolean;
 }
 
 export interface GuestCartVariant {
