@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { Boxes, Plus, Pencil, Trash2, X, AlertTriangle, Search, Clock } from 'lucide-react';
+import { Boxes, Plus, Pencil, Trash2, X, AlertTriangle, Search, Clock, Upload, FileJson, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import {
   useGetAdminProductsQuery,
   useCreateProductMutation,
@@ -29,12 +29,18 @@ const schema = z.object({
   categoryId: z.string().min(1, 'Select a category'),
   tags: z.string().optional(),
   isFeatured: z.boolean().optional(),
-  // Pre-order fields
   isPreOrder: z.boolean().optional(),
   preOrderNote: z.string().optional(),
   preOrderDate: z.string().optional(),
 });
 type FormValues = z.infer<typeof schema>;
+
+// JSON import এর জন্য result tracking
+interface ImportResult {
+  name: string;
+  status: 'success' | 'error';
+  message?: string;
+}
 
 export function AdminProducts() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -50,8 +56,15 @@ export function AdminProducts() {
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // ── Batch import state ──────────────────────────────────────────────────
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importResults, setImportResults] = useState<ImportResult[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+  const [importTotal, setImportTotal] = useState(0);
+  const jsonInputRef = useRef<HTMLInputElement>(null);
+
   const { data, isLoading } = useGetAdminProductsQuery({ page, limit: 15, q: searchQuery || undefined });
-  // Flat list — parent > sub hierarchy dropdown তে দেখাবে
   const { data: flatCategories } = useGetFlatCategoriesQuery();
   const [createProduct, { isLoading: creating }] = useCreateProductMutation();
   const [updateProduct, { isLoading: updating }] = useUpdateProductMutation();
@@ -118,25 +131,28 @@ export function AdminProducts() {
     setShowModal(true);
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // ── Batch image upload (multiple files) ────────────────────────────────
+  const handleBatchImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
     setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const url = await uploadImage(formData).unwrap();
-      if (url && typeof url === 'string') {
-        setImageUrls((prev) => [...prev, url]);
-        toast.success('Image uploaded');
-      } else {
-        toast.error('Upload failed: Invalid response');
+    const results: string[] = [];
+    for (const file of files) {
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const url = await uploadImage(formData).unwrap();
+        if (url && typeof url === 'string') results.push(url);
+      } catch {
+        toast.error(`Failed to upload ${file.name}`);
       }
-    } catch (error: any) {
-      toast.error(error?.data?.message || 'Upload failed');
-    } finally {
-      setUploading(false);
     }
+    if (results.length > 0) {
+      setImageUrls((prev) => [...prev, ...results]);
+      toast.success(`${results.length} image${results.length > 1 ? 's' : ''} uploaded`);
+    }
+    setUploading(false);
+    e.target.value = '';
   };
 
   const onSubmit = async (data: FormValues) => {
@@ -149,11 +165,9 @@ export function AdminProducts() {
       tags: data.tags ? data.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
       isFeatured: data.isFeatured ?? false,
       isPreOrder: data.isPreOrder ?? false,
-      // Pre-order fields: empty string → undefined
       preOrderNote: data.isPreOrder && data.preOrderNote ? data.preOrderNote : undefined,
       preOrderDate: data.isPreOrder && data.preOrderDate ? data.preOrderDate : undefined,
     };
-
     try {
       if (editProduct) {
         await updateProduct({ id: editProduct.id, ...payload }).unwrap();
@@ -184,7 +198,80 @@ export function AdminProducts() {
     }
   };
 
-  // Flat categories কে grouped options এ convert করো
+  // ── JSON batch import ──────────────────────────────────────────────────
+  const handleJsonImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    let products: any[];
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      products = Array.isArray(parsed) ? parsed : [parsed];
+    } catch {
+      toast.error('Invalid JSON file');
+      e.target.value = '';
+      return;
+    }
+
+    if (products.length === 0) {
+      toast.error('JSON file is empty');
+      e.target.value = '';
+      return;
+    }
+
+    setImportResults([]);
+    setImportProgress(0);
+    setImportTotal(products.length);
+    setImporting(true);
+    setShowImportModal(true);
+
+    const results: ImportResult[] = [];
+
+    for (let i = 0; i < products.length; i++) {
+      const p = products[i];
+      const name = p.name ?? `Product ${i + 1}`;
+      try {
+        // Basic validation
+        if (!p.name) throw new Error('Missing name');
+        if (!p.description) throw new Error('Missing description');
+        if (!p.price) throw new Error('Missing price');
+        if (!p.categoryId) throw new Error('Missing categoryId');
+        if (!p.images || !Array.isArray(p.images) || p.images.length === 0) throw new Error('Missing images array');
+
+        await createProduct({
+          name: p.name,
+          description: p.description,
+          price: Number(p.price),
+          comparePrice: p.comparePrice ? Number(p.comparePrice) : undefined,
+          stock: Number(p.stock ?? 0),
+          images: p.images,
+          tags: Array.isArray(p.tags) ? p.tags : [],
+          categoryId: p.categoryId,
+          isActive: p.isActive ?? true,
+          isFeatured: p.isFeatured ?? false,
+          isPreOrder: p.isPreOrder ?? false,
+          preOrderNote: p.preOrderNote,
+          preOrderDate: p.preOrderDate,
+        } as any).unwrap();
+
+        results.push({ name, status: 'success' });
+      } catch (err: any) {
+        const msg = err?.data?.message ?? err?.message ?? 'Unknown error';
+        results.push({ name, status: 'error', message: msg });
+      }
+
+      setImportProgress(i + 1);
+      setImportResults([...results]);
+    }
+
+    setImporting(false);
+    e.target.value = '';
+
+    const successCount = results.filter((r) => r.status === 'success').length;
+    toast.success(`Import done: ${successCount}/${products.length} products created`);
+  };
+
   const rootCats = flatCategories?.filter((c) => !c.parentId) ?? [];
   const subCats = flatCategories?.filter((c) => c.parentId) ?? [];
 
@@ -192,9 +279,23 @@ export function AdminProducts() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Products</h1>
-        <Button onClick={openCreate}>
-          <Plus className="w-4 h-4 mr-2" />Add Product
-        </Button>
+        <div className="flex gap-2">
+          {/* JSON import button */}
+          <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 cursor-pointer transition-colors">
+            <FileJson className="w-4 h-4 text-indigo-500" />
+            Import JSON
+            <input
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={handleJsonImport}
+              disabled={importing}
+            />
+          </label>
+          <Button onClick={openCreate}>
+            <Plus className="w-4 h-4 mr-2" />Add Product
+          </Button>
+        </div>
       </div>
 
       {/* Search bar */}
@@ -208,11 +309,7 @@ export function AdminProducts() {
           className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
         {searchInput && (
-          <button
-            type="button"
-            onClick={() => setSearchInput('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-          >
+          <button type="button" onClick={() => setSearchInput('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
             <X className="w-4 h-4" />
           </button>
         )}
@@ -247,18 +344,12 @@ export function AdminProducts() {
                     <tr key={p.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <img
-                            src={p.images[0] ?? '/placeholder.jpg'}
-                            alt=""
-                            className="w-10 h-10 rounded-lg object-cover"
-                          />
+                          <img src={p.images[0] ?? '/placeholder.jpg'} alt="" className="w-10 h-10 rounded-lg object-cover" />
                           <div>
                             <span className="font-medium text-gray-900 line-clamp-1">{p.name}</span>
                             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                               {p.isFeatured && (
-                                <span className="inline-flex items-center gap-1 text-xs text-indigo-600 font-medium">
-                                  ★ Featured
-                                </span>
+                                <span className="inline-flex items-center gap-1 text-xs text-indigo-600 font-medium">★ Featured</span>
                               )}
                               {p.isPreOrder && (
                                 <span className="inline-flex items-center gap-1 text-xs text-amber-600 font-medium">
@@ -272,18 +363,14 @@ export function AdminProducts() {
                       <td className="px-6 py-4 text-gray-700">{formatCurrency(p.price)}</td>
                       <td className="px-6 py-4">
                         {p.isPreOrder ? (
-                          <span className="text-xs font-semibold px-2 py-1 rounded-full bg-amber-50 text-amber-700">
-                            Pre-order
-                          </span>
+                          <span className="text-xs font-semibold px-2 py-1 rounded-full bg-amber-50 text-amber-700">Pre-order</span>
                         ) : (
                           <span className={`text-xs font-semibold px-2 py-1 rounded-full ${p.stock > 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
                             {p.stock > 0 ? p.stock : 'Out of stock'}
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-gray-500">
-                        {p.category?.name ?? '—'}
-                      </td>
+                      <td className="px-6 py-4 text-gray-500">{p.category?.name ?? '—'}</td>
                       <td className="px-6 py-4">
                         <div className="flex gap-2 justify-end">
                           <button type="button" onClick={() => setVariantProduct(p)} title="Manage variants" className="p-1.5 text-gray-400 hover:text-indigo-600">
@@ -303,16 +390,11 @@ export function AdminProducts() {
               </tbody>
             </table>
 
-            {/* Pagination */}
             {data && data.totalPages > 1 && (
               <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
-                <p className="text-sm text-gray-500">
-                  Page {page} of {data.totalPages} · {data.total} products
-                </p>
+                <p className="text-sm text-gray-500">Page {page} of {data.totalPages} · {data.total} products</p>
                 <div className="flex gap-1.5">
-                  <button onClick={() => setPage(page - 1)} disabled={page === 1} className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
-                    ← Prev
-                  </button>
+                  <button onClick={() => setPage(page - 1)} disabled={page === 1} className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">← Prev</button>
                   {Array.from({ length: data.totalPages }, (_, i) => i + 1)
                     .filter((p) => p === 1 || p === data.totalPages || Math.abs(p - page) <= 1)
                     .reduce<(number | '...')[]>((acc, p, idx, arr) => {
@@ -324,20 +406,98 @@ export function AdminProducts() {
                       p === '...' ? (
                         <span key={`e-${idx}`} className="px-2 py-1.5 text-sm text-gray-400">…</span>
                       ) : (
-                        <button key={p} onClick={() => setPage(p as number)} className={`w-8 h-8 rounded-lg text-sm ${p === page ? 'bg-indigo-600 text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
-                          {p}
-                        </button>
+                        <button key={p} onClick={() => setPage(p as number)} className={`w-8 h-8 rounded-lg text-sm ${p === page ? 'bg-indigo-600 text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'}`}>{p}</button>
                       )
                     )}
-                  <button onClick={() => setPage(page + 1)} disabled={page === data.totalPages} className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
-                    Next →
-                  </button>
+                  <button onClick={() => setPage(page + 1)} disabled={page === data.totalPages} className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">Next →</button>
                 </div>
               </div>
             )}
           </>
         )}
       </div>
+
+      {/* ── JSON Import Progress Modal ── */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div>
+                <h2 className="font-semibold text-gray-900">Importing Products</h2>
+                {importTotal > 0 && (
+                  <p className="text-sm text-gray-500 mt-0.5">{importProgress} / {importTotal} processed</p>
+                )}
+              </div>
+              {!importing && (
+                <button onClick={() => { setShowImportModal(false); setImportResults([]); }}>
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              )}
+            </div>
+
+            {/* Progress bar */}
+            {importTotal > 0 && (
+              <div className="px-6 pt-4">
+                <div className="w-full bg-gray-100 rounded-full h-2">
+                  <div
+                    className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${(importProgress / importTotal) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Results list */}
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2">
+              {importResults.length === 0 && importing && (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
+                  <span className="ml-2 text-sm text-gray-500">Reading JSON file…</span>
+                </div>
+              )}
+              {importResults.map((r, i) => (
+                <div key={i} className={`flex items-start gap-3 p-3 rounded-xl ${r.status === 'success' ? 'bg-green-50' : 'bg-red-50'}`}>
+                  {r.status === 'success'
+                    ? <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                    : <XCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />}
+                  <div className="min-w-0">
+                    <p className={`text-sm font-medium truncate ${r.status === 'success' ? 'text-green-800' : 'text-red-800'}`}>{r.name}</p>
+                    {r.message && <p className="text-xs text-red-600 mt-0.5">{r.message}</p>}
+                  </div>
+                </div>
+              ))}
+              {/* Currently processing indicator */}
+              {importing && importProgress < importTotal && importResults.length > 0 && (
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-indigo-50">
+                  <Loader2 className="w-4 h-4 text-indigo-500 animate-spin flex-shrink-0" />
+                  <p className="text-sm text-indigo-700">Processing…</p>
+                </div>
+              )}
+            </div>
+
+            {/* Summary footer */}
+            {!importing && importResults.length > 0 && (
+              <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex gap-4 text-sm">
+                    <span className="text-green-700 font-medium">
+                      ✓ {importResults.filter((r) => r.status === 'success').length} created
+                    </span>
+                    {importResults.filter((r) => r.status === 'error').length > 0 && (
+                      <span className="text-red-600 font-medium">
+                        ✗ {importResults.filter((r) => r.status === 'error').length} failed
+                      </span>
+                    )}
+                  </div>
+                  <Button size="sm" onClick={() => { setShowImportModal(false); setImportResults([]); }}>
+                    Done
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Delete dialog ── */}
       {deleteTarget && (
@@ -377,6 +537,8 @@ export function AdminProducts() {
               <button onClick={() => setShowModal(false)}><X className="w-5 h-5 text-gray-400" /></button>
             </div>
             <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+
+              {/* Name with char counter */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-sm font-medium text-gray-700">Name</label>
@@ -391,7 +553,7 @@ export function AdminProducts() {
                 {nameValue.length > 60 && (
                   <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
                     <AlertTriangle className="w-3 h-3" />
-                    Name too long — card এ কাটা যাবে। {nameValue.length - 60} character কমাও।
+                    Name too long — {nameValue.length - 60} character কমাও।
                   </p>
                 )}
                 {nameValue.length > 45 && nameValue.length <= 60 && (
@@ -399,20 +561,22 @@ export function AdminProducts() {
                 )}
                 {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name.message}</p>}
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
                 <textarea rows={3} className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" {...register('description')} />
                 {errors.description && <p className="mt-1 text-xs text-red-500">{errors.description.message}</p>}
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <Input label="Price (৳)" type="number" step="0.01" error={errors.price?.message} {...register('price')} />
                 <Input label="Compare at price (৳)" type="number" step="0.01" error={errors.comparePrice?.message} {...register('comparePrice')} />
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <Input label="Stock" type="number" error={errors.stock?.message} {...register('stock')} />
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Category</label>
-                  {/* Grouped dropdown: root categories + their sub-categories */}
                   <select
                     className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     {...register('categoryId')}
@@ -435,61 +599,43 @@ export function AdminProducts() {
                   {errors.categoryId && <p className="mt-1 text-xs text-red-500">{errors.categoryId.message}</p>}
                 </div>
               </div>
+
               <Input label="Tags (comma separated)" placeholder="fashion, summer, sale" {...register('tags')} />
 
-              {/* ── Featured toggle ── */}
+              {/* Featured toggle */}
               <label className="flex items-center gap-3 cursor-pointer p-3 border border-indigo-100 rounded-xl hover:bg-indigo-50/40 transition-colors">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 rounded text-indigo-600 border-gray-300 focus:ring-indigo-500"
-                  {...register('isFeatured')}
-                />
+                <input type="checkbox" className="w-4 h-4 rounded text-indigo-600 border-gray-300 focus:ring-indigo-500" {...register('isFeatured')} />
                 <div>
                   <span className="text-sm font-medium text-gray-800">★ Featured product</span>
                   <p className="text-xs text-gray-500 mt-0.5">Homepage featured section এ দেখাবে</p>
                 </div>
               </label>
 
-              {/* ── Pre-order section ── */}
+              {/* Pre-order section */}
               <div className="border border-amber-200 rounded-xl p-4 bg-amber-50/50 space-y-3">
                 <label className="flex items-center gap-2.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 rounded text-amber-600 border-gray-300 focus:ring-amber-500"
-                    {...register('isPreOrder')}
-                  />
+                  <input type="checkbox" className="w-4 h-4 rounded text-amber-600 border-gray-300 focus:ring-amber-500" {...register('isPreOrder')} />
                   <div>
                     <span className="text-sm font-medium text-gray-800 flex items-center gap-1.5">
-                      <Clock className="w-4 h-4 text-amber-600" />
-                      Pre-order product
+                      <Clock className="w-4 h-4 text-amber-600" /> Pre-order product
                     </span>
                     <p className="text-xs text-gray-500 mt-0.5">Stock check ও decrement skip হবে order এ</p>
                   </div>
                 </label>
-
                 {isPreOrder && (
                   <>
-                    <Input
-                      label="Pre-order note"
-                      placeholder="e.g. Ships in 2–3 weeks"
-                      {...register('preOrderNote')}
-                    />
+                    <Input label="Pre-order note" placeholder="e.g. Ships in 2–3 weeks" {...register('preOrderNote')} />
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        Expected availability date
-                        <span className="ml-1 text-gray-400 font-normal">(optional)</span>
+                        Expected availability date <span className="text-gray-400 font-normal">(optional)</span>
                       </label>
-                      <input
-                        type="date"
-                        className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        {...register('preOrderDate')}
-                      />
+                      <input type="date" className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" {...register('preOrderDate')} />
                     </div>
                   </>
                 )}
               </div>
 
-              {/* Images */}
+              {/* Images — batch upload */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Images</label>
                 <div className="flex flex-wrap gap-2 mb-2">
@@ -503,13 +649,18 @@ export function AdminProducts() {
                       >×</button>
                     </div>
                   ))}
-                  <label className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-indigo-400">
+                  {/* Multiple files allowed */}
+                  <label className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-indigo-400 gap-0.5">
                     {uploading
                       ? <div className="animate-spin w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full" />
-                      : <Plus className="w-5 h-5 text-gray-400" />}
-                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploading} />
+                      : <>
+                          <Upload className="w-4 h-4 text-gray-400" />
+                          <span className="text-[10px] text-gray-400">Multi</span>
+                        </>}
+                    <input type="file" accept="image/*" multiple className="hidden" onChange={handleBatchImageUpload} disabled={uploading} />
                   </label>
                 </div>
+                <p className="text-xs text-gray-400">Multiple images select করতে পারবে একসাথে</p>
               </div>
 
               <div className="flex gap-3 pt-2">
