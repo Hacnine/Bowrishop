@@ -12,14 +12,15 @@ import {
   PackageCheck,
   Headset,
   Eye,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 // Import Swiper React components and styles
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Navigation, Pagination } from "swiper/modules";
+import { Navigation, Autoplay } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/navigation";
-import "swiper/css/pagination";
 
 import {
   useGetFeaturedProductsQuery,
@@ -48,6 +49,8 @@ function SectionHeader({
   href,
   accentColor = "text-[#C7927E]",
   bgColor = "bg-[#F7EDE6]",
+  prevId,
+  nextId,
 }: {
   eyebrow: string;
   title: string;
@@ -55,6 +58,8 @@ function SectionHeader({
   href: string;
   accentColor?: string;
   bgColor?: string;
+  prevId: string;
+  nextId: string;
 }) {
   return (
     <div className="flex items-end justify-between mb-7">
@@ -73,12 +78,33 @@ function SectionHeader({
           </h2>
         </div>
       </div>
-      <Link
-        to={href}
-        className="text-sm text-[#C7927E] font-medium hover:underline flex items-center gap-1 mb-1 whitespace-nowrap"
-      >
-        View all <ArrowRight className="w-3.5 h-3.5" />
-      </Link>
+      
+      <div className="flex items-center gap-4 mb-1">
+        {/* Custom Navigation Elements */}
+        <div className="flex items-center gap-1.5">
+          <button
+            id={prevId}
+            className="w-8 h-8 rounded-xl bg-white border border-[#EFE5DD] text-[#4A3328] flex items-center justify-center hover:bg-[#F7EDE6] hover:text-[#C7927E] transition-colors disabled:opacity-40 disabled:pointer-events-none"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            id={nextId}
+            className="w-8 h-8 rounded-xl bg-white border border-[#EFE5DD] text-[#4A3328] flex items-center justify-center hover:bg-[#F7EDE6] hover:text-[#C7927E] transition-colors disabled:opacity-40 disabled:pointer-events-none"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+
+        <span className="w-px h-4 bg-gray-200" />
+
+        <Link
+          to={href}
+          className="text-sm text-[#C7927E] font-medium hover:underline flex items-center gap-1 whitespace-nowrap"
+        >
+          View all <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
+      </div>
     </div>
   );
 }
@@ -87,10 +113,14 @@ function ProductCarousel({
   isLoading,
   products,
   count = 10,
+  prevId,
+  nextId,
 }: {
   isLoading: boolean;
   products?: any[];
   count?: number;
+  prevId: string;
+  nextId: string;
 }) {
   const sliderBreakpoints = {
     320: { slidesPerView: 2, spaceBetween: 12 },
@@ -102,9 +132,9 @@ function ProductCarousel({
     return (
       <Swiper
         modules={[Navigation]}
-        navigation
+        navigation={{ prevEl: `#${prevId}`, nextEl: `#${nextId}` }}
         breakpoints={sliderBreakpoints}
-        className="product-swiper !pb-4"
+        className="product-swiper"
       >
         {Array.from({ length: 5 }).map((_, i) => (
           <SwiperSlide key={i}>
@@ -117,11 +147,16 @@ function ProductCarousel({
 
   return (
     <Swiper
-      modules={[Navigation, Pagination]}
-      navigation
-      pagination={{ clickable: true, dynamicBullets: true }}
+      modules={[Navigation, Autoplay]}
+      navigation={{ prevEl: `#${prevId}`, nextEl: `#${nextId}` }}
+      loop={true}
+      autoplay={{
+        delay: 3500,
+        disableOnInteraction: false,
+        pauseOnMouseEnter: true,
+      }}
       breakpoints={sliderBreakpoints}
-      className="product-swiper !pb-10"
+      className="product-swiper"
     >
       {products?.slice(0, count).map((p) => (
         <SwiperSlide key={p.id} className="h-full">
@@ -151,27 +186,6 @@ export function HomePage() {
         title="Bowri Shop | Home, Kitchen, Beauty, Electronics, Clothing & Footwear"
         description="Shop home essentials, kitchenware, beauty products, electronics, clothing, footwear and more at Bowri Shop. Fast delivery across Bangladesh."
       />
-
-      {/* Global Swiper Navigation Style Overrides */}
-      <style>{`
-        .product-swiper .swiper-button-next,
-        .product-swiper .swiper-button-prev {
-          color: #4A3328;
-          background: rgba(255, 255, 255, 0.9);
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .product-swiper .swiper-button-next:after,
-        .product-swiper .swiper-button-prev:after {
-          font-size: 14px;
-          font-weight: bold;
-        }
-        .product-swiper .swiper-pagination-bullet-active {
-          background-color: #C7927E !important;
-        }
-      `}</style>
 
       <div className="bg-[#FDFAF7]">
         {/* ── Hero ── */}
@@ -254,7 +268,7 @@ export function HomePage() {
           </div>
         </section>
 
-        {/* ── Promo banners ── */}
+        {/* ── Promo Banners (Top Set: Hair & Decor) ── */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Link
@@ -305,8 +319,15 @@ export function HomePage() {
             title="Best Selling"
             icon={Flame}
             href="/products?sort=best_selling"
+            prevId="best-prev"
+            nextId="best-next"
           />
-          <ProductCarousel isLoading={loadingBest} products={bestSelling} />
+          <ProductCarousel
+            isLoading={loadingBest}
+            products={bestSelling}
+            prevId="best-prev"
+            nextId="best-next"
+          />
         </section>
 
         {/* ── Flash Sale Banner ── */}
@@ -343,8 +364,15 @@ export function HomePage() {
               title="On Sale Now"
               icon={Tag}
               href="/products?sale=true"
+              prevId="sale-prev"
+              nextId="sale-next"
             />
-            <ProductCarousel isLoading={loadingSale} products={onSale} />
+            <ProductCarousel
+              isLoading={loadingSale}
+              products={onSale}
+              prevId="sale-prev"
+              nextId="sale-next"
+            />
           </section>
         )}
 
@@ -355,8 +383,15 @@ export function HomePage() {
             title="Featured Products"
             icon={Sparkles}
             href="/products?featured=true"
+            prevId="feat-prev"
+            nextId="feat-next"
           />
-          <ProductCarousel isLoading={loadingFeatured} products={featured} />
+          <ProductCarousel
+            isLoading={loadingFeatured}
+            products={featured}
+            prevId="feat-prev"
+            nextId="feat-next"
+          />
         </section>
 
         {/* ── New Arrivals ── */}
@@ -366,12 +401,19 @@ export function HomePage() {
             title="New Arrivals"
             icon={ArrowRight}
             href="/products?sort=newest"
+            prevId="new-prev"
+            nextId="new-next"
           />
-          <ProductCarousel isLoading={loadingNew} products={newArrivals} />
+          <ProductCarousel
+            isLoading={loadingNew}
+            products={newArrivals}
+            prevId="new-prev"
+            nextId="new-next"
+          />
         </section>
 
         {/* ── Most Viewed ── */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-16">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <SectionHeader
             eyebrow="Trending Now"
             title="Most Viewed"
@@ -379,8 +421,59 @@ export function HomePage() {
             href="/products"
             accentColor="text-purple-500"
             bgColor="bg-purple-50"
+            prevId="viewed-prev"
+            nextId="viewed-next"
           />
-          <ProductCarousel isLoading={loadingViewed} products={mostViewed} />
+          <ProductCarousel
+            isLoading={loadingViewed}
+            products={mostViewed}
+            prevId="viewed-prev"
+            nextId="viewed-next"
+          />
+        </section>
+
+        {/* ── Promo Banners (Bottom Set: Unique Categories) ── */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Link
+              to="/products?categoryId=4"
+              className="group relative h-44 rounded-3xl overflow-hidden bg-gradient-to-br from-[#E2EAFC] to-[#C1D3FE] flex items-center px-8"
+            >
+              <div className="relative z-10">
+                <p className="text-xs font-bold uppercase tracking-widest text-[#3F37C9] mb-1">
+                  Smart Tech
+                </p>
+                <h3 className="text-2xl font-bold font-cormorant text-[#1F1A3A] leading-tight mb-3">
+                  Latest
+                  <br />
+                  Electronics
+                </h3>
+                <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#3F37C9] group-hover:gap-2 transition-all">
+                  Shop Tech <ArrowRight className="w-4 h-4" />
+                </span>
+              </div>
+              <div className="absolute right-0 bottom-0 w-40 h-40 opacity-15 bg-[#3F37C9] rounded-full translate-x-10 translate-y-10" />
+            </Link>
+            <Link
+              to="/products?categoryId=5"
+              className="group relative h-44 rounded-3xl overflow-hidden bg-gradient-to-br from-[#F5E6E8] to-[#D5B9B2] flex items-center px-8"
+            >
+              <div className="relative z-10">
+                <p className="text-xs font-bold uppercase tracking-widest text-[#8A5A44] mb-1">
+                  Step Out In Style
+                </p>
+                <h3 className="text-2xl font-bold font-cormorant text-[#4A3328] leading-tight mb-3">
+                  Clothing &
+                  <br />
+                  Footwear
+                </h3>
+                <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#8A5A44] group-hover:gap-2 transition-all">
+                  Explore Fashion <ArrowRight className="w-4 h-4" />
+                </span>
+              </div>
+              <div className="absolute right-6 top-1/2 -translate-y-1/2 w-32 h-32 opacity-15 bg-[#8A5A44] rounded-full" />
+            </Link>
+          </div>
         </section>
 
         {/* ── Why Choose Us ── */}
