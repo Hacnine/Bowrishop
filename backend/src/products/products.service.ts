@@ -111,6 +111,8 @@ export class ProductsService {
           isPreOrder: dto.isPreOrder ?? false,
           preOrderNote: dto.preOrderNote,
           preOrderDate,
+          // Specifications
+          specifications: dto.specifications ?? undefined,
           variants: { create: variantData },
         },
         include: PRODUCT_WITH_VARIANTS,

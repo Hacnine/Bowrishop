@@ -625,16 +625,83 @@ export function ProductDetailPage() {
           </div>
         )}
 
-        {/* ── Reviews ── */}
-        <div className="mt-16">
-          <h2 className="text-2xl font-bold text-gray-900 mb-8">Reviews</h2>
-          {reviews && reviews.reviews && reviews.reviews.length > 0 ? (
-            <div className="space-y-6 mb-12">
-              {reviews.reviews.map((review) => (
+        {/* ── Tabs: Specification / Description / Reviews ── */}
+        <TabSection product={product} reviews={reviews} isAuthenticated={isAuthenticated} user={user} onSubmitReview={handleSubmitReview} submittingReview={submittingReview} reviewRating={reviewRating} setReviewRating={setReviewRating} reviewComment={reviewComment} setReviewComment={setReviewComment} />
+      </div>
+    </>
+  );
+}
+
+// ── 3-tab section ──────────────────────────────────────────────────────────
+function TabSection({ product, reviews, isAuthenticated, user, onSubmitReview, submittingReview, reviewRating, setReviewRating, reviewComment, setReviewComment }: any) {
+  const [activeTab, setActiveTab] = useState<'spec' | 'desc' | 'reviews'>('spec');
+
+  const hasSpecs = product.specifications && Object.keys(product.specifications).length > 0;
+  const defaultTab = hasSpecs ? 'spec' : 'desc';
+  const [tab, setTab] = useState<'spec' | 'desc' | 'reviews'>(defaultTab);
+
+  const tabs = [
+    { id: 'spec', label: 'Specification', show: true },
+    { id: 'desc', label: 'Description', show: true },
+    { id: 'reviews', label: `Reviews (${product.reviewCount ?? 0})`, show: true },
+  ] as const;
+
+  return (
+    <div className="mt-16">
+      {/* Tab headers */}
+      <div className="flex border-b border-gray-200 mb-6 overflow-x-auto">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${
+              tab === t.id
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Specification tab */}
+      {tab === 'spec' && (
+        <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
+          {hasSpecs ? (
+            <table className="w-full text-sm">
+              <tbody className="divide-y divide-gray-50">
+                {Object.entries(product.specifications as Record<string, string>).map(([key, value]) => (
+                  <tr key={key} className="hover:bg-gray-50">
+                    <td className="px-5 py-3.5 font-medium text-gray-700 w-2/5 bg-gray-50/50">{key}</td>
+                    <td className="px-5 py-3.5 text-gray-600">{value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="text-gray-400 text-sm text-center py-10">No specifications available.</p>
+          )}
+        </div>
+      )}
+
+      {/* Description tab */}
+      {tab === 'desc' && (
+        <div className="bg-white border border-gray-100 rounded-2xl p-6">
+          <DescriptionTabContent text={product.description} />
+        </div>
+      )}
+
+      {/* Reviews tab */}
+      {tab === 'reviews' && (
+        <div className="space-y-6">
+          {reviews?.reviews?.length > 0 ? (
+            <div className="space-y-4">
+              {reviews.reviews.map((review: any) => (
                 <div key={review.id} className="bg-white border border-gray-100 rounded-2xl p-6">
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <p className="font-semibold text-gray-900">{review.user?.name ?? "Anonymous"}</p>
+                      <p className="font-semibold text-gray-900">{review.user?.name ?? 'Anonymous'}</p>
                       <StarRating value={review.rating} readonly size="sm" className="mt-1" />
                     </div>
                     <span className="text-xs text-gray-400">
@@ -646,13 +713,13 @@ export function ProductDetailPage() {
               ))}
             </div>
           ) : (
-            <p className="text-gray-500 mb-10">No reviews yet. Be the first!</p>
+            <p className="text-gray-500">No reviews yet. Be the first!</p>
           )}
 
           {isAuthenticated && user?.id !== product.userId && (
             <div className="bg-white border border-gray-100 rounded-2xl p-6">
               <h3 className="font-semibold text-gray-900 mb-4">Write a review</h3>
-              <form onSubmit={handleSubmitReview} className="space-y-4">
+              <form onSubmit={onSubmitReview} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Rating</label>
                   <StarRating value={reviewRating} onChange={setReviewRating} size="md" />
@@ -663,7 +730,7 @@ export function ProductDetailPage() {
                     rows={4}
                     className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     value={reviewComment}
-                    onChange={(e) => setReviewComment(e.target.value)}
+                    onChange={(e: any) => setReviewComment(e.target.value)}
                     placeholder="Share your experience…"
                   />
                 </div>
@@ -672,7 +739,34 @@ export function ProductDetailPage() {
             </div>
           )}
         </div>
-      </div>
-    </>
+      )}
+    </div>
+  );
+}
+
+function DescriptionTabContent({ text }: { text: string }) {
+  const lines = text.split('\n').map((l: string) => l.trim()).filter(Boolean);
+  return (
+    <div className="space-y-2 text-gray-600 leading-relaxed text-sm">
+      {lines.map((line: string, i: number) => {
+        const isHeader = line.endsWith(':') && !line.startsWith('✅');
+        const isCheck = line.startsWith('✅');
+        if (isHeader) return <p key={i} className="font-semibold text-gray-800 mt-4 mb-1">{line}</p>;
+        if (isCheck) {
+          const [label, ...rest] = line.replace('✅', '').trim().split(' – ');
+          const detail = rest.join(' – ');
+          return (
+            <div key={i} className="flex items-start gap-2">
+              <span className="text-green-500 mt-0.5 shrink-0">✅</span>
+              <p>
+                <span className="font-medium text-gray-800">{label}</span>
+                {detail && <span className="text-gray-500"> – {detail}</span>}
+              </p>
+            </div>
+          );
+        }
+        return <p key={i}>{line}</p>;
+      })}
+    </div>
   );
 }

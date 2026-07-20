@@ -58,7 +58,6 @@ export function Header() {
           {/* Nav */}
           <nav className="hidden md:flex items-center gap-6">
             <Link to="/products" className="text-sm text-gray-600 hover:text-indigo-600 font-medium">Shop</Link>
-            <Link to="/contact" className="text-sm text-gray-600 hover:text-indigo-600 font-medium">Contact</Link>
 
             {isAuthenticated ? (
               <>

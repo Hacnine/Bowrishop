@@ -8,7 +8,7 @@ export function MainLayout() {
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Toaster position="top-right" />
       <Header />
-      <main className="flex-1">
+      <main className="flex-1 pb-14 sm:pb-0">
         <Outlet />
       </main>
       <Footer />
