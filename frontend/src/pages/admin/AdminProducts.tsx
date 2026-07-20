@@ -21,7 +21,7 @@ import { formatCurrency } from '../../utils';
 import type { Product } from '../../types/types.index';
 
 const schema = z.object({
-  name: z.string().min(2).max(80, 'Name must be 80 characters or less'),
+  name: z.string().min(2).max(60, 'Name must be 60 characters or less'),
   description: z.string().min(10),
   price: z.union([z.coerce.number().positive(), z.literal('')]),
   comparePrice: z.union([z.coerce.number().positive(), z.literal('')]).optional(),
@@ -63,6 +63,15 @@ export function AdminProducts() {
   const [importProgress, setImportProgress] = useState(0);
   const [importTotal, setImportTotal] = useState(0);
   const jsonInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Specifications state (key-value pairs) ──────────────────────────────
+  const [specs, setSpecs] = useState<{ key: string; value: string }[]>([]);
+
+  const addSpec = () => setSpecs((prev) => [...prev, { key: '', value: '' }]);
+  const removeSpec = (i: number) => setSpecs((prev) => prev.filter((_, idx) => idx !== i));
+  const updateSpec = (i: number, field: 'key' | 'value', val: string) => {
+    setSpecs((prev) => prev.map((s, idx) => idx === i ? { ...s, [field]: val } : s));
+  };
 
   const { data, isLoading } = useGetAdminProductsQuery({ page, limit: 15, q: searchQuery || undefined });
   const { data: flatCategories } = useGetFlatCategoriesQuery();
@@ -108,6 +117,7 @@ export function AdminProducts() {
   const openCreate = () => {
     setEditProduct(null);
     setImageUrls([]);
+    setSpecs([]);
     reset({ isPreOrder: false, isFeatured: false });
     setShowModal(true);
   };
@@ -115,6 +125,11 @@ export function AdminProducts() {
   const openEdit = (p: Product) => {
     setEditProduct(p);
     setImageUrls(p.images);
+    // specifications object → key-value array
+    const existingSpecs = p.specifications
+      ? Object.entries(p.specifications).map(([key, value]) => ({ key, value: String(value) }))
+      : [];
+    setSpecs(existingSpecs);
     reset({
       name: p.name,
       description: p.description,
@@ -167,6 +182,9 @@ export function AdminProducts() {
       isPreOrder: data.isPreOrder ?? false,
       preOrderNote: data.isPreOrder && data.preOrderNote ? data.preOrderNote : undefined,
       preOrderDate: data.isPreOrder && data.preOrderDate ? data.preOrderDate : undefined,
+      specifications: specs.length > 0
+        ? Object.fromEntries(specs.filter((s) => s.key.trim()).map((s) => [s.key.trim(), s.value.trim()]))
+        : undefined,
     };
     try {
       if (editProduct) {
@@ -542,22 +560,22 @@ export function AdminProducts() {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-sm font-medium text-gray-700">Name</label>
-                  <span className={`text-xs font-medium ${nameValue.length > 80 ? 'text-red-500' : nameValue.length > 45 ? 'text-amber-500' : 'text-gray-400'}`}>
-                    {nameValue.length}/80
+                  <span className={`text-xs font-medium ${nameValue.length > 60 ? 'text-red-500' : nameValue.length > 45 ? 'text-amber-500' : 'text-gray-400'}`}>
+                    {nameValue.length}/60
                   </span>
                 </div>
                 <input
-                  className={`w-full border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 ${nameValue.length > 80 ? 'border-red-400 focus:ring-red-500' : 'border-gray-300 focus:ring-indigo-500'}`}
+                  className={`w-full border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 ${nameValue.length > 60 ? 'border-red-400 focus:ring-red-500' : 'border-gray-300 focus:ring-indigo-500'}`}
                   {...register('name')}
                 />
-                {nameValue.length > 80 && (
+                {nameValue.length > 60 && (
                   <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
                     <AlertTriangle className="w-3 h-3" />
-                    Name too long — {nameValue.length - 80} character কমাও।
+                    Name too long — {nameValue.length - 60} character কমাও।
                   </p>
                 )}
-                {nameValue.length > 45 && nameValue.length <= 80 && (
-                  <p className="mt-1 text-xs text-amber-500">{80 - nameValue.length} character বাকি</p>
+                {nameValue.length > 45 && nameValue.length <= 60 && (
+                  <p className="mt-1 text-xs text-amber-500">{60 - nameValue.length} character বাকি</p>
                 )}
                 {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name.message}</p>}
               </div>
@@ -635,6 +653,53 @@ export function AdminProducts() {
                 )}
               </div>
 
+              {/* ── Specifications ── */}
+              <div className="border border-gray-200 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">Specifications</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Brand, Material, Size ইত্যাদি — optional</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addSpec}
+                    className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium border border-indigo-200 rounded-lg px-2.5 py-1.5 hover:bg-indigo-50 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add row
+                  </button>
+                </div>
+
+                {specs.length === 0 && (
+                  <p className="text-xs text-gray-400 text-center py-2">No specifications added yet.</p>
+                )}
+
+                {specs.map((spec, i) => (
+                  <div key={i} className="flex gap-2 items-center">
+                    <input
+                      type="text"
+                      placeholder="Key (e.g. Brand)"
+                      value={spec.key}
+                      onChange={(e) => updateSpec(i, 'key', e.target.value)}
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Value (e.g. BMW)"
+                      value={spec.value}
+                      onChange={(e) => updateSpec(i, 'value', e.target.value)}
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeSpec(i)}
+                      className="p-1.5 text-gray-400 hover:text-red-500 flex-shrink-0"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
               {/* Images — batch upload */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Images</label>
@@ -664,7 +729,7 @@ export function AdminProducts() {
               </div>
 
               <div className="flex gap-3 pt-2">
-                <Button type="submit" isLoading={creating || updating} disabled={nameValue.length > 80}>
+                <Button type="submit" isLoading={creating || updating} disabled={nameValue.length > 60}>
                   {editProduct ? 'Save changes' : 'Create product'}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
