@@ -134,3 +134,76 @@ export interface Review {
   user?: Pick<User, 'id' | 'name' | 'avatar'>;
   createdAt: string;
 }
+
+export interface WishlistItem {
+  id: string;
+  productId: string;
+  product: Pick<Product, 'id' | 'name' | 'slug' | 'price' | 'comparePrice' | 'images' | 'stock'> & {
+    variants?: Pick<ProductVariant, 'id' | 'price' | 'stock'>[];
+  };
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  description?: string;
+  discountType: 'PERCENTAGE' | 'FIXED';
+  discount: number;
+  minOrder: number;
+  maxUses?: number;
+  usedCount: number;
+  expiresAt?: string;
+  isActive: boolean;
+}
+
+export interface Inquiry {
+  id: string;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+  response?: string;
+  user?: Pick<User, 'id' | 'name' | 'email'>;
+  createdAt: string;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+  user: User;
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  totalOrders: number;
+  totalProducts: number;
+  totalRevenue: number;
+  recentOrders: Order[];
+  topProducts: Array<{ productId: string; _sum: { quantity: number }; product?: Product }>;
+  ordersByStatus: Array<{ status: OrderStatus; _count: { id: number } }>;
+}
+
+// ─── Variant mutation payloads ─────────────────────────────────────────────────
+
+export interface CreateVariantPayload {
+  color?: string;
+  colorHex?: string;
+  size?: string;
+  price: number;
+  comparePrice?: number;
+  stock: number;
+  images?: string[];
+  sku?: string;
+  isActive?: boolean;
+}
+
+export interface UpdateVariantPayload extends Partial<CreateVariantPayload> {}
