@@ -42,16 +42,8 @@ export function Footer() {
                 Your one-stop destination for trending products at the best prices.
               </p>
             </div>
-            {/* WhatsApp CTA — mobile তেও দেখাবে */}
-            <a
-              href={WHATSAPP_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2.5 bg-green-500 hover:bg-green-600 text-white font-semibold px-5 py-3 rounded-xl transition-colors self-start sm:self-auto"
-            >
-              <WhatsAppIcon />
-              01403041607
-            </a>
+         
+          
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
@@ -127,10 +119,10 @@ export function Footer() {
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Chat on WhatsApp"
-        className="fixed z-50 right-4 bottom-[76px] sm:bottom-6 sm:right-6 bg-green-500 hover:bg-green-600 text-white shadow-xl rounded-full p-3 sm:px-5 sm:py-3 sm:rounded-xl flex items-center gap-2 font-semibold transition-all hover:scale-105 active:scale-95"
+        className="fixed z-50 right-4 bottom-[76px] sm:bottom-6 sm:right-6 bg-green-500 hover:bg-green-600 text-white shadow-xl rounded-full p-3 sm:px-5 sm:py-3 flex items-center gap-2 font-semibold transition-all hover:scale-105 active:scale-95"
       >
         <WhatsAppIcon />
-        <span className="hidden sm:inline text-sm">01403041607</span>
+        <span className="hidden text-sm">01403041607</span>
       </a>
 
       {/* ── Mobile bottom nav bar ── */}
