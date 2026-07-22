@@ -35,8 +35,8 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="text-2xl font-bold text-indigo-600 flex-shrink-0">
-            <img src="/Icon/icon-2.webp" className='h-24'/>
+          <Link to="/" className="flex-shrink-0 flex items-center overflow-hidden h-16">
+            <img src="/Icon/icon-3.webp" className="h-24 w-auto object-contain -my-4" />
           </Link>
 
           {/* Search - desktop */}
