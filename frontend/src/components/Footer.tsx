@@ -57,7 +57,7 @@ export function Footer() {
                 <a href="https://www.instagram.com/bowrishop/" target="_blank" rel="noopener noreferrer" className="w-9 h-9 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-pink-600 hover:text-white transition-colors">
                   <InstagramIcon />
                 </a>
-                <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="w-9 h-9 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:bg-green-600 hover:text-white transition-colors">
+                <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="w-9 h-9 bg-gray-800 rounded-full flex items-center justify-center text-gray-400 hover:bg-green-600 hover:text-white transition-colors">
                   <WhatsAppIcon />
                 </a>
               </div>
@@ -119,7 +119,7 @@ export function Footer() {
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Chat on WhatsApp"
-        className="fixed z-50 right-4 bottom-[76px] sm:bottom-6 sm:right-6 bg-green-500 hover:bg-green-600 text-white shadow-xl rounded-full p-3 sm:px-5 sm:py-3 flex items-center gap-2 font-semibold transition-all hover:scale-105 active:scale-95"
+        className="fixed z-50 right-4 bottom-[76px] sm:bottom-6 sm:right-6 bg-green-500 hover:bg-green-600 text-white shadow-xl rounded-full p-3 flex items-center gap-2 font-semibold transition-all hover:scale-105 active:scale-95"
       >
         <WhatsAppIcon />
         <span className="hidden text-sm">01403041607</span>
