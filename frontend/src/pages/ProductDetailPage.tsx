@@ -10,7 +10,6 @@ import { useAddToCartMutation } from "../features/cart/cartApi";
 import { useAddToWishlistMutation } from "../features/wishlist/wishlistApi";
 import { useAppSelector, useAppDispatch } from "../app/hooks";
 import { addGuestItem } from "../features/cart/guestCartSlice";
-import { Button } from "../components/ui/Button";
 import { StarRating } from "../components/ui/StarRating";
 import { Skeleton } from "../components/ui/Skeleton";
 import { formatCurrency } from "../utils";
@@ -22,6 +21,7 @@ import {
   useGetProductsQuery,
 } from "../features/products/productsApi";
 import type { ProductVariant } from "../types/types.index";
+import { Button } from "@/components/ui/Button";
 
 export function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -612,6 +612,8 @@ export function ProductDetailPage() {
             )}
           </div>
         </div>
+          {/* ── Tabs: Specification / Description / Reviews ── */}
+        <TabSection product={product} reviews={reviews} isAuthenticated={isAuthenticated} user={user} onSubmitReview={handleSubmitReview} submittingReview={submittingReview} reviewRating={reviewRating} setReviewRating={setReviewRating} reviewComment={reviewComment} setReviewComment={setReviewComment} />
 
         {/* ── Related products ── */}
         {(relatedLoading || relatedProducts.length > 0) && (
@@ -625,8 +627,7 @@ export function ProductDetailPage() {
           </div>
         )}
 
-        {/* ── Tabs: Specification / Description / Reviews ── */}
-        <TabSection product={product} reviews={reviews} isAuthenticated={isAuthenticated} user={user} onSubmitReview={handleSubmitReview} submittingReview={submittingReview} reviewRating={reviewRating} setReviewRating={setReviewRating} reviewComment={reviewComment} setReviewComment={setReviewComment} />
+      
       </div>
     </>
   );
