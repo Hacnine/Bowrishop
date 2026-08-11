@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
 
-const WHATSAPP_NUMBER = '8801403041607';
+const WHATSAPP_NUMBER = '8801341075481';
 const WHATSAPP_MESSAGE = encodeURIComponent('হ্যালো! আমি Bowri Shop থেকে অর্ডার করতে চাই।');
 const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${WHATSAPP_MESSAGE}`;
 
@@ -63,8 +63,8 @@ export function Footer() {
               </div>
               <div className="mt-4">
                 <p className="text-xs text-gray-500 mb-1">Call / WhatsApp</p>
-                <a href="tel:+8801403041607" className="text-sm text-white font-medium hover:text-green-400 transition-colors">
-                  01403041607
+                <a href="tel:+8801341075481" className="text-sm text-white font-medium hover:text-green-400 transition-colors">
+                  01341075481
                 </a>
               </div>
             </div>
@@ -122,7 +122,7 @@ export function Footer() {
         className="fixed z-50 right-4 bottom-[76px] sm:bottom-6 sm:right-6 bg-green-500 hover:bg-green-600 text-white shadow-xl rounded-full p-3 flex items-center gap-2 font-semibold transition-all hover:scale-105 active:scale-95"
       >
         <WhatsAppIcon />
-        <span className="hidden text-sm">01403041607</span>
+        <span className="hidden text-sm">01341075481</span>
       </a>
 
       {/* ── Mobile bottom nav bar ── */}
