@@ -22,6 +22,12 @@ export const ordersApi = baseApi.injectEndpoints({
         shippingAddress: ShippingAddress;
         couponCode?: string;
         notes?: string;
+        // Meta fields (optional)
+        fbp?: string;
+        fbc?: string;
+        eventId?: string;
+        clientIp?: string | undefined;
+        clientUserAgent?: string;
       }
     >({
       query: (body) => ({ url: '/orders', method: 'POST', body }),
@@ -32,10 +38,16 @@ export const ordersApi = baseApi.injectEndpoints({
       {
         guestEmail: string;
         guestName: string;
-        items: { productId: string; quantity: number }[];
+        items: { productId: string; variantId?: string; quantity: number }[];
         shippingAddress: ShippingAddress;
         couponCode?: string;
         notes?: string;
+        // Meta fields (optional)
+        fbp?: string;
+        fbc?: string;
+        eventId?: string;
+        clientIp?: string | undefined;
+        clientUserAgent?: string;
       }
     >({
       query: (body) => ({ url: '/orders/guest', method: 'POST', body }),
