@@ -5,7 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateOrderDto, CreateGuestOrderDto, UpdateOrderStatusDto } from './dto/order.dto';
+import { CreateOrderDto, CreateGuestOrderDto, UpdateOrderStatusDto, CreateAdminCustomOrderDto } from './dto/order.dto';
 import { EmailService } from '../email/email.service';
 import { Prisma, OrderStatus } from '@prisma/client';
 
@@ -341,6 +341,108 @@ export class OrdersService {
       include: { items: { include: { product: true } } },
     });
     if (!order || order.userId !== null) throw new NotFoundException('Order not found');
+    return order;
+  }
+
+  /**
+   * Admin custom order — admin নিজে manually order create করে
+   * Custom price, custom customer info, stock update optional
+   */
+  async createAdminCustomOrder(dto: CreateAdminCustomOrderDto, adminId: string) {
+    const productIds = dto.items.map((i) => i.productId);
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: productIds } },
+    });
+
+    const variantIds = dto.items
+      .map((i) => i.variantId)
+      .filter((v): v is string => !!v);
+    const variants = variantIds.length > 0
+      ? await this.prisma.productVariant.findMany({ where: { id: { in: variantIds } } })
+      : [];
+
+    // Validate products exist
+    for (const item of dto.items) {
+      const product = products.find((p) => p.id === item.productId);
+      if (!product) throw new NotFoundException(`Product not found: ${item.productId}`);
+    }
+
+    const shippingCharge = dto.shippingCharge ?? 0;
+
+    // subtotal = sum of (customPrice * quantity)
+    const subtotal = dto.items.reduce((sum, item) => sum + item.customPrice * item.quantity, 0);
+    const total = subtotal + shippingCharge;
+
+    const shippingAddress = {
+      name: dto.customerName,
+      phone: dto.customerPhone,
+      address: dto.address,
+      city: dto.city,
+      district: dto.district ?? '',
+      shippingCharge,
+    };
+
+    const order = await this.prisma.$transaction(async (tx) => {
+      const newOrder = await tx.order.create({
+        data: {
+          userId: null,
+          guestName: dto.customerName,
+          guestEmail: null,
+          subtotal,
+          discount: 0,
+          shippingCharge,
+          total,
+          shippingAddress: shippingAddress as any,
+          notes: dto.notes
+            ? `[Admin Order] ${dto.notes}`
+            : '[Admin Order]',
+          items: {
+            create: dto.items.map((item) => {
+              const variant = variants.find((v) => v.id === item.variantId);
+              return {
+                productId: item.productId,
+                variantId: item.variantId ?? null,
+                quantity: item.quantity,
+                // customPrice use করো — এটাই admin এর set করা price
+                price: item.customPrice,
+                variantSnapshot: variant
+                  ? {
+                      color: variant.color,
+                      size: variant.size,
+                      colorHex: variant.colorHex,
+                      images: variant.images,
+                      price: item.customPrice, // custom price snapshot এ রাখো
+                    }
+                  : undefined,
+              };
+            }),
+          },
+        },
+        include: {
+          items: { include: { product: { select: { name: true, images: true } } } },
+        },
+      });
+
+      // Stock update — skipStockUpdate: true দিলে skip করো
+      if (!dto.skipStockUpdate) {
+        for (const item of dto.items) {
+          if (item.variantId) {
+            await tx.productVariant.update({
+              where: { id: item.variantId },
+              data: { stock: { decrement: item.quantity } },
+            });
+          } else {
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { stock: { decrement: item.quantity } },
+            });
+          }
+        }
+      }
+
+      return newOrder;
+    });
+
     return order;
   }
 }

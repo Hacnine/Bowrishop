@@ -59,6 +59,33 @@ export const ordersApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Orders'],
     }),
+    createAdminCustomOrder: builder.mutation<
+      Order,
+      {
+        customerName: string;
+        customerPhone: string;
+        address: string;
+        city: string;
+        district?: string;
+        shippingCharge?: number;
+        notes?: string;
+        skipStockUpdate?: boolean;
+        items: {
+          productId: string;
+          variantId?: string;
+          quantity: number;
+          customPrice: number;
+          productName?: string;
+        }[];
+      }
+    >({
+      query: (body) => ({
+        url: '/orders/admin/custom',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Orders'],
+    }),
   }),
 });
 
@@ -70,4 +97,5 @@ export const {
   useCreateGuestOrderMutation,
   useGetAdminOrdersQuery,
   useUpdateOrderStatusMutation,
+  useCreateAdminCustomOrderMutation,
 } = ordersApi;

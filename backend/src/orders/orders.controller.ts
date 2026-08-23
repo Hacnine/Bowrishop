@@ -17,6 +17,7 @@ import {
   CreateOrderDto,
   CreateGuestOrderDto,
   UpdateOrderStatusDto,
+  CreateAdminCustomOrderDto,
 } from './dto/order.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -68,6 +69,18 @@ export class OrdersController {
     @Query('status') status?: string,
   ) {
     return this.ordersService.getAdminOrders(page, limit, status);
+  }
+
+  /** Admin: manually create a custom order with custom prices */
+  @Post('admin/custom')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.ADMIN)
+  createAdminCustomOrder(
+    @CurrentUser() user: any,
+    @Body() dto: CreateAdminCustomOrderDto,
+  ) {
+    return this.ordersService.createAdminCustomOrder(dto, user.id);
   }
 
   @ApiBearerAuth()

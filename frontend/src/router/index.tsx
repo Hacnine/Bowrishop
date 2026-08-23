@@ -40,6 +40,7 @@ const AdminDashboard = lazy(() => import('../pages/admin/AdminDashboard').then((
 const AdminProducts = lazy(() => import('../pages/admin/AdminProducts').then((m) => ({ default: m.AdminProducts })));
 const AdminCategories = lazy(() => import('../pages/admin/AdminCategories').then((m) => ({ default: m.AdminCategories })));
 const AdminOrders = lazy(() => import('../pages/admin/AdminOrders').then((m) => ({ default: m.AdminOrders })));
+const AdminCreateOrder = lazy(() => import('../pages/admin/AdminCreateOrder').then((m) => ({ default: m.AdminCreateOrder })));
 const AdminCoupons = lazy(() => import('../pages/admin/AdminCoupons').then((m) => ({ default: m.AdminCoupons })));
 const AdminInquiries = lazy(() => import('../pages/admin/AdminInquiries').then((m) => ({ default: m.AdminInquiries })));
 const AdminUsers = lazy(() => import('../pages/admin/AdminUsers').then((m) => ({ default: m.AdminUsers })));
@@ -84,7 +85,8 @@ export const router = createBrowserRouter([
           { index: true, element: wrap(AdminDashboard) },
           { path: 'products', element: wrap(AdminProducts) },
           { path: 'categories', element: wrap(AdminCategories) },
-          { path: 'orders', element: wrap(AdminOrders) },
+            { path: 'orders', element: wrap(AdminOrders) },
+            { path: 'orders/create', element: wrap(AdminCreateOrder) },
           { path: 'coupons', element: wrap(AdminCoupons) },
           { path: 'inquiries', element: wrap(AdminInquiries) },
           { path: 'users', element: wrap(AdminUsers) },
