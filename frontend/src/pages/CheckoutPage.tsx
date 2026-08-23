@@ -5,6 +5,7 @@ import { z } from 'zod';
 import toast from 'react-hot-toast';
 import { useGetCartQuery } from '../features/cart/cartApi';
 import { useCreateOrderMutation, useCreateGuestOrderMutation } from '../features/orders/ordersApi';
+import { useMetaPixel } from '../hooks/useMetaPixel';
 import { useAppDispatch, useAppSelector } from '../app/hooks';
 import { clearGuestCart } from '../features/cart/guestCartSlice';
 import { Button } from '../components/ui/Button';
@@ -86,19 +87,26 @@ export function CheckoutPage() {
   const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
   const discount = state?.couponDiscount ?? 0;
   const total = Math.max(0, subtotal - discount + shippingCharge);
-const onSubmit = async (data: FormValues) => {
-    // Helper function to fire Meta Pixel Purchase event
+  const { getFbp, getFbc, generateEventId, firePixelEvent } = useMetaPixel();
+
+  const onSubmit = async (data: FormValues) => {
+    // generate event id and meta cookies
+    const eventId = generateEventId('Purchase');
+    const fbp = getFbp();
+    const fbc = getFbc();
+
+    // Helper function to fire Browser Pixel Purchase event with eventID
     const firePixelPurchase = (order: any) => {
-      if (typeof window !== 'undefined' && (window as any).fbq) {
-        (window as any).fbq('track', 'Purchase', {
-          // টোটাল অর্ডার ভ্যালু (প্রোডাক্টগুলোর দাম + ডেলিভারি চার্জ - ডিসকাউন্ট যদি থাকে)
-          value: Number(order.totalAmount || order.total || 0), 
+      firePixelEvent(
+        'Purchase',
+        {
+          value: Number(order.totalAmount || order.total || 0),
           currency: 'BDT',
           content_type: 'product',
-          // অর্ডারে থাকা প্রোডাক্ট আইডিগুলোর অ্যারে ম্যাপ করে নেওয়া হলো
-          content_ids: order.items?.map((item: any) => (item.productId || item.product?.id || '').toString()) || []
-        });
-      }
+          content_ids: order.items?.map((item: any) => (item.productId || item.product?.id || '').toString()) || [],
+        },
+        eventId,
+      );
     };
 
     if (isAuthenticated) {
@@ -113,6 +121,12 @@ const onSubmit = async (data: FormValues) => {
             shippingCharge,
           },
           couponCode: state?.couponCode,
+          // Meta fields for server-side conversions
+          fbp,
+          fbc,
+          eventId,
+          clientIp: undefined,
+          clientUserAgent: navigator.userAgent,
         }).unwrap();
 
         firePixelPurchase(order); // 👈 রেজিস্টার্ড ইউজারের অর্ডার সফল হলে পিক্সেল ফায়ার
@@ -144,6 +158,12 @@ const onSubmit = async (data: FormValues) => {
             shippingCharge,
           },
           couponCode: state?.couponCode,
+          // Meta fields
+          fbp,
+          fbc,
+          eventId,
+          clientIp: undefined,
+          clientUserAgent: navigator.userAgent,
         }).unwrap();
 
         firePixelPurchase(order); // 👈 গেস্ট ইউজারের অর্ডার সফল হলে পিক্সেল ফায়ার

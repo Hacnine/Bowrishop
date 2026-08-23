@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto, CreateGuestOrderDto, UpdateOrderStatusDto, CreateAdminCustomOrderDto } from './dto/order.dto';
+import { MetaService } from '../meta/meta.service';
 import { EmailService } from '../email/email.service';
 import { Prisma, OrderStatus } from '@prisma/client';
 
@@ -14,6 +15,7 @@ export class OrdersService {
   constructor(
     private prisma: PrismaService,
     private emailService: EmailService,
+    private metaService: MetaService,
   ) {}
 
   async createOrder(userId: string, dto: CreateOrderDto) {
@@ -129,6 +131,19 @@ export class OrdersService {
     });
     if (user) {
       this.emailService.sendOrderConfirmation(user.email, user.name, order).catch(console.error);
+      // Fire server-side Meta Conversions API event (do not block order flow)
+      this.metaService.trackPurchase({
+        orderId: order.id,
+        total: Number(order.total),
+        productIds: order.items.map((i) => i.productId),
+        userEmail: user?.email,
+        userPhone: (order.shippingAddress as any)?.phone,
+        clientIp: (dto as any)?.clientIp,
+        userAgent: (dto as any)?.clientUserAgent,
+        fbp: (dto as any)?.fbp,
+        fbc: (dto as any)?.fbc,
+        eventId: (dto as any)?.eventId,
+      }).catch(console.error);
     }
 
     return order;
@@ -332,6 +347,19 @@ export class OrdersService {
     });
 
     this.emailService.sendOrderConfirmation(guestEmail, guestName, order).catch(console.error);
+    // Meta conversions API for guest orders
+    this.metaService.trackPurchase({
+      orderId: order.id,
+      total: Number(order.total),
+      productIds: order.items.map((i) => i.productId),
+      userEmail: guestEmail,
+      userPhone: (order.shippingAddress as any)?.phone,
+      clientIp: (dto as any)?.clientIp,
+      userAgent: (dto as any)?.clientUserAgent,
+      fbp: (dto as any)?.fbp,
+      fbc: (dto as any)?.fbc,
+      eventId: (dto as any)?.eventId,
+    }).catch(console.error);
     return order;
   }
 

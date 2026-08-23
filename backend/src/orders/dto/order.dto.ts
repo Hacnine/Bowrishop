@@ -43,6 +43,32 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  // Meta Conversions API fields (optional)
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  fbp?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  fbc?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  eventId?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  clientIp?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  clientUserAgent?: string;
 }
 
 export class GuestOrderItemDto {
@@ -87,6 +113,32 @@ export class CreateGuestOrderDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  // Meta Conversions API fields (optional)
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  fbp?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  fbc?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  eventId?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  clientIp?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  clientUserAgent?: string;
 }
 
 // ─── Admin Custom Order Item ──────────────────────────────────────────────────

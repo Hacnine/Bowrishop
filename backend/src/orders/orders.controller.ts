@@ -9,7 +9,9 @@ import {
   UseGuards,
   ParseIntPipe,
   DefaultValuePipe,
+  Req,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
@@ -31,8 +33,17 @@ export class OrdersController {
 
   /** Public: guest checkout */
   @Post('guest')
-  createGuestOrder(@Body() dto: CreateGuestOrderDto) {
-    return this.ordersService.createGuestOrder(dto);
+  createGuestOrder(@Body() dto: CreateGuestOrderDto, @Req() req: Request) {
+    const clientIp =
+      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      req.socket.remoteAddress;
+    const clientUserAgent = req.headers['user-agent'] as string | undefined;
+
+    return this.ordersService.createGuestOrder({
+      ...dto,
+      clientIp,
+      clientUserAgent,
+    } as any);
   }
 
   /** Public: guest order lookup by id */
@@ -44,8 +55,17 @@ export class OrdersController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   @Post()
-  createOrder(@CurrentUser() user: any, @Body() dto: CreateOrderDto) {
-    return this.ordersService.createOrder(user.id, dto);
+  createOrder(@CurrentUser() user: any, @Body() dto: CreateOrderDto, @Req() req: Request) {
+    const clientIp =
+      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      req.socket.remoteAddress;
+    const clientUserAgent = req.headers['user-agent'] as string | undefined;
+
+    return this.ordersService.createOrder(user.id, {
+      ...dto,
+      clientIp,
+      clientUserAgent,
+    } as any);
   }
 
   @ApiBearerAuth()
