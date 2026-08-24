@@ -113,11 +113,11 @@ export function CheckoutPage() {
       try {
         const order = await createOrder({
           shippingAddress: {
-            fullName: data.fullName,
-            phoneNumber: data.phoneNumber,
-            streetAddress: data.streetAddress,
+            name: data.fullName,
+            phone: data.phoneNumber,
+            address: data.streetAddress,
             city: data.city,
-            state: data.state,
+            district: data.state,
             shippingCharge,
           },
           couponCode: state?.couponCode,
@@ -150,11 +150,11 @@ export function CheckoutPage() {
             quantity: i.quantity 
           })),
           shippingAddress: {
-            fullName: data.fullName,
-            phoneNumber: data.phoneNumber,
-            streetAddress: data.streetAddress,
+            name: data.fullName,
+            phone: data.phoneNumber,
+            address: data.streetAddress,
             city: data.city,
-            state: data.state,
+            district: data.state,
             shippingCharge,
           },
           couponCode: state?.couponCode,

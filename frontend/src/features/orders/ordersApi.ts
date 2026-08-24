@@ -1,5 +1,14 @@
 import { baseApi } from '../api/baseApi';
-import type { Order, PaginatedResponse, ShippingAddress } from '../../types/types.index';
+import type { Order, PaginatedResponse } from '../../types/types.index';
+
+type ShippingAddressInput = {
+  name: string;
+  phone: string;
+  address: string;
+  city: string;
+  district: string;
+  shippingCharge: number;
+};
 
 export const ordersApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -19,7 +28,7 @@ export const ordersApi = baseApi.injectEndpoints({
     createOrder: builder.mutation<
       Order,
       {
-        shippingAddress: ShippingAddress;
+        shippingAddress: ShippingAddressInput;
         couponCode?: string;
         notes?: string;
         // Meta fields (optional)
@@ -39,7 +48,7 @@ export const ordersApi = baseApi.injectEndpoints({
         guestEmail: string;
         guestName: string;
         items: { productId: string; variantId?: string; quantity: number }[];
-        shippingAddress: ShippingAddress;
+        shippingAddress: ShippingAddressInput;
         couponCode?: string;
         notes?: string;
         // Meta fields (optional)
