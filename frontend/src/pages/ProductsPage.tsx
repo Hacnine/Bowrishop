@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, SlidersHorizontal, X, ChevronDown, ChevronRight, Clock } from 'lucide-react';
 import { useGetProductsQuery } from '../features/products/productsApi';
@@ -6,7 +6,6 @@ import { useGetCategoriesQuery } from '../features/categories/categoriesApi';
 import { ProductCard } from '../components/ProductCard';
 import { ProductCardSkeleton } from '../components/ui/Skeleton';
 import { Button } from '../components/ui/Button';
-import { cn } from '../utils';
 
 const SORT_OPTIONS = [
   { value: '', label: 'Newest' },
@@ -18,6 +17,9 @@ const SORT_OPTIONS = [
 export function ProductsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showFilters, setShowFilters] = useState(false);
+  const [page, setPage] = useState(1);
+  const [products, setProducts] = useState<NonNullable<ReturnType<typeof useGetProductsQuery>['data']>['data']>([]);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
   // Track which parent categories are expanded in the sidebar
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
 
@@ -28,22 +30,19 @@ export function ProductsPage() {
   const sort = searchParams.get('sort') ?? '';
   const inStock = searchParams.get('inStock') === 'true';
   const preOrder = searchParams.get('preOrder') === 'true';
-  const page = Number(searchParams.get('page') ?? '1');
-
   const setParam = useCallback(
     (key: string, value: string) => {
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
         if (value) next.set(key, value);
         else next.delete(key);
-        next.delete('page');
         return next;
       });
     },
     [setSearchParams],
   );
 
-  const { data, isLoading } = useGetProductsQuery({
+  const { data, isLoading, isFetching } = useGetProductsQuery({
     q: q || undefined,
     categoryId: categoryId || undefined,
     minPrice: minPrice ? Number(minPrice) : undefined,
@@ -54,6 +53,31 @@ export function ProductsPage() {
     page,
     limit: 12,
   });
+
+  const filterKey = `${q}|${categoryId}|${minPrice}|${maxPrice}|${sort}|${inStock}|${preOrder}`;
+
+  useEffect(() => {
+    setPage(1);
+    setProducts([]);
+  }, [filterKey]);
+
+  useEffect(() => {
+    if (!data) return;
+    setProducts((previous) => page === 1
+      ? data.data
+      : [...previous, ...data.data.filter((product) => !previous.some((item) => item.id === product.id))]);
+  }, [data, page]);
+
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+    if (!sentinel || !data || page >= data.totalPages || isFetching) return;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) setPage((current) => current + 1);
+    }, { rootMargin: '400px' });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [data, isFetching, page]);
 
   // Tree structure — root + subCategories nested
   const { data: categories } = useGetCategoriesQuery();
@@ -285,7 +309,7 @@ export function ProductsPage() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {Array.from({ length: 12 }).map((_, i) => <ProductCardSkeleton key={i} />)}
             </div>
-          ) : !data || data.data.length === 0 ? (
+          ) : products.length === 0 ? (
             <div className="text-center py-24">
               <p className="text-gray-500 text-lg">No products found.</p>
               <Button variant="outline" className="mt-4" onClick={() => setSearchParams({})}>
@@ -296,30 +320,13 @@ export function ProductsPage() {
             <>
               <p className="text-sm text-gray-500 mb-4">{data.total} products</p>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {data.data.map((p) => <ProductCard key={p.id} product={p} />)}
+                {products.map((p) => <ProductCard key={p.id} product={p} />)}
               </div>
-              {data.totalPages > 1 && (
-                <div className="flex justify-center gap-2 mt-10">
-                  {Array.from({ length: data.totalPages }, (_, i) => i + 1).map((p) => (
-                    <button
-                      key={p}
-                      onClick={() =>
-                        setSearchParams((prev) => {
-                          const n = new URLSearchParams(prev);
-                          n.set('page', String(p));
-                          return n;
-                        })
-                      }
-                      className={cn(
-                        'w-9 h-9 rounded-lg cursor-pointer text-sm font-medium',
-                        p === page ? 'bg-indigo-600 text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50',
-                      )}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <div ref={loadMoreRef} className="flex justify-center min-h-12 mt-10">
+                {isFetching && <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full">
+                  {Array.from({ length: 4 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+                </div>}
+              </div>
             </>
           )}
         </div>
