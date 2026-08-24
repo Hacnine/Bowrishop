@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { Boxes, Plus, Pencil, Trash2, X, AlertTriangle, Search, Clock, Upload, FileJson, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Boxes, Plus, Pencil, Trash2, X, AlertTriangle, Search, Clock, Upload, FileJson, CheckCircle2, XCircle, Loader2, Eye, EyeOff } from 'lucide-react';
 import {
   useGetAdminProductsQuery,
   useCreateProductMutation,
@@ -28,6 +28,7 @@ const schema = z.object({
   stock: z.union([z.coerce.number().int().min(0), z.literal('')]),
   categoryId: z.string().min(1, 'Select a category'),
   tags: z.string().optional(),
+  isActive: z.boolean().optional(),
   isFeatured: z.boolean().optional(),
   isPreOrder: z.boolean().optional(),
   preOrderNote: z.string().optional(),
@@ -119,7 +120,7 @@ export function AdminProducts() {
     setEditProduct(null);
     setImageUrls([]);
     setSpecs([]);
-    reset({ isPreOrder: false, isFeatured: false });
+    reset({ isActive: true, isPreOrder: false, isFeatured: false });
     setShowModal(true);
   };
 
@@ -139,6 +140,7 @@ export function AdminProducts() {
       stock: p.stock,
       categoryId: p.categoryId,
       tags: p.tags?.join(', ') ?? '',
+      isActive: p.isActive ?? true,
       isFeatured: p.isFeatured ?? false,
       isPreOrder: p.isPreOrder ?? false,
       preOrderNote: p.preOrderNote ?? '',
@@ -180,6 +182,7 @@ export function AdminProducts() {
       stock: Number(data.stock),
       images: imageUrls,
       tags: data.tags ? data.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
+      isActive: data.isActive ?? true,
       isFeatured: data.isFeatured ?? false,
       isPreOrder: data.isPreOrder ?? false,
       preOrderNote: data.isPreOrder && data.preOrderNote ? data.preOrderNote : undefined,
@@ -216,6 +219,16 @@ export function AdminProducts() {
       toast.error('Could not delete product');
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const toggleProductStatus = async (product: Product) => {
+    try {
+      await updateProduct({ id: product.id, isActive: !product.isActive }).unwrap();
+      toast.success(product.isActive ? 'Product deactivated' : 'Product activated');
+    } catch (err: unknown) {
+      const e = err as { data?: { message?: string } };
+      toast.error(e?.data?.message ?? 'Could not update product status');
     }
   };
 
@@ -369,6 +382,9 @@ export function AdminProducts() {
                           <div>
                             <span className="font-medium text-gray-900 line-clamp-1">{p.name}</span>
                             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                              <span className={`inline-flex items-center gap-1 text-xs font-medium ${p.isActive ? 'text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full' : 'text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full'}`}>
+                                {p.isActive ? 'Active' : 'Inactive'}
+                              </span>
                               {p.isFeatured && (
                                 <span className="inline-flex items-center gap-1 text-xs text-indigo-600 font-medium">★ Featured</span>
                               )}
@@ -394,6 +410,9 @@ export function AdminProducts() {
                       <td className="px-6 py-4 text-gray-500">{p.category?.name ?? '—'}</td>
                       <td className="px-6 py-4">
                         <div className="flex gap-2 justify-end">
+                          <button type="button" onClick={() => toggleProductStatus(p)} title={p.isActive ? 'Deactivate product' : 'Activate product'} className={`p-1.5 ${p.isActive ? 'text-emerald-600 hover:text-emerald-700' : 'text-gray-400 hover:text-gray-600'}`}>
+                            {p.isActive ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
                           <button type="button" onClick={() => setVariantProduct(p)} title="Manage variants" className="p-1.5 text-gray-400 hover:text-indigo-600">
                             <Boxes className="w-4 h-4" />
                           </button>
@@ -633,6 +652,15 @@ export function AdminProducts() {
                 <p className="mt-1 text-xs text-gray-400">YouTube, Facebook, TikTok বা direct video URL। Product detail page এ first দেখাবে।</p>
                 {errors.videoUrl && <p className="mt-1 text-xs text-red-500">{errors.videoUrl.message}</p>}
               </div>
+
+              {/* Active toggle */}
+              <label className="flex items-center gap-3 cursor-pointer p-3 border border-emerald-100 rounded-xl hover:bg-emerald-50/40 transition-colors">
+                <input type="checkbox" className="w-4 h-4 rounded text-emerald-600 border-gray-300 focus:ring-emerald-500" {...register('isActive')} />
+                <div>
+                  <span className="text-sm font-medium text-gray-800">Active on storefront</span>
+                  <p className="text-xs text-gray-500 mt-0.5">Disabled products are hidden from customers but kept in the database.</p>
+                </div>
+              </label>
 
               {/* Featured toggle */}
               <label className="flex items-center gap-3 cursor-pointer p-3 border border-indigo-100 rounded-xl hover:bg-indigo-50/40 transition-colors">
