@@ -48,6 +48,8 @@ export interface Product {
   preOrderDate?: string; // ISO string
   // ─── Specifications ──────────────────────────
   specifications?: Record<string, string> | null;
+  // ─── Video ───────────────────────────────────
+  videoUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }

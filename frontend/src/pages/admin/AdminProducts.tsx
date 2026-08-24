@@ -32,6 +32,7 @@ const schema = z.object({
   isPreOrder: z.boolean().optional(),
   preOrderNote: z.string().optional(),
   preOrderDate: z.string().optional(),
+  videoUrl: z.string().url('Enter a valid URL').optional().or(z.literal('')),
 });
 type FormValues = z.infer<typeof schema>;
 
@@ -142,6 +143,7 @@ export function AdminProducts() {
       isPreOrder: p.isPreOrder ?? false,
       preOrderNote: p.preOrderNote ?? '',
       preOrderDate: p.preOrderDate ? p.preOrderDate.split('T')[0] : '',
+      videoUrl: p.videoUrl ?? '',
     });
     setShowModal(true);
   };
@@ -182,6 +184,7 @@ export function AdminProducts() {
       isPreOrder: data.isPreOrder ?? false,
       preOrderNote: data.isPreOrder && data.preOrderNote ? data.preOrderNote : undefined,
       preOrderDate: data.isPreOrder && data.preOrderDate ? data.preOrderDate : undefined,
+      videoUrl: data.videoUrl || undefined,
       specifications: specs.length > 0
         ? Object.fromEntries(specs.filter((s) => s.key.trim()).map((s) => [s.key.trim(), s.value.trim()]))
         : undefined,
@@ -619,6 +622,17 @@ export function AdminProducts() {
               </div>
 
               <Input label="Tags (comma separated)" placeholder="fashion, summer, sale" {...register('tags')} />
+
+              {/* ── Video URL ── */}
+              <div>
+                <Input
+                  label="Video URL (optional)"
+                  placeholder="https://youtube.com/watch?v=... or Facebook video URL"
+                  {...register('videoUrl')}
+                />
+                <p className="mt-1 text-xs text-gray-400">YouTube, Facebook, TikTok বা direct video URL। Product detail page এ first দেখাবে।</p>
+                {errors.videoUrl && <p className="mt-1 text-xs text-red-500">{errors.videoUrl.message}</p>}
+              </div>
 
               {/* Featured toggle */}
               <label className="flex items-center gap-3 cursor-pointer p-3 border border-indigo-100 rounded-xl hover:bg-indigo-50/40 transition-colors">

@@ -15,6 +15,7 @@ import { Skeleton } from "../components/ui/Skeleton";
 import { formatCurrency } from "../utils";
 import SEO from "../components/SEO";
 import { ProductCard } from "../components/ProductCard";
+import { VideoPlayer } from "../components/VideoPlayer";
 import { ProductCardSkeleton } from "../components/ui/Skeleton";
 import {
   useGetProductBySlugQuery,
@@ -45,6 +46,7 @@ export function ProductDetailPage() {
 
   const [qty, setQty] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
+  const [showVideo, setShowVideo] = useState(true); // video আছে থাকলে default এ video দেখাবে
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
 
@@ -392,37 +394,83 @@ export function ProductDetailPage() {
         </Link>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* ── Images ── */}
+          {/* ── Images + Video ── */}
           <div>
+            {/* Main display area */}
             <div className="aspect-square rounded-2xl overflow-hidden bg-gray-100 mb-3 relative">
-              <img
-                src={mainImage}
-                alt={product.name}
-                className="w-full h-full object-cover transition-opacity duration-200"
-              />
-              {product.isPreOrder && (
-                <span className="absolute top-3 left-3 bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5" /> Pre-order
-                </span>
+              {product.videoUrl && showVideo ? (
+                /* Video player */
+                <VideoPlayer url={product.videoUrl} />
+              ) : (
+                /* Image */
+                <>
+                  <img
+                    src={mainImage}
+                    alt={product.name}
+                    className="w-full h-full object-cover transition-opacity duration-200"
+                  />
+                  {product.isPreOrder && (
+                    <span className="absolute top-3 left-3 bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5" /> Pre-order
+                    </span>
+                  )}
+                </>
               )}
             </div>
-            {allProductImages.length > 1 && (
-              <div className="flex gap-2 flex-wrap">
-                {allProductImages.map((img, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleThumbnailClick(img, i)}
-                    className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-colors ${
-                      i === selectedImage
-                        ? "border-indigo-600"
-                        : "border-transparent hover:border-gray-300"
-                    }`}
-                  >
-                    <img src={img} alt="" className="w-full h-full object-cover" />
-                  </button>
-                ))}
-              </div>
-            )}
+
+            {/* Thumbnails — video thumbnail + images */}
+            <div className="flex gap-2 flex-wrap">
+              {/* Video thumbnail — প্রথমে */}
+              {product.videoUrl && (
+                <button
+                  onClick={() => setShowVideo(true)}
+                  className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-colors relative flex items-center justify-center bg-gray-900 flex-shrink-0 ${
+                    showVideo ? "border-indigo-600" : "border-transparent hover:border-gray-300"
+                  }`}
+                  title="Watch video"
+                >
+                  {/* YouTube thumbnail or play icon */}
+                  {product.videoUrl.includes("youtube") || product.videoUrl.includes("youtu.be") ? (
+                    <>
+                      <img
+                        src={`https://img.youtube.com/vi/${product.videoUrl.match(/(?:v=|youtu\.be\/|shorts\/)([a-zA-Z0-9_-]{11})/)?.[1]}/mqdefault.jpg`}
+                        alt="Video"
+                        className="w-full h-full object-cover opacity-70"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-7 h-7 bg-red-600 rounded-full flex items-center justify-center">
+                          <svg className="w-3 h-3 text-white ml-0.5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center gap-1">
+                      <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                      <span className="text-white text-[9px] font-medium">Video</span>
+                    </div>
+                  )}
+                </button>
+              )}
+
+              {/* Image thumbnails */}
+              {allProductImages.map((img, i) => (
+                <button
+                  key={i}
+                  onClick={() => { handleThumbnailClick(img, i); setShowVideo(false); }}
+                  className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-colors ${
+                    !showVideo && i === selectedImage
+                      ? "border-indigo-600"
+                      : "border-transparent hover:border-gray-300"
+                  }`}
+                >
+                  <img src={img} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* ── Details ── */}
