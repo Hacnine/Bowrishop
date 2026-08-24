@@ -19,4 +19,10 @@ describe('AppController', () => {
       expect(appController.getHello()).toBe('Hello World!');
     });
   });
+
+  describe('health', () => {
+    it('should allow HEAD requests to the API root', () => {
+      expect(appController.head()).toBeUndefined();
+    });
+  });
 });
