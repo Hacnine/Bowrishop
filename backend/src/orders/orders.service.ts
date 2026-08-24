@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto, CreateGuestOrderDto, UpdateOrderStatusDto, CreateAdminCustomOrderDto } from './dto/order.dto';
-import { MetaService } from '../meta/meta.service';
 import { EmailService } from '../email/email.service';
 import { Prisma, OrderStatus } from '@prisma/client';
 
@@ -15,7 +14,6 @@ export class OrdersService {
   constructor(
     private prisma: PrismaService,
     private emailService: EmailService,
-    private metaService: MetaService,
   ) {}
 
   async createOrder(userId: string, dto: CreateOrderDto) {
@@ -104,47 +102,35 @@ export class OrdersService {
         include: { items: { include: { product: true } } },
       });
 
-      // Stock decrement — pre-order items এর stock কমাবো না
-      for (const item of cartItems) {
-        if (item.product.isPreOrder) continue; // skip pre-order
-
-        if (item.variantId) {
-          await tx.productVariant.update({
-            where: { id: item.variantId },
-            data: { stock: { decrement: item.quantity } },
-          });
-        } else {
-          await tx.product.update({
-            where: { id: item.productId },
-            data: { stock: { decrement: item.quantity } },
-          });
-        }
-      }
-
-      await tx.cartItem.deleteMany({ where: { userId } });
+      // Stock decrement — parallel (Promise.all দিয়ে একসাথে)
+      await Promise.all([
+        ...cartItems
+          .filter((item) => !item.product.isPreOrder)
+          .map((item) =>
+            item.variantId
+              ? tx.productVariant.update({
+                  where: { id: item.variantId },
+                  data: { stock: { decrement: item.quantity } },
+                })
+              : tx.product.update({
+                  where: { id: item.productId },
+                  data: { stock: { decrement: item.quantity } },
+                }),
+          ),
+        tx.cartItem.deleteMany({ where: { userId } }),
+      ]);
       return newOrder;
     });
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true, name: true },
-    });
-    if (user) {
-      this.emailService.sendOrderConfirmation(user.email, user.name, order).catch(console.error);
-      // Fire server-side Meta Conversions API event (do not block order flow)
-      this.metaService.trackPurchase({
-        orderId: order.id,
-        total: Number(order.total),
-        productIds: order.items.map((i) => i.productId),
-        userEmail: user?.email,
-        userPhone: (order.shippingAddress as any)?.phone,
-        clientIp: (dto as any)?.clientIp,
-        userAgent: (dto as any)?.clientUserAgent,
-        fbp: (dto as any)?.fbp,
-        fbc: (dto as any)?.fbc,
-        eventId: (dto as any)?.eventId,
-      }).catch(console.error);
-    }
+    // email send non-blocking — order return এর পরে background এ চলে
+    this.prisma.user
+      .findUnique({ where: { id: userId }, select: { email: true, name: true } })
+      .then((user) => {
+        if (user) {
+          this.emailService.sendOrderConfirmation(user.email, user.name, order).catch(console.error);
+        }
+      })
+      .catch(console.error);
 
     return order;
   }
@@ -325,41 +311,30 @@ export class OrdersService {
         include: { items: { include: { product: true } } },
       });
 
-      // Pre-order items এর stock কমাবো না
-      for (const item of items) {
-        const product = products.find((p) => p.id === item.productId)!;
-        if (product.isPreOrder) continue;
-
-        if (item.variantId) {
-          await tx.productVariant.update({
-            where: { id: item.variantId },
-            data: { stock: { decrement: item.quantity } },
-          });
-        } else {
-          await tx.product.update({
-            where: { id: item.productId },
-            data: { stock: { decrement: item.quantity } },
-          });
-        }
-      }
+      // Pre-order items এর stock কমাবো না — parallel
+      await Promise.all(
+        items
+          .filter((item) => {
+            const product = products.find((p) => p.id === item.productId)!;
+            return !product.isPreOrder;
+          })
+          .map((item) =>
+            item.variantId
+              ? tx.productVariant.update({
+                  where: { id: item.variantId },
+                  data: { stock: { decrement: item.quantity } },
+                })
+              : tx.product.update({
+                  where: { id: item.productId },
+                  data: { stock: { decrement: item.quantity } },
+                }),
+          ),
+      );
 
       return newOrder;
     });
 
     this.emailService.sendOrderConfirmation(guestEmail, guestName, order).catch(console.error);
-    // Meta conversions API for guest orders
-    this.metaService.trackPurchase({
-      orderId: order.id,
-      total: Number(order.total),
-      productIds: order.items.map((i) => i.productId),
-      userEmail: guestEmail,
-      userPhone: (order.shippingAddress as any)?.phone,
-      clientIp: (dto as any)?.clientIp,
-      userAgent: (dto as any)?.clientUserAgent,
-      fbp: (dto as any)?.fbp,
-      fbc: (dto as any)?.fbc,
-      eventId: (dto as any)?.eventId,
-    }).catch(console.error);
     return order;
   }
 
