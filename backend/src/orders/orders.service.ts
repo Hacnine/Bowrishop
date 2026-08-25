@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto, CreateGuestOrderDto, UpdateOrderStatusDto, CreateAdminCustomOrderDto } from './dto/order.dto';
 import { EmailService } from '../email/email.service';
+import { MetaService } from '../meta/meta.service';
 import { Prisma, OrderStatus } from '@prisma/client';
 
 @Injectable()
@@ -14,6 +15,7 @@ export class OrdersService {
   constructor(
     private prisma: PrismaService,
     private emailService: EmailService,
+    private metaService: MetaService,
   ) {}
 
   async createOrder(userId: string, dto: CreateOrderDto) {
@@ -122,7 +124,7 @@ export class OrdersService {
       return newOrder;
     });
 
-    // email send non-blocking — order return এর পরে background এ চলে
+    // email + Meta event — non-blocking background
     this.prisma.user
       .findUnique({ where: { id: userId }, select: { email: true, name: true } })
       .then((user) => {
@@ -131,6 +133,17 @@ export class OrdersService {
         }
       })
       .catch(console.error);
+
+    this.metaService.trackPurchase({
+      orderId: order.id,
+      total: Number(order.total),
+      productIds: order.items.map((i) => i.productId),
+      clientIp: (dto as any).clientIp,
+      userAgent: (dto as any).clientUserAgent,
+      fbp: (dto as any).fbp,
+      fbc: (dto as any).fbc,
+      eventId: (dto as any).eventId,
+    }).catch(console.error);
 
     return order;
   }
@@ -335,6 +348,20 @@ export class OrdersService {
     });
 
     this.emailService.sendOrderConfirmation(guestEmail, guestName, order).catch(console.error);
+
+    this.metaService.trackPurchase({
+      orderId: order.id,
+      total: Number(order.total),
+      productIds: order.items.map((i) => i.productId),
+      userEmail: guestEmail,
+      userPhone: (dto.shippingAddress as any)?.phone,
+      clientIp: (dto as any).clientIp,
+      userAgent: (dto as any).clientUserAgent,
+      fbp: (dto as any).fbp,
+      fbc: (dto as any).fbc,
+      eventId: (dto as any).eventId,
+    }).catch(console.error);
+
     return order;
   }
 
