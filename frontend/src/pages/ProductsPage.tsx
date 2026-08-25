@@ -18,7 +18,6 @@ const SORT_OPTIONS = [
 export function ProductsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showFilters, setShowFilters] = useState(false);
-  // Track which parent categories are expanded in the sidebar
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
 
   const q = searchParams.get('q') ?? '';
@@ -28,6 +27,7 @@ export function ProductsPage() {
   const sort = searchParams.get('sort') ?? '';
   const inStock = searchParams.get('inStock') === 'true';
   const preOrder = searchParams.get('preOrder') === 'true';
+
   const setParam = useCallback(
     (key: string, value: string) => {
       setSearchParams((prev) => {
@@ -42,7 +42,6 @@ export function ProductsPage() {
 
   const filterKey = `${q}|${categoryId}|${minPrice}|${maxPrice}|${sort}|${inStock}|${preOrder}`;
 
-  // Tree structure — root + subCategories nested
   const { data: categories } = useGetCategoriesQuery();
 
   const toggleCatExpand = (id: string) => {
@@ -54,10 +53,8 @@ export function ProductsPage() {
     });
   };
 
-  // Determine if a categoryId is within a root category's tree
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      {/* Search + sort bar */}
       <div className="flex gap-3 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -92,7 +89,6 @@ export function ProductsPage() {
       </div>
 
       <div className="flex gap-8">
-        {/* ── Filter sidebar ── */}
         {showFilters && (
           <aside className="w-56 flex-shrink-0">
             <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-6 sticky top-4">
@@ -103,67 +99,33 @@ export function ProductsPage() {
                 </button>
               </div>
 
-              {/* ── Category tree ── */}
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                  Category
-                </p>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Category</p>
                 <div className="space-y-1">
-                  {/* All */}
                   <label className="flex items-center gap-2 cursor-pointer py-1">
-                    <input
-                      type="radio"
-                      name="cat"
-                      value=""
-                      checked={!categoryId}
-                      onChange={() => setParam('categoryId', '')}
-                      className="text-indigo-600"
-                    />
+                    <input type="radio" name="cat" value="" checked={!categoryId} onChange={() => setParam('categoryId', '')} className="text-indigo-600" />
                     <span className="text-sm text-gray-700">All</span>
                   </label>
-
-                  {/* Root categories with nested subs */}
                   {categories?.map((root) => {
                     const hasSubs = (root.subCategories?.length ?? 0) > 0;
                     const isExpanded = expandedCats.has(root.id);
                     const isSelected = categoryId === root.id;
                     const childSelected = root.subCategories?.some((s) => s.id === categoryId);
-
                     return (
                       <div key={root.id}>
-                        {/* Root row */}
                         <div className="flex items-center gap-1">
                           {hasSubs && (
-                            <button
-                              type="button"
-                              onClick={() => toggleCatExpand(root.id)}
-                              className="p-0.5 text-gray-400 hover:text-gray-600 flex-shrink-0"
-                            >
-                              {isExpanded || childSelected ? (
-                                <ChevronDown className="w-3.5 h-3.5" />
-                              ) : (
-                                <ChevronRight className="w-3.5 h-3.5" />
-                              )}
+                            <button type="button" onClick={() => toggleCatExpand(root.id)} className="p-0.5 text-gray-400 hover:text-gray-600 flex-shrink-0">
+                              {isExpanded || childSelected ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                             </button>
                           )}
                           <label className={`flex items-center gap-2 cursor-pointer py-1 flex-1 ${!hasSubs ? 'pl-5' : ''}`}>
                             <input
-                              type="radio"
-                              name="cat"
-                              value={root.id}
-                              checked={isSelected}
-                              onChange={() => {
-                                setParam('categoryId', root.id);
-                                // Select parent → expand subs automatically
-                                if (hasSubs) {
-                                  setExpandedCats((prev) => new Set([...prev, root.id]));
-                                }
-                              }}
+                              type="radio" name="cat" value={root.id} checked={isSelected}
+                              onChange={() => { setParam('categoryId', root.id); if (hasSubs) setExpandedCats((prev) => new Set([...prev, root.id])); }}
                               className="text-indigo-600"
                             />
-                            <span className={`text-sm ${isSelected || childSelected ? 'text-indigo-700 font-medium' : 'text-gray-700'}`}>
-                              {root.name}
-                            </span>
+                            <span className={`text-sm ${isSelected || childSelected ? 'text-indigo-700 font-medium' : 'text-gray-700'}`}>{root.name}</span>
                             {root._count?.products !== undefined && (
                               <span className="text-xs text-gray-400 ml-auto">
                                 {root._count.products + (root.subCategories?.reduce((s, c) => s + (c._count?.products ?? 0), 0) ?? 0)}
@@ -171,26 +133,13 @@ export function ProductsPage() {
                             )}
                           </label>
                         </div>
-
-                        {/* Sub-categories */}
                         {hasSubs && (isExpanded || childSelected) && (
                           <div className="ml-7 mt-0.5 space-y-0.5 border-l border-gray-100 pl-3">
                             {root.subCategories!.map((sub) => (
                               <label key={sub.id} className="flex items-center gap-2 cursor-pointer py-1">
-                                <input
-                                  type="radio"
-                                  name="cat"
-                                  value={sub.id}
-                                  checked={categoryId === sub.id}
-                                  onChange={() => setParam('categoryId', sub.id)}
-                                  className="text-indigo-600"
-                                />
-                                <span className={`text-sm ${categoryId === sub.id ? 'text-indigo-700 font-medium' : 'text-gray-600'}`}>
-                                  {sub.name}
-                                </span>
-                                {sub._count?.products !== undefined && (
-                                  <span className="text-xs text-gray-400 ml-auto">{sub._count.products}</span>
-                                )}
+                                <input type="radio" name="cat" value={sub.id} checked={categoryId === sub.id} onChange={() => setParam('categoryId', sub.id)} className="text-indigo-600" />
+                                <span className={`text-sm ${categoryId === sub.id ? 'text-indigo-700 font-medium' : 'text-gray-600'}`}>{sub.name}</span>
+                                {sub._count?.products !== undefined && <span className="text-xs text-gray-400 ml-auto">{sub._count.products}</span>}
                               </label>
                             ))}
                           </div>
@@ -201,69 +150,33 @@ export function ProductsPage() {
                 </div>
               </div>
 
-              {/* Price range */}
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                  Price range
-                </p>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Price range</p>
                 <div className="flex gap-2">
-                  <input
-                    type="number"
-                    placeholder="Min"
-                    min={0}
-                    className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"
-                    defaultValue={minPrice}
-                    onBlur={(e) => setParam('minPrice', e.target.value)}
-                  />
-                  <input
-                    type="number"
-                    placeholder="Max"
-                    min={0}
-                    className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"
-                    defaultValue={maxPrice}
-                    onBlur={(e) => setParam('maxPrice', e.target.value)}
-                  />
+                  <input type="number" placeholder="Min" min={0} className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm" defaultValue={minPrice} onBlur={(e) => setParam('minPrice', e.target.value)} />
+                  <input type="number" placeholder="Max" min={0} className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm" defaultValue={maxPrice} onBlur={(e) => setParam('maxPrice', e.target.value)} />
                 </div>
               </div>
 
-              {/* In stock */}
               <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={inStock}
-                  onChange={(e) => setParam('inStock', e.target.checked ? 'true' : '')}
-                  className="rounded text-indigo-600"
-                />
+                <input type="checkbox" checked={inStock} onChange={(e) => setParam('inStock', e.target.checked ? 'true' : '')} className="rounded text-indigo-600" />
                 <span className="text-sm text-gray-700">In stock only</span>
               </label>
 
-              {/* Pre-order filter */}
               <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={preOrder}
-                  onChange={(e) => setParam('preOrder', e.target.checked ? 'true' : '')}
-                  className="rounded text-amber-600"
-                />
+                <input type="checkbox" checked={preOrder} onChange={(e) => setParam('preOrder', e.target.checked ? 'true' : '')} className="rounded text-amber-600" />
                 <span className="text-sm text-gray-700 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-amber-500" />
-                  Pre-order only
+                  <Clock className="w-3.5 h-3.5 text-amber-500" /> Pre-order only
                 </span>
               </label>
 
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full cursor-pointer"
-                onClick={() => setSearchParams({})}
-              >
+              <Button variant="outline" size="sm" className="w-full cursor-pointer" onClick={() => setSearchParams({})}>
                 Clear filters
               </Button>
             </div>
           </aside>
         )}
 
-        {/* ── Product grid ── */}
         <div className="flex-1 min-w-0">
           <ProductResults
             key={filterKey}
@@ -297,13 +210,17 @@ type ProductAction = { type: 'replace' | 'append'; products: Product[] };
 
 function productReducer(previous: Product[], action: ProductAction) {
   if (action.type === 'replace') return action.products;
-  return [...previous, ...action.products.filter((product) => !previous.some((item) => item.id === product.id))];
+  return [...previous, ...action.products.filter((p) => !previous.some((item) => item.id === p.id))];
 }
 
 function ProductResults({ q, categoryId, minPrice, maxPrice, sort, inStock, preOrder, onClear }: ProductResultsProps) {
   const [page, setPage] = useState(1);
   const [products, dispatch] = useReducer(productReducer, []);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  // page ref — observer closure এ stale state এর সমস্যা avoid করতে
+  const pageRef = useRef(page);
+  pageRef.current = page;
+
   const { data, isLoading, isFetching } = useGetProductsQuery({
     q: q || undefined,
     categoryId: categoryId || undefined,
@@ -316,40 +233,73 @@ function ProductResults({ q, categoryId, minPrice, maxPrice, sort, inStock, preO
     limit: 12,
   });
 
+  // data আসলে accumulate করো
   useEffect(() => {
-    if (data) dispatch({ type: page === 1 ? 'replace' : 'append', products: data.data });
-  }, [data, page]);
+    if (!data) return;
+    dispatch({ type: page === 1 ? 'replace' : 'append', products: data.data });
+  }, [data]);  // page dependency সরানো হয়েছে — data change এ fire হলেই যথেষ্ট
+
+  // ── Fix: observer কে isFetching বা page এর উপর depend করানো হয়নি ──
+  // totalPages ref ব্যবহার করো যাতে observer reconnect না করতে হয়
+  const totalPagesRef = useRef(1);
+  if (data) totalPagesRef.current = data.totalPages;
+
+  const isFetchingRef = useRef(false);
+  isFetchingRef.current = isFetching;
 
   useEffect(() => {
     const sentinel = loadMoreRef.current;
-    if (!sentinel || !data || page >= data.totalPages || isFetching) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) setPage((current) => current + 1);
-    }, { rootMargin: '400px' });
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (
+          entry.isIntersecting &&
+          !isFetchingRef.current &&
+          pageRef.current < totalPagesRef.current
+        ) {
+          setPage((prev) => prev + 1);
+        }
+      },
+      { rootMargin: '300px' },
+    );
+
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [data, isFetching, page]);
+    // ← dependency array empty — observer একবারই বসে, ref দিয়ে latest state পড়ে
+  }, []);
 
   if (isLoading) {
-    return <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-      {Array.from({ length: 12 }).map((_, i) => <ProductCardSkeleton key={i} />)}
-    </div>;
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {Array.from({ length: 12 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+      </div>
+    );
   }
+
   if (products.length === 0) {
-    return <div className="text-center py-24">
-      <p className="text-gray-500 text-lg">No products found.</p>
-      <Button variant="outline" className="mt-4" onClick={onClear}>Clear search</Button>
-    </div>;
+    return (
+      <div className="text-center py-24">
+        <p className="text-gray-500 text-lg">No products found.</p>
+        <Button variant="outline" className="mt-4" onClick={onClear}>Clear search</Button>
+      </div>
+    );
   }
-  return <>
-    <p className="text-sm text-gray-500 mb-4">{data?.total} products</p>
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-      {products.map((product) => <ProductCard key={product.id} product={product} />)}
-    </div>
-    <div ref={loadMoreRef} className="flex justify-center min-h-12 mt-10">
-      {isFetching && <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full">
-        {Array.from({ length: 4 }).map((_, i) => <ProductCardSkeleton key={i} />)}
-      </div>}
-    </div>
-  </>;
+
+  return (
+    <>
+      <p className="text-sm text-gray-500 mb-4">{data?.total} products</p>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {products.map((product) => <ProductCard key={product.id} product={product} />)}
+      </div>
+      {/* Sentinel — এর নিচে scroll করলে next page load হবে */}
+      <div ref={loadMoreRef} className="flex justify-center min-h-12 mt-10">
+        {isFetching && (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full">
+            {Array.from({ length: 4 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+          </div>
+        )}
+      </div>
+    </>
+  );
 }
