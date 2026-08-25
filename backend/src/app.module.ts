@@ -17,6 +17,7 @@ import { InquiriesModule } from './inquiries/inquiries.module';
 import { UploadModule } from './upload/upload.module';
 import { EmailModule } from './email/email.module';
 import { AdminModule } from './admin/admin.module';
+import { FeedModule } from './feed/feed.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { AdminModule } from './admin/admin.module';
     UploadModule,
     EmailModule,
     AdminModule,
+    FeedModule,
   ],
   providers: [
     {
