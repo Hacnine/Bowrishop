@@ -261,13 +261,12 @@ function ProductResults({ q, categoryId, minPrice, maxPrice, sort, inStock, preO
           setPage((prev) => prev + 1);
         }
       },
-      { rootMargin: '300px' },
+      { rootMargin: '600px', threshold: 0 },
     );
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-    // ← dependency array empty — observer একবারই বসে, ref দিয়ে latest state পড়ে
-  }, []);
+  }, [products]); // products change হলে sentinel এর position update হয়, reconnect করো
 
   if (isLoading) {
     return (
@@ -292,14 +291,14 @@ function ProductResults({ q, categoryId, minPrice, maxPrice, sort, inStock, preO
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {products.map((product) => <ProductCard key={product.id} product={product} />)}
       </div>
-      {/* Sentinel — এর নিচে scroll করলে next page load হবে */}
-      <div ref={loadMoreRef} className="flex justify-center min-h-12 mt-10">
-        {isFetching && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full">
-            {Array.from({ length: 4 }).map((_, i) => <ProductCardSkeleton key={i} />)}
-          </div>
-        )}
-      </div>
+      {/* Loading skeletons — sentinel এর উপরে */}
+      {isFetching && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full mt-6">
+          {Array.from({ length: 4 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+        </div>
+      )}
+      {/* Sentinel — সবসময় render হয়, height আছে, observer সবসময় দেখতে পায় */}
+      <div ref={loadMoreRef} style={{ height: '1px' }} className="mt-10" />
     </>
   );
 }

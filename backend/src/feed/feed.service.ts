@@ -21,7 +21,7 @@ export class FeedService {
         variants: {
           where: { isActive: true },
           orderBy: { price: 'asc' },
-          take: 1, // lowest price variant
+          select: { price: true, comparePrice: true, stock: true },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -48,7 +48,10 @@ export class FeedService {
           : null;
 
       // Availability
-      const totalStock = lowestVariant ? lowestVariant.stock : product.stock;
+      // Total stock — সব variants এর stock যোগ করো
+      const totalStock = product.variants.length > 0
+        ? product.variants.reduce((sum: number, v: any) => sum + v.stock, 0)
+        : product.stock;
       let availability: string;
       if (product.isPreOrder) {
         availability = 'preorder';
@@ -76,9 +79,9 @@ export class FeedService {
         (product.description ?? product.name).slice(0, 500).replace(/\n/g, ' '),
       );
 
+      // Facebook: <g:price> = original/regular price, <g:sale_price> = discounted price
       const salePriceAttr = comparePrice && comparePrice > price
-        ? `<g:sale_price>${price.toFixed(2)} BDT</g:sale_price>
-        <g:sale_price_effective_date>1970-01-01T00:00+00:00/2099-12-31T23:59+00:00</g:sale_price_effective_date>`
+        ? `<g:sale_price>${price.toFixed(2)} BDT</g:sale_price>`
         : '';
 
       return `    <item>
