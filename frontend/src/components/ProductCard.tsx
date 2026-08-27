@@ -164,19 +164,35 @@ export function ProductCard({ product }: ProductCardProps) {
             )}
           </div>
 
-          <Button
-            className={`w-full mt-3 ${product.isPreOrder ? 'bg-amber-500 hover:bg-amber-600 border-amber-500' : ''}`}
-            size="sm"
-            onClick={handleAddToCart}
-            isLoading={addingCart}
-            disabled={isOutOfStock}
-          >
-            {product.isPreOrder ? (
-              <><Clock className="w-4 h-4" /> Pre-order Now</>
-            ) : (
-              <><ShoppingCart className="w-4 h-4" /> {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}</>
+          <div className="flex gap-2 mt-3">
+            <Button
+              className={`flex-1 ${product.isPreOrder ? 'bg-amber-500 hover:bg-amber-600 border-amber-500' : ''}`}
+              size="sm"
+              onClick={handleAddToCart}
+              isLoading={addingCart}
+              disabled={isOutOfStock}
+            >
+              {product.isPreOrder ? (
+                <><Clock className="w-4 h-4" /> Pre-order</>
+              ) : (
+                <><ShoppingCart className="w-4 h-4" /> {isOutOfStock ? 'Out of Stock' : 'Add'}</>
+              )}
+            </Button>
+            {/* Order Now — product page এ নিয়ে যাবে, সেখান থেকে checkout */}
+            {!isOutOfStock && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1 border-indigo-600 text-indigo-600 hover:bg-indigo-50"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate(`/products/${product.slug}`);
+                }}
+              >
+                Buy Now
+              </Button>
             )}
-          </Button>
+          </div>
         </div>
       </div>
     </Link>

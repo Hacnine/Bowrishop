@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Pencil, Trash2, Check, X, ChevronDown, ChevronUp, ImagePlus } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Plus, Pencil, Trash2, Check, X, ChevronDown, ChevronUp, ImagePlus, Grid3X3, Layers } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   useGetVariantsQuery,
@@ -23,461 +23,565 @@ const EMPTY_FORM: CreateVariantPayload = {
   isActive: true,
 };
 
-// ─── Image uploader strip used inside the variant form ────────────────────────
-function VariantImageUploader({
-  images,
-  onChange,
-}: {
-  images: string[];
-  onChange: (urls: string[]) => void;
-}) {
+// ─── Preset size groups ────────────────────────────────────────────────────────
+const SIZE_PRESETS: Record<string, string[]> = {
+  'Clothing (S-XXL)': ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+  'Shoes (EU)': ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45'],
+  'Bra Size': ['32A', '32B', '32C', '34A', '34B', '34C', '36A', '36B', '36C', '38B', '38C'],
+  'Underwear': ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+  'Kids (Age)': ['2Y', '3Y', '4Y', '5Y', '6Y', '7Y', '8Y', '10Y', '12Y'],
+  'One Size': ['One Size'],
+};
+
+const COLOR_PRESETS = [
+  { name: 'Black', hex: '#1a1a1a' },
+  { name: 'White', hex: '#ffffff' },
+  { name: 'Red', hex: '#dc2626' },
+  { name: 'Blue', hex: '#2563eb' },
+  { name: 'Green', hex: '#16a34a' },
+  { name: 'Yellow', hex: '#ca8a04' },
+  { name: 'Pink', hex: '#ec4899' },
+  { name: 'Purple', hex: '#9333ea' },
+  { name: 'Orange', hex: '#ea580c' },
+  { name: 'Brown', hex: '#92400e' },
+  { name: 'Gray', hex: '#6b7280' },
+  { name: 'Navy', hex: '#1e3a5f' },
+  { name: 'Beige', hex: '#d4b483' },
+  { name: 'Maroon', hex: '#800000' },
+];
+
+// ─── Image uploader ────────────────────────────────────────────────────────────
+function VariantImageUploader({ images, onChange }: { images: string[]; onChange: (urls: string[]) => void }) {
   const [uploadImage] = useUploadImageMutation();
   const [uploading, setUploading] = useState(false);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
     setUploading(true);
     try {
-      const fd = new FormData();
-      fd.append('file', file);
-      const url = await uploadImage(fd).unwrap();
-      if (url) onChange([...images, url]);
-      else toast.error('Upload failed: no URL returned');
+      const urls: string[] = [];
+      for (const file of files) {
+        const fd = new FormData();
+        fd.append('file', file);
+        const url = await uploadImage(fd).unwrap();
+        if (url) urls.push(url);
+      }
+      if (urls.length) onChange([...images, ...urls]);
     } catch {
       toast.error('Image upload failed');
     } finally {
       setUploading(false);
-      // reset input so same file can be re-selected
       e.target.value = '';
     }
   };
 
-  const remove = (idx: number) => onChange(images.filter((_, i) => i !== idx));
-
   return (
-    <div>
-      <label className="block text-xs font-medium text-gray-600 mb-1">
-        Variant images{' '}
-        <span className="text-gray-400">(shown when this color is selected)</span>
+    <div className="flex flex-wrap gap-2">
+      {images.map((url, i) => (
+        <div key={i} className="relative w-14 h-14">
+          <img src={url} className="w-full h-full object-cover rounded-lg border border-gray-200" />
+          <button type="button" onClick={() => onChange(images.filter((_, j) => j !== i))}
+            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-xs">×</button>
+        </div>
+      ))}
+      <label className="w-14 h-14 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-indigo-400 flex-shrink-0">
+        {uploading ? <div className="animate-spin w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full" /> : <ImagePlus className="w-5 h-5 text-gray-400" />}
+        <input type="file" accept="image/*" multiple className="hidden" onChange={handleUpload} disabled={uploading} />
       </label>
-      <div className="flex flex-wrap gap-2">
-        {images.map((url, i) => (
-          <div key={i} className="relative w-16 h-16 flex-shrink-0">
-            <img src={url} alt="" className="w-full h-full object-cover rounded-lg border border-gray-200" />
-            <button
-              type="button"
-              onClick={() => remove(i)}
-              className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-xs leading-none"
-            >
-              ×
-            </button>
-          </div>
-        ))}
-
-        <label className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-indigo-400 transition-colors flex-shrink-0">
-          {uploading ? (
-            <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <>
-              <ImagePlus className="w-5 h-5 text-gray-400" />
-              <span className="text-[10px] text-gray-400 mt-0.5">Upload</span>
-            </>
-          )}
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleUpload}
-            disabled={uploading}
-          />
-        </label>
-      </div>
     </div>
   );
 }
 
-// ─── Variant form (add + edit) ────────────────────────────────────────────────
+// ─── Single variant form ───────────────────────────────────────────────────────
 function VariantForm({
-  initial,
-  onSave,
-  onCancel,
-  isSaving,
+  initial, onSave, onCancel, isSaving,
 }: {
   initial: CreateVariantPayload;
   onSave: (data: CreateVariantPayload) => void;
   onCancel: () => void;
   isSaving: boolean;
 }) {
-  const [form, setForm] = useState<CreateVariantPayload>({
-    ...initial,
-    images: initial.images ?? [],
-  });
-  const set = (k: keyof CreateVariantPayload, v: any) =>
-    setForm((f) => ({ ...f, [k]: v }));
+  const [form, setForm] = useState<CreateVariantPayload>(initial);
+  const set = (k: keyof CreateVariantPayload, v: any) => setForm((p) => ({ ...p, [k]: v }));
 
   return (
-    <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        {/* Color name */}
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Color name</label>
-          <input
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            placeholder="e.g. Rose Gold"
-            value={form.color ?? ''}
-            onChange={(e) => set('color', e.target.value)}
-          />
-        </div>
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 bg-gray-50 rounded-xl">
+      {/* Size */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Size</label>
+        <input value={form.size ?? ''} onChange={(e) => set('size', e.target.value)}
+          className="w-full border border-gray-300 rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          placeholder="e.g. M, 38, 34B" />
+      </div>
 
-        {/* Color swatch */}
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Color swatch</label>
-          <div className="flex items-center gap-2">
-            <input
-              type="color"
-              className="w-10 h-9 rounded border border-gray-200 cursor-pointer p-0.5"
-              value={form.colorHex ?? '#000000'}
-              onChange={(e) => set('colorHex', e.target.value)}
-            />
-            <input
-              className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="#000000"
-              value={form.colorHex ?? ''}
-              onChange={(e) => {
-                // Normalise shorthand (#abc → #aabbcc) so backend @IsHexColor() never rejects it
-                const raw = e.target.value.trim();
-                const normalised =
-                  /^#[0-9a-fA-F]{3}$/.test(raw)
-                    ? '#' + [...raw.slice(1)].map((c) => c + c).join('')
-                    : raw;
-                set('colorHex', normalised);
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Size */}
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Size</label>
-          <input
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            placeholder="e.g. Small, Medium, Large, One Size"
-            value={form.size ?? ''}
-            onChange={(e) => set('size', e.target.value)}
-          />
-        </div>
-
-        {/* SKU */}
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">
-            SKU <span className="text-gray-400">(optional)</span>
-          </label>
-          <input
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            placeholder="e.g. SKU-001-BLK-LG"
-            value={form.sku ?? ''}
-            onChange={(e) => set('sku', e.target.value)}
-          />
-        </div>
-
-        {/* Price */}
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">
-            Price <span className="text-red-400">*</span>
-          </label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">৳</span>
-            <input
-              type="number"
-              min={0}
-              step={0.01}
-              className="w-full border border-gray-200 rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              value={form.price}
-              onChange={(e) => set('price', parseFloat(e.target.value) || 0)}
-            />
-          </div>
-        </div>
-
-        {/* Compare price */}
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">
-            Compare-at price <span className="text-gray-400">(optional)</span>
-          </label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">৳</span>
-            <input
-              type="number"
-              min={0}
-              step={0.01}
-              className="w-full border border-gray-200 rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="0.00"
-              value={form.comparePrice ?? ''}
-              onChange={(e) =>
-                set('comparePrice', e.target.value ? parseFloat(e.target.value) : undefined)
-              }
-            />
-          </div>
-        </div>
-
-        {/* Stock */}
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">
-            Stock <span className="text-red-400">*</span>
-          </label>
-          <input
-            type="number"
-            min={0}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            value={form.stock}
-            onChange={(e) => set('stock', parseInt(e.target.value) || 0)}
-          />
-        </div>
-
-        {/* Active toggle */}
-        <div className="flex items-end pb-1">
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={form.isActive ?? true}
-              onChange={(e) => set('isActive', e.target.checked)}
-              className="w-4 h-4 rounded text-indigo-600 border-gray-300 focus:ring-indigo-500"
-            />
-            <span className="text-sm text-gray-700">Active / visible</span>
-          </label>
+      {/* Color */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Color</label>
+        <div className="flex gap-1.5">
+          <input value={form.color ?? ''} onChange={(e) => set('color', e.target.value)}
+            className="flex-1 border border-gray-300 rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="e.g. Red" />
+          <input type="color" value={form.colorHex ?? '#000000'} onChange={(e) => set('colorHex', e.target.value)}
+            className="w-9 h-9 rounded-lg border border-gray-300 cursor-pointer p-0.5" />
         </div>
       </div>
 
-      {/* ── Image uploader (full width row) ─────────────────────────────── */}
-      <VariantImageUploader
-        images={form.images ?? []}
-        onChange={(urls) => set('images', urls)}
-      />
+      {/* Price */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Price (৳)</label>
+        <input type="number" min={0} step={0.01} value={form.price}
+          onChange={(e) => set('price', parseFloat(e.target.value) || 0)}
+          className="w-full border border-gray-300 rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
 
-      <div className="flex justify-end gap-2 pt-1">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100"
-        >
-          <X className="w-3.5 h-3.5" /> Cancel
+      {/* Compare Price */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Compare Price (৳)</label>
+        <input type="number" min={0} step={0.01} value={form.comparePrice ?? ''}
+          onChange={(e) => set('comparePrice', e.target.value ? parseFloat(e.target.value) : undefined)}
+          className="w-full border border-gray-300 rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          placeholder="Optional" />
+      </div>
+
+      {/* Stock */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Stock</label>
+        <input type="number" min={0} value={form.stock}
+          onChange={(e) => set('stock', parseInt(e.target.value) || 0)}
+          className="w-full border border-gray-300 rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+
+      {/* SKU */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">SKU</label>
+        <input value={form.sku ?? ''} onChange={(e) => set('sku', e.target.value)}
+          className="w-full border border-gray-300 rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          placeholder="Optional" />
+      </div>
+
+      {/* Images */}
+      <div className="col-span-full">
+        <label className="block text-xs font-medium text-gray-600 mb-1.5">Images</label>
+        <VariantImageUploader images={form.images ?? []} onChange={(urls) => set('images', urls)} />
+      </div>
+
+      {/* Actions */}
+      <div className="col-span-full flex gap-2 pt-1">
+        <button type="button" onClick={() => onSave(form)} disabled={isSaving}
+          className="inline-flex items-center gap-1.5 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50">
+          <Check className="w-4 h-4" /> {isSaving ? 'Saving…' : 'Save'}
         </button>
-        <button
-          type="button"
-          disabled={isSaving || form.price == null}
-          onClick={() => onSave(form)}
-          className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
-        >
-          <Check className="w-3.5 h-3.5" />
-          {isSaving ? 'Saving…' : 'Save variant'}
+        <button type="button" onClick={onCancel}
+          className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50">
+          <X className="w-4 h-4" /> Cancel
         </button>
       </div>
     </div>
   );
 }
 
-// ─── Main VariantManager ──────────────────────────────────────────────────────
+// ─── Bulk variant generator ────────────────────────────────────────────────────
+function BulkVariantCreator({ productId, existingVariants, onCreate }: {
+  productId: string;
+  existingVariants: ProductVariant[];
+  onCreate: (variants: CreateVariantPayload[]) => Promise<void>;
+}) {
+  const [sizes, setSizes] = useState<string[]>([]);
+  const [colors, setColors] = useState<{ name: string; hex: string }[]>([]);
+  const [customSize, setCustomSize] = useState('');
+  const [customColor, setCustomColor] = useState({ name: '', hex: '#000000' });
+  const [defaultPrice, setDefaultPrice] = useState(0);
+  const [defaultStock, setDefaultStock] = useState(0);
+  const [creating, setCreating] = useState(false);
+  const [selectedPreset, setSelectedPreset] = useState('');
+
+  const toggleSize = (s: string) => setSizes((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
+  const toggleColor = (c: { name: string; hex: string }) =>
+    setColors((prev) => prev.some((x) => x.name === c.name) ? prev.filter((x) => x.name !== c.name) : [...prev, c]);
+
+  const addCustomSize = () => {
+    if (customSize.trim() && !sizes.includes(customSize.trim())) {
+      setSizes((prev) => [...prev, customSize.trim()]);
+      setCustomSize('');
+    }
+  };
+
+  const addCustomColor = () => {
+    if (customColor.name.trim() && !colors.some((c) => c.name === customColor.name.trim())) {
+      setColors((prev) => [...prev, { name: customColor.name.trim(), hex: customColor.hex }]);
+      setCustomColor({ name: '', hex: '#000000' });
+    }
+  };
+
+  // Matrix: সব size × color combination
+  const matrix = useMemo(() => {
+    if (sizes.length === 0 || colors.length === 0) return [];
+    return sizes.flatMap((size) =>
+      colors.map((color) => ({ size, color: color.name, colorHex: color.hex }))
+    );
+  }, [sizes, colors]);
+
+  // Already existing combinations
+  const existingCombos = useMemo(() =>
+    new Set(existingVariants.map((v) => `${v.size ?? ''}|${v.color ?? ''}`)),
+    [existingVariants]
+  );
+
+  const newVariants = matrix.filter((m) => !existingCombos.has(`${m.size}|${m.color}`));
+
+  const handleCreate = async () => {
+    if (newVariants.length === 0) { toast.error('No new variants to create'); return; }
+    setCreating(true);
+    try {
+      await onCreate(newVariants.map((v) => ({
+        size: v.size,
+        color: v.color,
+        colorHex: v.colorHex,
+        price: defaultPrice,
+        stock: defaultStock,
+        images: [],
+        isActive: true,
+      })));
+      toast.success(`${newVariants.length} variants created!`);
+      setSizes([]);
+      setColors([]);
+    } catch {
+      toast.error('Failed to create some variants');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  return (
+    <div className="border border-indigo-200 rounded-xl bg-indigo-50/30 p-5 space-y-5">
+      <div className="flex items-center gap-2">
+        <Grid3X3 className="w-4 h-4 text-indigo-600" />
+        <h3 className="font-semibold text-gray-900 text-sm">Bulk Create (Size × Color Matrix)</h3>
+      </div>
+
+      {/* Size preset selector */}
+      <div>
+        <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Sizes</label>
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {Object.entries(SIZE_PRESETS).map(([label, presetSizes]) => (
+            <button key={label} type="button"
+              onClick={() => { setSizes(presetSizes); setSelectedPreset(label); }}
+              className={`px-2.5 py-1 text-xs rounded-lg border transition-colors ${selectedPreset === label ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-300 text-gray-600 hover:border-indigo-400'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {Array.from(new Set([...Object.values(SIZE_PRESETS).flat(), ...sizes])).map((s) => (
+            <button key={s} type="button" onClick={() => toggleSize(s)}
+              className={`px-2.5 py-1 text-xs rounded-lg border font-medium transition-colors ${sizes.includes(s) ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-300 text-gray-600 hover:border-gray-400'}`}>
+              {s}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input value={customSize} onChange={(e) => setCustomSize(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && addCustomSize()}
+            placeholder="Custom size (e.g. 34B, XXXL)"
+            className="flex-1 border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          <button type="button" onClick={addCustomSize}
+            className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300">Add</button>
+        </div>
+      </div>
+
+      {/* Color picker */}
+      <div>
+        <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Colors</label>
+        <div className="flex flex-wrap gap-2 mb-2">
+          {COLOR_PRESETS.map((c) => {
+            const selected = colors.some((x) => x.name === c.name);
+            return (
+              <button key={c.name} type="button" onClick={() => toggleColor(c)}
+                title={c.name}
+                className={`relative w-8 h-8 rounded-full border-2 transition-all ${selected ? 'border-indigo-600 scale-110' : 'border-gray-300 hover:border-gray-500'}`}
+                style={{ backgroundColor: c.hex }}>
+                {selected && (
+                  <span className="absolute inset-0 flex items-center justify-center">
+                    <Check className={`w-4 h-4 ${c.hex === '#ffffff' ? 'text-gray-800' : 'text-white'}`} />
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex gap-2 items-center">
+          <input value={customColor.name} onChange={(e) => setCustomColor((p) => ({ ...p, name: e.target.value }))}
+            placeholder="Color name"
+            className="flex-1 border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          <input type="color" value={customColor.hex} onChange={(e) => setCustomColor((p) => ({ ...p, hex: e.target.value }))}
+            className="w-9 h-9 rounded-lg border border-gray-300 cursor-pointer p-0.5" />
+          <button type="button" onClick={addCustomColor}
+            className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300">Add</button>
+        </div>
+        {/* Selected colors preview */}
+        {colors.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {colors.map((c) => (
+              <span key={c.name} className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white border border-gray-200 text-xs">
+                <span className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: c.hex }} />
+                {c.name}
+                <button onClick={() => setColors((p) => p.filter((x) => x.name !== c.name))} className="text-gray-400 hover:text-red-500 ml-0.5">×</button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Default price + stock */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Default Price (৳)</label>
+          <input type="number" min={0} value={defaultPrice} onChange={(e) => setDefaultPrice(Number(e.target.value))}
+            className="w-full border border-gray-300 rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Default Stock</label>
+          <input type="number" min={0} value={defaultStock} onChange={(e) => setDefaultStock(Number(e.target.value))}
+            className="w-full border border-gray-300 rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+      </div>
+
+      {/* Preview matrix */}
+      {matrix.length > 0 && (
+        <div>
+          <p className="text-xs font-medium text-gray-600 mb-2">
+            Preview: {newVariants.length} new variants
+            {matrix.length !== newVariants.length && ` (${matrix.length - newVariants.length} already exist, skipped)`}
+          </p>
+          <div className="overflow-x-auto">
+            <table className="text-xs w-full border-collapse">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="px-2 py-1.5 text-left border border-gray-200">Size</th>
+                  {colors.map((c) => (
+                    <th key={c.name} className="px-2 py-1.5 border border-gray-200">
+                      <div className="flex items-center gap-1 justify-center">
+                        <span className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: c.hex }} />
+                        {c.name}
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {sizes.map((size) => (
+                  <tr key={size} className="hover:bg-gray-50">
+                    <td className="px-2 py-1.5 font-medium border border-gray-200">{size}</td>
+                    {colors.map((color) => {
+                      const exists = existingCombos.has(`${size}|${color.name}`);
+                      return (
+                        <td key={color.name} className={`px-2 py-1.5 text-center border border-gray-200 ${exists ? 'bg-green-50 text-green-600' : 'text-gray-600'}`}>
+                          {exists ? '✓ exists' : '+ new'}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <button type="button" onClick={handleCreate} disabled={creating || newVariants.length === 0}
+        className="w-full py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+        {creating ? `Creating ${newVariants.length} variants…` : `Create ${newVariants.length} variants`}
+      </button>
+    </div>
+  );
+}
+
+// ─── Main VariantManager ───────────────────────────────────────────────────────
 export function VariantManager({ productId }: { productId: string }) {
+  const [addingNew, setAddingNew] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [showBulk, setShowBulk] = useState(false);
+
   const { data: variants = [], isLoading } = useGetVariantsQuery(productId);
   const [createVariant, { isLoading: creating }] = useCreateVariantMutation();
   const [updateVariant, { isLoading: updating }] = useUpdateVariantMutation();
   const [deleteVariant] = useDeleteVariantMutation();
 
-  const [showAdd, setShowAdd] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [collapsed, setCollapsed] = useState(false);
-
   const handleCreate = async (data: CreateVariantPayload) => {
     try {
       await createVariant({ productId, data }).unwrap();
-      toast.success('Variant added');
-      setShowAdd(false);
-    } catch (e: any) {
-      toast.error(e?.data?.message ?? 'Could not add variant');
+      toast.success('Variant created');
+      setAddingNew(false);
+    } catch (err: any) {
+      toast.error(err?.data?.message ?? 'Failed to create variant');
     }
   };
 
-  const handleUpdate = async (variantId: string, data: CreateVariantPayload) => {
+  const handleBulkCreate = async (variants: CreateVariantPayload[]) => {
+    const results = await Promise.allSettled(
+      variants.map((v) => createVariant({ productId, data: v }).unwrap())
+    );
+    const failed = results.filter((r) => r.status === 'rejected').length;
+    if (failed > 0) toast.error(`${failed} variants failed (may already exist)`);
+  };
+
+  const handleUpdate = async (id: string, data: CreateVariantPayload) => {
     try {
-      await updateVariant({ productId, variantId, data }).unwrap();
+      await updateVariant({ productId, variantId: id, data }).unwrap();
       toast.success('Variant updated');
       setEditingId(null);
-    } catch (e: any) {
-      toast.error(e?.data?.message ?? 'Could not update variant');
+    } catch (err: any) {
+      toast.error(err?.data?.message ?? 'Failed to update variant');
     }
   };
 
-  const handleDelete = async (variantId: string) => {
-    if (!confirm('Delete this variant? This cannot be undone.')) return;
+  const handleDelete = async (id: string) => {
+    if (!confirm('Delete this variant?')) return;
     try {
-      await deleteVariant({ productId, variantId }).unwrap();
-      toast.success('Variant deleted');
+      await deleteVariant({ productId, variantId: id }).unwrap();
+      toast.success('Deleted');
     } catch {
-      toast.error('Could not delete variant');
+      toast.error('Failed to delete');
     }
   };
+
+  // Group variants by size for display
+  const groupedBySizeAndColor = useMemo(() => {
+    const sizeMap = new Map<string, ProductVariant[]>();
+    for (const v of variants) {
+      const key = v.size ?? 'No Size';
+      if (!sizeMap.has(key)) sizeMap.set(key, []);
+      sizeMap.get(key)!.push(v);
+    }
+    return sizeMap;
+  }, [variants]);
+
+  if (isLoading) return <div className="text-sm text-gray-400 py-4">Loading variants…</div>;
 
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl p-6">
-      <div className="flex items-center justify-between mb-5">
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-semibold text-gray-900">Product Variants</h3>
-          <p className="text-xs text-gray-400 mt-0.5">
-            Each variant = a unique color + size combo with its own price, stock & images
-          </p>
+          <p className="text-sm text-gray-500">{variants.length} variant{variants.length !== 1 ? 's' : ''}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => { setShowAdd(true); setCollapsed(false); }}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
-          >
-            <Plus className="w-3.5 h-3.5" /> Add variant
+        <div className="flex gap-2">
+          <button type="button" onClick={() => { setShowBulk(!showBulk); setAddingNew(false); }}
+            className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-xl border transition-colors ${showBulk ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
+            <Grid3X3 className="w-4 h-4" /> Bulk Create
           </button>
-          <button
-            type="button"
-            onClick={() => setCollapsed((c) => !c)}
-            className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-50"
-          >
-            {collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+          <button type="button" onClick={() => { setAddingNew(!addingNew); setShowBulk(false); }}
+            className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-xl border transition-colors ${addingNew ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
+            <Plus className="w-4 h-4" /> Add Single
           </button>
         </div>
       </div>
 
-      {!collapsed && (
-        <>
-          {showAdd && (
-            <div className="mb-4">
-              <VariantForm
-                initial={EMPTY_FORM}
-                onSave={handleCreate}
-                onCancel={() => setShowAdd(false)}
-                isSaving={creating}
-              />
-            </div>
-          )}
+      {/* Bulk creator */}
+      {showBulk && (
+        <BulkVariantCreator
+          productId={productId}
+          existingVariants={variants}
+          onCreate={handleBulkCreate}
+        />
+      )}
 
-          {isLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-14 rounded-xl bg-gray-50 animate-pulse" />
-              ))}
-            </div>
-          ) : variants.length === 0 && !showAdd ? (
-            <div className="text-center py-8 text-gray-400 text-sm border-2 border-dashed border-gray-100 rounded-xl">
-              No variants yet — click <strong>Add variant</strong> to create one.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {variants.map((v: ProductVariant) =>
-                editingId === v.id ? (
-                  <VariantForm
-                    key={v.id}
-                    initial={{
-                      color: v.color,
-                      colorHex: v.colorHex,
-                      size: v.size,
-                      price: Number(v.price),
-                      comparePrice: v.comparePrice ? Number(v.comparePrice) : undefined,
-                      stock: v.stock,
-                      sku: v.sku,
-                      images: v.images ?? [],
-                      isActive: v.isActive,
-                    }}
-                    onSave={(data) => handleUpdate(v.id, data)}
-                    onCancel={() => setEditingId(null)}
-                    isSaving={updating}
-                  />
-                ) : (
-                  <div
-                    key={v.id}
-                    className="flex items-center justify-between gap-4 px-4 py-3 rounded-xl border border-gray-100 hover:border-gray-200 bg-gray-50 hover:bg-white transition-colors"
-                  >
-                    {/* Color swatch + name/sku */}
-                    <div className="flex items-center gap-3 min-w-0">
-                      {v.colorHex && (
-                        <span
-                          className="w-5 h-5 rounded-full border border-gray-300 flex-shrink-0"
-                          style={{ backgroundColor: v.colorHex }}
+      {/* Single add form */}
+      {addingNew && (
+        <VariantForm
+          initial={EMPTY_FORM}
+          onSave={handleCreate}
+          onCancel={() => setAddingNew(false)}
+          isSaving={creating}
+        />
+      )}
+
+      {/* Variants list — grouped by size */}
+      {variants.length === 0 ? (
+        <div className="text-center py-8 text-gray-400 text-sm border border-dashed border-gray-300 rounded-xl">
+          No variants yet. Use Bulk Create or Add Single.
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {Array.from(groupedBySizeAndColor.entries()).map(([size, sizeVariants]) => (
+            <div key={size} className="border border-gray-200 rounded-xl overflow-hidden">
+              {/* Size header */}
+              <div className="bg-gray-50 px-4 py-2 flex items-center justify-between">
+                <span className="text-sm font-semibold text-gray-700">Size: {size}</span>
+                <span className="text-xs text-gray-400">{sizeVariants.length} color{sizeVariants.length !== 1 ? 's' : ''}</span>
+              </div>
+              {/* Color variants under this size */}
+              <div className="divide-y divide-gray-100">
+                {sizeVariants.map((variant) => (
+                  <div key={variant.id}>
+                    {editingId === variant.id ? (
+                      <div className="p-3">
+                        <VariantForm
+                          initial={{
+                            color: variant.color ?? '',
+                            colorHex: variant.colorHex ?? '#000000',
+                            size: variant.size ?? '',
+                            price: Number(variant.price),
+                            comparePrice: variant.comparePrice ? Number(variant.comparePrice) : undefined,
+                            stock: variant.stock,
+                            sku: variant.sku ?? '',
+                            images: variant.images ?? [],
+                            isActive: variant.isActive,
+                          }}
+                          onSave={(data) => handleUpdate(variant.id, data)}
+                          onCancel={() => setEditingId(null)}
+                          isSaving={updating}
                         />
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-800 truncate">
-                          {[v.color, v.size].filter(Boolean).join(' / ') || 'No color or size'}
-                        </p>
-                        {v.sku && <p className="text-xs text-gray-400 font-mono">{v.sku}</p>}
                       </div>
-                    </div>
-
-                    {/* Variant images preview strip */}
-                    {v.images && v.images.length > 0 && (
-                      <div className="flex gap-1 flex-shrink-0">
-                        {v.images.slice(0, 4).map((img, i) => (
-                          <img
-                            key={i}
-                            src={img}
-                            alt=""
-                            className="w-8 h-8 rounded object-cover border border-gray-200"
-                          />
-                        ))}
-                        {v.images.length > 4 && (
-                          <div className="w-8 h-8 rounded border border-gray-200 bg-gray-100 flex items-center justify-center text-[10px] text-gray-500 font-medium">
-                            +{v.images.length - 4}
+                    ) : (
+                      <div className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50">
+                        {/* Color swatch */}
+                        <div className="w-7 h-7 rounded-full border-2 border-gray-200 flex-shrink-0"
+                          style={{ backgroundColor: variant.colorHex ?? '#e5e7eb' }} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-800">{variant.color ?? 'No color'}</span>
+                            {!variant.isActive && <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">Inactive</span>}
+                          </div>
+                          <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
+                            <span>{formatCurrency(Number(variant.price))}</span>
+                            {variant.comparePrice && <span className="line-through">{formatCurrency(Number(variant.comparePrice))}</span>}
+                            <span className={variant.stock > 0 ? 'text-green-600' : 'text-red-500'}>
+                              Stock: {variant.stock}
+                            </span>
+                            {variant.sku && <span>SKU: {variant.sku}</span>}
+                          </div>
+                        </div>
+                        {/* Images preview */}
+                        {variant.images?.length > 0 && (
+                          <div className="flex gap-1">
+                            {variant.images.slice(0, 2).map((img, i) => (
+                              <img key={i} src={img} className="w-8 h-8 rounded object-cover border border-gray-200" />
+                            ))}
+                            {variant.images.length > 2 && <span className="text-xs text-gray-400 self-center">+{variant.images.length - 2}</span>}
                           </div>
                         )}
+                        {/* Actions */}
+                        <div className="flex gap-1">
+                          <button type="button" onClick={() => setEditingId(variant.id)}
+                            className="p-1.5 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50">
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button type="button" onClick={() => handleDelete(variant.id)}
+                            className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     )}
-
-                    {/* Price / stock / status */}
-                    <div className="flex items-center gap-6 text-sm flex-shrink-0">
-                      <div className="text-right">
-                        <p className="font-semibold text-gray-900">{formatCurrency(Number(v.price))}</p>
-                        {v.comparePrice && (
-                          <p className="text-xs text-gray-400 line-through">
-                            {formatCurrency(Number(v.comparePrice))}
-                          </p>
-                        )}
-                      </div>
-                      <div className="text-right w-14">
-                        <p className={`font-semibold ${v.stock === 0 ? 'text-red-500' : 'text-gray-700'}`}>
-                          {v.stock}
-                        </p>
-                        <p className="text-xs text-gray-400">in stock</p>
-                      </div>
-                      <span
-                        className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                          v.isActive ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400'
-                        }`}
-                      >
-                        {v.isActive ? 'Active' : 'Hidden'}
-                      </span>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setEditingId(v.id)}
-                        className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
-                        title="Edit variant"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(v.id)}
-                        className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                        title="Delete variant"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
                   </div>
-                ),
-              )}
+                ))}
+              </div>
             </div>
-          )}
-        </>
+          ))}
+        </div>
       )}
     </div>
   );
