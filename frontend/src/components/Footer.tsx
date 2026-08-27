@@ -1,5 +1,8 @@
 import { Link } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import { useGetCartQuery } from '../features/cart/cartApi';
+import { useAppSelector } from '../app/hooks';
 
 const WHATSAPP_NUMBER = '8801341075481';
 const WHATSAPP_MESSAGE = encodeURIComponent('হ্যালো! আমি Bowri Shop থেকে অর্ডার করতে চাই।');
@@ -134,6 +137,14 @@ export function Footer() {
 function MobileBottomNav() {
   const location = useLocation();
   const path = location.pathname;
+  const { isAuthenticated } = useAuth();
+  const { data: cart } = useGetCartQuery(undefined, { skip: !isAuthenticated });
+  const guestCartCount = useAppSelector((state) =>
+    state.guestCart.items.reduce((sum, item) => sum + item.quantity, 0),
+  );
+  const cartCount = isAuthenticated
+    ? (cart?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0)
+    : guestCartCount;
 
   const isActive = (href: string) => {
     if (href === '/') return path === '/';
@@ -158,7 +169,14 @@ function MobileBottomNav() {
               isActive(to) ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-500'
             }`}
           >
-            {icon}
+            <span className="relative">
+              {icon}
+              {to === '/cart' && cartCount > 0 && (
+                <span className="absolute -top-2 -right-3 min-w-4 h-4 px-1 bg-indigo-600 text-white text-[9px] rounded-full flex items-center justify-center font-bold">
+                  {cartCount > 9 ? '9+' : cartCount}
+                </span>
+              )}
+            </span>
             <span className="text-[10px] font-medium">{label}</span>
           </Link>
         ))}
