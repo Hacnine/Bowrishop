@@ -284,6 +284,49 @@ export function ProductDetailPage() {
     }
   };
 
+  const handleOrderNow = async () => {
+    if (hasVariants && !selectedVariant) {
+      toast.error("Please select a color and size first");
+      return;
+    }
+
+    if (!isAuthenticated) {
+      dispatch(
+        addGuestItem({
+          productId: product!.id,
+          quantity: qty,
+          product: {
+            id: product!.id,
+            name: product!.name,
+            slug: product!.slug,
+            price: Number(product!.price),
+            isPreOrder: product!.isPreOrder,
+            comparePrice: product!.comparePrice
+              ? Number(product!.comparePrice)
+              : undefined,
+            images: product!.images,
+            stock: product!.stock,
+            isActive: product!.isActive,
+          },
+          variant: hasVariants ? selectedVariant : null,
+        }),
+      );
+      navigate("/checkout");
+      return;
+    }
+
+    try {
+      await addToCart({
+        productId: product!.id,
+        quantity: qty,
+        ...(selectedVariant ? { variantId: selectedVariant.id } : {}),
+      }).unwrap();
+      navigate("/checkout");
+    } catch {
+      toast.error("Could not start checkout");
+    }
+  };
+
   const { data: relatedData, isLoading: relatedLoading } = useGetProductsQuery(
     { categoryId: product?.category?.id, limit: 8 },
     { skip: !product?.category?.id },
@@ -665,6 +708,14 @@ export function ProductDetailPage() {
                     ) : (
                       <><ShoppingCart className="w-4 h-4 mr-2" /> Add to cart</>
                     )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleOrderNow}
+                    isLoading={addingCart}
+                    className="flex-1"
+                  >
+                    Order Now
                   </Button>
                   <Button variant="outline" onClick={handleAddToWishlist}>
                     <Heart className="w-4 h-4" />
