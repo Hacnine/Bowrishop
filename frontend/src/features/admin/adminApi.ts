@@ -27,6 +27,9 @@ export const adminApi = baseApi.injectEndpoints({
         return response?.secure_url || '';
       },
     }),
+    getCloudinaryImages: builder.query<{ publicId: string; url: string }[], void>({
+      query: () => '/upload/images',
+    }),
   }),
 });
 
@@ -34,4 +37,5 @@ export const {
   useGetAdminStatsQuery,
   useGetUsersQuery,
   useUploadImageMutation,
+  useGetCloudinaryImagesQuery,
 } = adminApi;

@@ -8,6 +8,7 @@ import {
   MaxFileSizeValidator,
   FileTypeValidator,
   BadRequestException,
+  Get,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
@@ -43,5 +44,10 @@ export class UploadController {
     }
     const url = await this.uploadService.uploadImage(file);
     return { secure_url: url };
+  }
+
+  @Get('images')
+  async listImages() {
+    return this.uploadService.listImages();
   }
 }
