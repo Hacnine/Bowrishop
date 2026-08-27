@@ -106,8 +106,15 @@ export function ProductCard({ product }: ProductCardProps) {
           <img
             src={product.images[0] || '/placeholder.jpg'}
             alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-cover transition-opacity duration-150"
           />
+          {product.images[1] && (
+            <img
+              src={product.images[1]}
+              alt={product.name}
+              className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+            />
+          )}
 
           {/* Badges — pre-order takes priority over sale */}
           {product.isPreOrder ? (

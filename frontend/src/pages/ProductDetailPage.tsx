@@ -450,7 +450,7 @@ export function ProductDetailPage() {
                   <img
                     src={mainImage}
                     alt={product.name}
-                    className="w-full h-full object-cover transition-opacity duration-200"
+                    className="w-full h-full object-cover transition-transform duration-500 ease-out hover:scale-110"
                   />
                   {product.isPreOrder && (
                     <span className="absolute top-3 left-3 bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5">
