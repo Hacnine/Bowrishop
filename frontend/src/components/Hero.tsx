@@ -20,7 +20,7 @@ import {
   BedDouble,
   Monitor,
 } from 'lucide-react';
-import { Button } from '../components/ui/button';
+import { Button } from './ui/button';
 
 // ---- Slide content (dynamic: swap/add slides freely) ----
 // Each slide carries its own perks (icon/title/desc + colors) plus its
