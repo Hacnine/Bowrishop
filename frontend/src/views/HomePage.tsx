@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -33,7 +35,7 @@ import { useGetCategoriesQuery } from "../features/categories/categoriesApi";
 import { ProductCard } from "../components/ProductCard";
 import { ProductCardSkeleton } from "../components/ui/Skeleton";
 import { Hero } from "../components/Hero";
-import SEO from "../components/SEO";
+import type { Category, Product } from '../types/types.index';
 
 const perks = [
   { icon: Truck, title: "Free Delivery", desc: "On orders over ৳500" },
@@ -167,26 +169,36 @@ function ProductCarousel({
   );
 }
 
-export function HomePage() {
-  const { data: categories, isLoading: loadingCats } = useGetCategoriesQuery();
+type HomePageProps = {
+  categories?: Category[];
+  featured?: Product[];
+  bestSelling?: Product[];
+  onSale?: Product[];
+  newArrivals?: Product[];
+  mostViewed?: Product[];
+};
+
+export function HomePage({ categories: initialCategories, featured: initialFeatured, bestSelling: initialBestSelling, onSale: initialOnSale, newArrivals: initialNewArrivals, mostViewed: initialMostViewed }: HomePageProps) {
+  const { data: categories = initialCategories, isLoading: loadingCats } = useGetCategoriesQuery(undefined, { skip: !!initialCategories });
   const { data: featured, isLoading: loadingFeatured } =
-    useGetFeaturedProductsQuery(10);
+    useGetFeaturedProductsQuery(10, { skip: !!initialFeatured });
   const { data: bestSelling, isLoading: loadingBest } =
-    useGetBestSellingProductsQuery(10);
+    useGetBestSellingProductsQuery(10, { skip: !!initialBestSelling });
   const { data: onSale, isLoading: loadingSale } =
-    useGetOnSaleProductsQuery(10);
+    useGetOnSaleProductsQuery(10, { skip: !!initialOnSale });
   const { data: newArrivals, isLoading: loadingNew } =
-    useGetNewArrivalProductsQuery(10);
+    useGetNewArrivalProductsQuery(10, { skip: !!initialNewArrivals });
   const { data: mostViewed, isLoading: loadingViewed } =
-    useGetMostViewedProductsQuery(10);
+    useGetMostViewedProductsQuery(10, { skip: !!initialMostViewed });
+
+  const featuredProducts = featured ?? initialFeatured;
+  const bestSellingProducts = bestSelling ?? initialBestSelling;
+  const saleProducts = onSale ?? initialOnSale;
+  const arrivalProducts = newArrivals ?? initialNewArrivals;
+  const viewedProducts = mostViewed ?? initialMostViewed;
 
   return (
     <>
-      <SEO
-        title="Bowri Shop | Home, Kitchen, Beauty, Electronics, Clothing & Footwear"
-        description="Shop home essentials, kitchenware, beauty products, electronics, clothing, footwear and more at Bowri Shop. Fast delivery across Bangladesh."
-      />
-
       <div className="bg-[#FDFAF7]">
         {/* ── Hero ── */}
         <Hero categories={categories ?? []} />
@@ -324,14 +336,14 @@ export function HomePage() {
           />
           <ProductCarousel
             isLoading={loadingBest}
-            products={bestSelling}
+            products={bestSellingProducts}
             prevId="best-prev"
             nextId="best-next"
           />
         </section>
 
         {/* ── Flash Sale Banner ── */}
-        {onSale && onSale.length > 0 && (
+        {saleProducts && saleProducts.length > 0 && (
           <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="relative bg-gradient-to-r from-[#C7927E] to-[#A97462] rounded-3xl px-8 py-6 flex items-center justify-between overflow-hidden">
               <div className="relative z-10">
@@ -357,7 +369,7 @@ export function HomePage() {
         )}
 
         {/* ── On Sale ── */}
-        {onSale && onSale.length > 0 && (
+        {saleProducts && saleProducts.length > 0 && (
           <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <SectionHeader
               eyebrow="Save More"
@@ -369,7 +381,7 @@ export function HomePage() {
             />
             <ProductCarousel
               isLoading={loadingSale}
-              products={onSale}
+              products={saleProducts}
               prevId="sale-prev"
               nextId="sale-next"
             />
@@ -388,7 +400,7 @@ export function HomePage() {
           />
           <ProductCarousel
             isLoading={loadingFeatured}
-            products={featured}
+            products={featuredProducts}
             prevId="feat-prev"
             nextId="feat-next"
           />
@@ -406,7 +418,7 @@ export function HomePage() {
           />
           <ProductCarousel
             isLoading={loadingNew}
-            products={newArrivals}
+            products={arrivalProducts}
             prevId="new-prev"
             nextId="new-next"
           />
@@ -426,7 +438,7 @@ export function HomePage() {
           />
           <ProductCarousel
             isLoading={loadingViewed}
-            products={mostViewed}
+            products={viewedProducts}
             prevId="viewed-prev"
             nextId="viewed-next"
           />

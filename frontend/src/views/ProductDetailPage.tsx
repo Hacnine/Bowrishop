@@ -16,7 +16,6 @@ import { addGuestItem } from "../features/cart/guestCartSlice";
 import { StarRating } from "../components/ui/StarRating";
 import { Skeleton } from "../components/ui/Skeleton";
 import { formatCurrency } from "../utils";
-import SEO from "../components/SEO";
 import { ProductCard } from "../components/ProductCard";
 import { VideoPlayer } from "../components/VideoPlayer";
 import { ProductCardSkeleton } from "../components/ui/Skeleton";
@@ -424,13 +423,6 @@ export function ProductDetailPage({ initialProduct }: { initialProduct?: Product
 
   return (
     <>
-      <SEO
-        title={`${product.name} | Bowri Shop`}
-        description={product.description}
-        canonical={`https://www.bowrishop.com/product/${product.slug}`}
-        image={allProductImages[0]}
-      />
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <Link
           href="/products"
