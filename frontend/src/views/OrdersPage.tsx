@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { Package } from 'lucide-react';
 import { useGetOrdersQuery } from '../features/orders/ordersApi';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -22,7 +22,7 @@ export function OrdersPage() {
         <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
         <h2 className="text-xl font-semibold text-gray-900 mb-2">No orders yet</h2>
         <p className="text-gray-500 mb-6">When you place an order, it will appear here.</p>
-        <Link to="/products"><Button>Start Shopping</Button></Link>
+        <Link href="/products"><Button>Start Shopping</Button></Link>
       </div>
     );
   }

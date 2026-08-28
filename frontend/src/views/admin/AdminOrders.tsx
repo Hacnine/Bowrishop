@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import toast from "react-hot-toast";
 import {
   Copy,
@@ -257,7 +257,7 @@ function OrderDetailModal({
 export function AdminOrders() {
   const [page, setPage] = useState(1);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const navigate = useNavigate();
+  const router = useRouter();
   const { data, isLoading } = useGetAdminOrdersQuery({ page, limit: 20 });
   const [updateStatus] = useUpdateOrderStatusMutation();
 
@@ -275,7 +275,7 @@ export function AdminOrders() {
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
         <div>
-          <Button onClick={() => navigate('/admin/orders/create')}>
+          <Button onClick={() => router.push('/admin/orders/create')}>
             <Plus className="w-4 h-4 mr-2" /> Create Order
           </Button>
         </div>

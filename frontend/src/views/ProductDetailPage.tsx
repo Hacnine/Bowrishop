@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useMemo, useEffect } from "react";
-import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
+import Link from 'next/link';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ShoppingCart, Heart, ChevronLeft, Minus, Plus, Clock } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -28,12 +29,12 @@ import { Button } from "@/components/ui/button";
 
 export function ProductDetailPage({ initialProduct }: { initialProduct?: Product }) {
   const { slug } = useParams<{ slug: string }>();
-  const navigate = useNavigate();
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const { isAuthenticated, user } = useAppSelector((s) => s.auth);
 
   // ── URL search params for color/size ──────────────────────────────────
-  const [searchParams, setSearchParams] = useSearchParams();
+  const searchParams = useSearchParams();
   const urlColor = searchParams.get("color");
   const urlSize = searchParams.get("size");
 
@@ -89,17 +90,13 @@ export function ProductDetailPage({ initialProduct }: { initialProduct?: Product
 
   // ── Push color/size to URL ─────────────────────────────────────────────
   const updateUrl = (color: string | null, size: string | null) => {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        if (color) next.set("color", color);
-        else next.delete("color");
-        if (size) next.set("size", size);
-        else next.delete("size");
-        return next;
-      },
-      { replace: true }, // history stack দূষিত না করতে replace
-    );
+    const next = new URLSearchParams(searchParams.toString());
+    if (color) next.set('color', color);
+    else next.delete('color');
+    if (size) next.set('size', size);
+    else next.delete('size');
+    const query = next.toString();
+    router.replace(query ? `?${query}` : window.location.pathname);
   };
 
   // Initial setup: URL params থাকলে সেটা use করো, নইলে first variant
@@ -317,7 +314,7 @@ export function ProductDetailPage({ initialProduct }: { initialProduct?: Product
           variant: hasVariants ? selectedVariant : null,
         }),
       );
-      navigate("/checkout");
+      router.push('/checkout');
       return;
     }
 
@@ -327,7 +324,7 @@ export function ProductDetailPage({ initialProduct }: { initialProduct?: Product
         quantity: qty,
         ...(selectedVariant ? { variantId: selectedVariant.id } : {}),
       }).unwrap();
-      navigate("/checkout");
+      router.push('/checkout');
     } catch {
       toast.error("Could not start checkout");
     }
@@ -344,7 +341,7 @@ export function ProductDetailPage({ initialProduct }: { initialProduct?: Product
   }, [relatedData, product]);
 
   const handleAddToWishlist = async () => {
-    if (!isAuthenticated) { navigate("/login"); return; }
+    if (!isAuthenticated) { router.push('/login'); return; }
     try {
       await addToWishlist(product!.id).unwrap();
       toast.success("Added to wishlist");
@@ -418,7 +415,7 @@ export function ProductDetailPage({ initialProduct }: { initialProduct?: Product
     return (
       <div className="max-w-7xl mx-auto px-4 py-20 text-center">
         <p className="text-gray-500 text-lg mb-4">Product not found.</p>
-        <Link to="/products"><Button variant="outline">Back to products</Button></Link>
+        <Link href="/products"><Button variant="outline">Back to products</Button></Link>
       </div>
     );
   }
@@ -436,7 +433,7 @@ export function ProductDetailPage({ initialProduct }: { initialProduct?: Product
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <Link
-          to="/products"
+          href="/products"
           className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-8"
         >
           <ChevronLeft className="w-4 h-4" /> Back to products
@@ -526,7 +523,7 @@ export function ProductDetailPage({ initialProduct }: { initialProduct?: Product
           <div>
             {product.category && (
               <Link
-                to={`/products?categoryId=${product.category.id}`}
+                href={`/products?categoryId=${product.category.id}`}
                 className="text-xs font-semibold uppercase tracking-wider text-indigo-600 mb-2 inline-block"
               >
                 {product.category.name}

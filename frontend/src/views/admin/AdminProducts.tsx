@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -47,7 +47,9 @@ interface ImportResult {
 }
 
 export function AdminProducts() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname() ?? '/admin/products';
+  const searchParams = useSearchParams();
   const page = parseInt(searchParams.get('page') ?? '1', 10);
   const searchQuery = searchParams.get('q') ?? '';
   const [searchInput, setSearchInput] = useState(searchQuery);
@@ -103,23 +105,19 @@ export function AdminProducts() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
+      const next = new URLSearchParams(searchParams.toString());
         if (searchInput.trim()) next.set('q', searchInput.trim());
         else next.delete('q');
         next.set('page', '1');
-        return next;
-      });
+      router.push(`${pathname}?${next.toString()}`);
     }, 400);
     return () => clearTimeout(timer);
   }, [searchInput]);
 
   const setPage = (p: number) => {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.set('page', String(p));
-      return next;
-    });
+    const next = new URLSearchParams(searchParams.toString());
+    next.set('page', String(p));
+    router.push(`${pathname}?${next.toString()}`);
   };
 
   const openCreate = () => {

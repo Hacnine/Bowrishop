@@ -1,6 +1,6 @@
 'use client';
 
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -32,9 +32,9 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export function CheckoutPage() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const dispatch = useAppDispatch();
-  const [searchParams] = useSearchParams();
+  const searchParams = useSearchParams();
   const couponCode = searchParams.get('couponCode') ?? undefined;
   const couponDiscount = Number(searchParams.get('couponDiscount') ?? 0);
 
@@ -128,7 +128,7 @@ export function CheckoutPage() {
         }).unwrap();
 
         firePixelPurchase(order); // 👈 রেজিস্টার্ড ইউজারের অর্ডার সফল হলে পিক্সেল ফায়ার
-        navigate(`/orders/success/${order.id}`);
+        router.push(`/orders/success/${order.id}`);
       } catch (err: unknown) {
         const e = err as { data?: { message?: string } };
         toast.error(e?.data?.message ?? 'Could not place order');
@@ -166,7 +166,7 @@ export function CheckoutPage() {
 
         firePixelPurchase(order); // 👈 গেস্ট ইউজারের অর্ডার সফল হলে পিক্সেল ফায়ার
         dispatch(clearGuestCart());
-        navigate(`/orders/guest-success/${order.id}`);
+        router.push(`/orders/guest-success/${order.id}`);
       } catch (err: unknown) {
         const e = err as { data?: { message?: string } };
         toast.error(e?.data?.message ?? 'Could not place order');

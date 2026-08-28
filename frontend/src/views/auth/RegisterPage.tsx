@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -22,14 +23,14 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export function RegisterPage() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const { isAuthenticated } = useAppSelector((s) => s.auth);
   const [registerUser, { isLoading }] = useRegisterMutation();
 
   useEffect(() => {
-    if (isAuthenticated) navigate('/', { replace: true });
-  }, [isAuthenticated, navigate]);
+    if (isAuthenticated) router.replace('/');
+  }, [isAuthenticated, router]);
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -43,7 +44,7 @@ export function RegisterPage() {
         password: data.password,
       }).unwrap();
       dispatch(setCredentials(result));
-      navigate('/');
+      router.push('/');
     } catch (err: unknown) {
       const e = err as { data?: { message?: string } };
       toast.error(e?.data?.message ?? 'Registration failed');
@@ -92,7 +93,7 @@ export function RegisterPage() {
 
           <p className="text-center text-sm text-gray-500">
             Already have an account?{' '}
-            <Link to="/login" className="text-indigo-600 font-medium hover:underline">Sign in</Link>
+            <Link href="/login" className="text-indigo-600 font-medium hover:underline">Sign in</Link>
           </p>
         </div>
       </div>

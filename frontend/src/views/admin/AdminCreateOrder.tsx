@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { Plus, Trash2, Search, X, ArrowLeft, ShoppingBag } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useCreateAdminCustomOrderMutation } from '../../features/orders/ordersApi';
@@ -20,7 +20,7 @@ interface OrderItem {
 }
 
 export function AdminCreateOrder() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [createOrder, { isLoading }] = useCreateAdminCustomOrderMutation();
 
   // Customer info
@@ -129,7 +129,7 @@ export function AdminCreateOrder() {
       }).unwrap();
 
       toast.success('Custom order created!');
-      navigate(`/admin/orders`);
+      router.push('/admin/orders');
     } catch (err: any) {
       toast.error(err?.data?.message ?? 'Failed to create order');
     }
@@ -139,7 +139,7 @@ export function AdminCreateOrder() {
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center gap-4 mb-8">
         <button
-          onClick={() => navigate('/admin/orders')}
+          onClick={() => router.push('/admin/orders')}
           className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />

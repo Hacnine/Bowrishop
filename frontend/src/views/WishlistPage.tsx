@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { Heart, ShoppingBag, Trash2, TrendingDown, ShoppingCart } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useGetWishlistQuery, useRemoveFromWishlistMutation } from '../features/wishlist/wishlistApi';
@@ -92,7 +92,7 @@ const handleAddToCart = async (productId: string, name: string, price?: number) 
         </div>
         <h1 className="font-cormorant text-3xl font-bold text-gray-900 mb-2">Your wishlist is empty</h1>
         <p className="text-gray-500 mb-8">Save products you love and come back to them anytime.</p>
-        <Link to="/products">
+        <Link href="/products">
           <Button className="rounded-full px-8 bg-[#C7927E] hover:bg-[#A97462] text-white">Browse products</Button>
         </Link>
       </div>
@@ -154,7 +154,7 @@ const handleAddToCart = async (productId: string, name: string, price?: number) 
                 >
                   {/* Image */}
                   <Link
-                    to={`/products/${item.product.slug}`}
+                    href={`/products/${item.product.slug}`}
                     className="flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden border border-gray-100 bg-gray-50"
                   >
                     <img
@@ -167,7 +167,7 @@ const handleAddToCart = async (productId: string, name: string, price?: number) 
                   {/* Name + meta */}
                   <div className="flex-1 min-w-0">
                     <Link
-                      to={`/products/${item.product.slug}`}
+                      href={`/products/${item.product.slug}`}
                       className="font-medium text-gray-800 hover:text-[#C7927E] transition-colors line-clamp-2 leading-snug block"
                     >
                       {item.product.name}

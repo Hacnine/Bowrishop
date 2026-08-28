@@ -1,4 +1,5 @@
-import { useParams, Link, useLocation } from 'react-router-dom';
+import Link from 'next/link';
+import { useParams, usePathname } from 'next/navigation';
 import { CheckCircle, Package } from 'lucide-react';
 import { useGetOrderByIdQuery, useGetGuestOrderQuery } from '../features/orders/ordersApi';
 import { Button } from '../components/ui/button';
@@ -7,7 +8,7 @@ import { formatCurrency } from '../utils';
 
 export function OrderConfirmationPage() {
   const { id } = useParams<{ id: string }>();
-  const { pathname } = useLocation();
+  const pathname = usePathname() ?? '';
   const isGuest = pathname.includes('guest-success');
 
   const { data: authOrder, isLoading: authLoading } = useGetOrderByIdQuery(id!, { skip: isGuest });
@@ -29,8 +30,8 @@ export function OrderConfirmationPage() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-20 text-center">
         <p className="text-gray-500 mb-4">Order not found.</p>
-        {!isGuest && <Link to="/profile/orders"><Button variant="outline">My Orders</Button></Link>}
-        <Link to="/products"><Button className="ml-2">Continue Shopping</Button></Link>
+        {!isGuest && <Link href="/profile/orders"><Button variant="outline">My Orders</Button></Link>}
+        <Link href="/products"><Button className="ml-2">Continue Shopping</Button></Link>
       </div>
     );
   }
@@ -83,9 +84,9 @@ export function OrderConfirmationPage() {
       </div>
 
       <div className="flex gap-4 justify-center">
-        {!isGuest && <Link to="/profile/orders"><Button variant="outline">My Orders</Button></Link>}
-        {isGuest && <Link to="/login"><Button variant="outline">Sign in to track orders</Button></Link>}
-        <Link to="/products"><Button>Continue Shopping</Button></Link>
+        {!isGuest && <Link href="/profile/orders"><Button variant="outline">My Orders</Button></Link>}
+        {isGuest && <Link href="/login"><Button variant="outline">Sign in to track orders</Button></Link>}
+        <Link href="/products"><Button>Continue Shopping</Button></Link>
       </div>
     </div>
   );

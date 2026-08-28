@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import Link from 'next/link';
 import {
   ArrowRight,
   Truck,
@@ -99,7 +99,7 @@ function SectionHeader({
         <span className="w-px h-4 bg-gray-200" />
 
         <Link
-          to={href}
+          href={href}
           className="text-sm text-[#C7927E] font-medium hover:underline flex items-center gap-1 whitespace-nowrap"
         >
           View all <ArrowRight className="w-3.5 h-3.5" />
@@ -222,7 +222,7 @@ export function HomePage() {
               </h2>
             </div>
             <Link
-              to="/products"
+              href="/products"
               className="text-sm text-[#C7927E] font-medium hover:underline flex items-center gap-1 mb-1"
             >
               All categories <ArrowRight className="w-3.5 h-3.5" />
@@ -239,7 +239,7 @@ export function HomePage() {
               : categories?.map((cat) => (
                   <Link
                     key={cat.id}
-                    to={`/products?categoryId=${cat.id}`}
+                    href={`/products?categoryId=${cat.id}`}
                     className="group relative aspect-square rounded-2xl overflow-hidden bg-[#F0E8DF]"
                   >
                     {cat.image ? (
@@ -272,7 +272,7 @@ export function HomePage() {
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Link
-              to="/products?categoryId=1"
+              href="/products?categoryId=1"
               className="group relative h-44 rounded-3xl overflow-hidden bg-gradient-to-br from-[#F7EDE6] to-[#EDD5C5] flex items-center px-8"
             >
               <div className="relative z-10">
@@ -291,7 +291,7 @@ export function HomePage() {
               <div className="absolute right-0 bottom-0 w-40 h-40 opacity-20 bg-[#C7927E] rounded-full translate-x-10 translate-y-10" />
             </Link>
             <Link
-              to="/products?categoryId=3"
+              href="/products?categoryId=3"
               className="group relative h-44 rounded-3xl overflow-hidden bg-gradient-to-br from-[#2C2118] to-[#4A3328] flex items-center px-8"
             >
               <div className="relative z-10">
@@ -346,7 +346,7 @@ export function HomePage() {
                 </p>
               </div>
               <Link
-                to="/products?sale=true"
+                href="/products?sale=true"
                 className="relative z-10 flex-shrink-0 bg-white text-[#C7927E] font-bold text-sm px-6 py-3 rounded-xl hover:bg-[#FFF5F0] transition-colors"
               >
                 Shop Deals →
@@ -436,7 +436,7 @@ export function HomePage() {
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Link
-              to="/products?categoryId=4"
+              href="/products?categoryId=4"
               className="group relative h-44 rounded-3xl overflow-hidden bg-gradient-to-br from-[#E2EAFC] to-[#C1D3FE] flex items-center px-8"
             >
               <div className="relative z-10">
@@ -455,7 +455,7 @@ export function HomePage() {
               <div className="absolute right-0 bottom-0 w-40 h-40 opacity-15 bg-[#3F37C9] rounded-full translate-x-10 translate-y-10" />
             </Link>
             <Link
-              to="/products?categoryId=5"
+              href="/products?categoryId=5"
               className="group relative h-44 rounded-3xl overflow-hidden bg-gradient-to-br from-[#F5E6E8] to-[#D5B9B2] flex items-center px-8"
             >
               <div className="relative z-10">

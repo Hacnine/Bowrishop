@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAppDispatch } from '../../app/hooks';
 import { setCredentials } from '../../features/auth/authSlice';
 
 export function OAuthCallbackPage() {
-  const [searchParams] = useSearchParams();
+  const searchParams = useSearchParams();
   const dispatch = useAppDispatch();
-  const navigate = useNavigate();
+  const router = useRouter();
 
   useEffect(() => {
     const accessToken = searchParams.get('accessToken');
@@ -21,13 +21,13 @@ export function OAuthCallbackPage() {
         .then((r) => r.json())
         .then((user) => {
           dispatch(setCredentials({ accessToken, refreshToken, user }));
-          navigate('/', { replace: true });
+          router.replace('/');
         })
-        .catch(() => navigate('/login', { replace: true }));
+        .catch(() => router.replace('/login'));
     } else {
-      navigate('/login', { replace: true });
+      router.replace('/login');
     }
-  }, [searchParams, dispatch, navigate]);
+  }, [searchParams, dispatch, router]);
 
   return (
     <div className="flex items-center justify-center min-h-[60vh]">

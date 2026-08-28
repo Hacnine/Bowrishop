@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Trash2, ShoppingBag, Tag } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -23,7 +24,7 @@ import { formatCurrency } from "../utils";
 import type { Coupon } from "../types/types.index";
 
 export function CartPage() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const { isAuthenticated } = useAppSelector((s) => s.auth);
   const guestItems = useAppSelector((s) => s.guestCart.items);
@@ -119,7 +120,7 @@ export function CartPage() {
     if (appliedCoupon?.code) params.set('couponCode', appliedCoupon.code);
     if (couponDiscount > 0) params.set('couponDiscount', String(couponDiscount));
     const query = params.toString();
-    navigate(query ? `/checkout?${query}` : '/checkout');
+    router.push(query ? `/checkout?${query}` : '/checkout');
   };
 
   if (isAuthenticated && isLoading) {
@@ -140,7 +141,7 @@ export function CartPage() {
           Your cart is empty
         </h2>
         <p className="text-gray-500 mb-6">Add some products to get started.</p>
-        <Link to="/products">
+        <Link href="/products">
           <Button>Browse products</Button>
         </Link>
       </div>
@@ -177,7 +178,7 @@ export function CartPage() {
                 className="bg-white border border-gray-100 rounded-2xl p-4 flex gap-4"
               >
                 <Link
-                  to={`/products/${item.product.slug}`}
+                  href={`/products/${item.product.slug}`}
                   className="flex-shrink-0"
                 >
                   <img
@@ -189,7 +190,7 @@ export function CartPage() {
 
                 <div className="flex-1 min-w-0">
                   <Link
-                    to={`/products/${item.product.slug}`}
+                    href={`/products/${item.product.slug}`}
                     className="font-semibold text-gray-900 hover:text-indigo-600 line-clamp-2"
                   >
                     {item.product.name}
@@ -334,7 +335,7 @@ export function CartPage() {
             {!isAuthenticated && (
               <p className="text-xs text-gray-500 mb-4 text-center">
                 Checking out as guest.{" "}
-                <Link to="/login" className="text-indigo-600 hover:underline">
+                <Link href="/login" className="text-indigo-600 hover:underline">
                   Sign in
                 </Link>{" "}
                 to save your order history.

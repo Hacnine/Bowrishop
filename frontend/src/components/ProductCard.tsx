@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ShoppingCart, Heart, Clock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import type { Product } from '../types/types.index';
@@ -8,7 +9,6 @@ import { formatCurrency, getDiscountPercent } from '../utils';
 import { useAddToCartMutation } from '../features/cart/cartApi';
 import { useAddToWishlistMutation } from '../features/wishlist/wishlistApi';
 import { useAuth } from '../hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../app/hooks';
 import { addGuestItem } from '../features/cart/guestCartSlice';
 
@@ -18,7 +18,7 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
   const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const [addToCart, { isLoading: addingCart }] = useAddToCartMutation();
   const [addToWishlist] = useAddToWishlistMutation();
@@ -82,7 +82,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
   const handleAddToWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!isAuthenticated) { navigate('/login'); return; }
+    if (!isAuthenticated) { router.push('/login'); return; }
     try {
       await addToWishlist(product.id).unwrap();
       toast.success('Added to wishlist!');
@@ -100,7 +100,7 @@ export function ProductCard({ product }: ProductCardProps) {
   const isOutOfStock = !product.isPreOrder && product.stock === 0;
 
   return (
-    <Link to={`/products/${product.slug}`} className="group">
+    <Link href={`/products/${product.slug}`} className="group">
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow duration-200">
         <div className="relative overflow-hidden h-56">
           <img

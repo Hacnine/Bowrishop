@@ -7,10 +7,6 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  webpack: (config) => {
-    config.resolve.alias["react-router-dom"] = path.resolve(__dirname, "src/lib/router-compat.tsx");
-    return config;
-  },
   images: {
     remotePatterns: [
       {

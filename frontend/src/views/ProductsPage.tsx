@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useReducer, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Search, SlidersHorizontal, X, ChevronDown, ChevronRight, Clock } from 'lucide-react';
 import { useGetProductsQuery } from '../features/products/productsApi';
 import { useGetCategoriesQuery } from '../features/categories/categoriesApi';
@@ -23,7 +23,9 @@ type ProductsPageProps = {
 };
 
 export function ProductsPage({ products: initialProducts, categories: initialCategories }: ProductsPageProps) {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname() ?? '/products';
+  const searchParams = useSearchParams();
   const [showFilters, setShowFilters] = useState(false);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
 
@@ -37,14 +39,13 @@ export function ProductsPage({ products: initialProducts, categories: initialCat
 
   const setParam = useCallback(
     (key: string, value: string) => {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        if (value) next.set(key, value);
-        else next.delete(key);
-        return next;
-      });
+      const next = new URLSearchParams(searchParams.toString());
+      if (value) next.set(key, value);
+      else next.delete(key);
+      const query = next.toString();
+      router.push(query ? `${pathname}?${query}` : pathname);
     },
-    [setSearchParams],
+    [pathname, router, searchParams],
   );
 
   const filterKey = `${q}|${categoryId}|${minPrice}|${maxPrice}|${sort}|${inStock}|${preOrder}`;
@@ -177,7 +178,7 @@ export function ProductsPage({ products: initialProducts, categories: initialCat
                 </span>
               </label>
 
-              <Button variant="outline" size="sm" className="w-full cursor-pointer" onClick={() => setSearchParams({})}>
+              <Button variant="outline" size="sm" className="w-full cursor-pointer" onClick={() => router.push(pathname)}>
                 Clear filters
               </Button>
             </div>
@@ -195,7 +196,7 @@ export function ProductsPage({ products: initialProducts, categories: initialCat
             inStock={inStock}
             preOrder={preOrder}
             initialData={initialProducts}
-            onClear={() => setSearchParams({})}
+            onClear={() => router.push(pathname)}
           />
         </div>
       </div>

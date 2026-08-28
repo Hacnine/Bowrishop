@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import {
   ArrowRight,
   Droplet,
@@ -343,7 +343,7 @@ export function Hero({ categories = [] }: HeroProps) {
           {heroSlides.map((s, index) => (
             <Link
               key={s.title}
-              to={s.link}
+              href={s.link}
               className={`absolute inset-0 transition-opacity duration-700 ease-out ${
                 index === activeIndex ? 'opacity-100 z-10' : 'opacity-0 pointer-events-none'
               }`}
@@ -384,7 +384,7 @@ export function Hero({ categories = [] }: HeroProps) {
               size="lg"
               className={`${slide.buttonClass} rounded-full font-semibold tracking-wide mt-2`}
             >
-              <Link to={slide.link}>
+              <Link href={slide.link}>
                 Shop Now
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Link>
@@ -420,7 +420,7 @@ export function Hero({ categories = [] }: HeroProps) {
               return (
                 <Link
                   key={cat.id}
-                  to={`/products?categoryId=${cat.id}`}
+                  href={`/products?categoryId=${cat.id}`}
                   className="flex items-center gap-2 text-gray-700 hover:text-indigo-600 transition-colors"
                 >
                   <Icon className="w-4 h-4" />

@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { useLoginMutation } from '../../features/auth/authApi';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
@@ -18,14 +18,14 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export function LoginPage() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const { isAuthenticated } = useAppSelector((s) => s.auth);
   const [login, { isLoading }] = useLoginMutation();
 
   useEffect(() => {
-    if (isAuthenticated) navigate('/', { replace: true });
-  }, [isAuthenticated, navigate]);
+    if (isAuthenticated) router.replace('/');
+  }, [isAuthenticated, router]);
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -35,7 +35,7 @@ export function LoginPage() {
     try {
       const result = await login(data).unwrap();
       dispatch(setCredentials(result));
-      navigate('/');
+      router.push('/');
     } catch (err: unknown) {
       const e = err as { data?: { message?: string } };
       toast.error(e?.data?.message ?? 'Login failed');
@@ -96,7 +96,7 @@ export function LoginPage() {
 
           <p className="text-center text-sm text-gray-500">
             Don't have an account?{' '}
-            <Link to="/register" className="text-indigo-600 font-medium hover:underline">Sign up</Link>
+            <Link href="/register" className="text-indigo-600 font-medium hover:underline">Sign up</Link>
           </p>
         </div>
       </div>

@@ -27,9 +27,6 @@
       "@/*": [
         "./src/*"
       ],
-      "react-router-dom": [
-        "./src/lib/router-compat.tsx"
-      ]
     },
     "forceConsistentCasingInFileNames": true,
     "incremental": true,
