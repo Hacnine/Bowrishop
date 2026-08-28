@@ -13,19 +13,7 @@ import { clearGuestCart } from '../features/cart/guestCartSlice';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { formatCurrency } from '../utils';
-
-// বাংলাদেশের ৮টি বিভাগের তালিকা
-const BANGLADESH_DIVISIONS = [
-  { value: 'Dhaka City', label: 'Dhaka City (Charge: ৳80)' },
-  { value: 'Dhaka Division', label: 'Dhaka Division (outside city) (Charge: ৳150)' },
-  { value: 'Chattogram', label: 'Chattogram (Charge: ৳150)' },
-  { value: 'Rajshahi', label: 'Rajshahi (Charge: ৳150)' },
-  { value: 'Khulna', label: 'Khulna (Charge: ৳150)' },
-  { value: 'Barishal', label: 'Barishal (Charge: ৳150)' },
-  { value: 'Sylhet', label: 'Sylhet (Charge: ৳150)' },
-  { value: 'Rangpur', label: 'Rangpur (Charge: ৳150)' },
-  { value: 'Mymensingh', label: 'Mymensingh (Charge: ৳150)' },
-];
+import { DELIVERY_DATA, getCharge } from '../data/deliveryAreas';
 
 const schema = z.object({
   fullName: z.string().min(2, 'Full name required'),
@@ -34,7 +22,9 @@ const schema = z.object({
     .min(11, 'Enter a valid phone number')
     .regex(/^01[0-9]{9}$/, 'Enter a valid 11-digit phone number'),
   streetAddress: z.string().min(3, 'Street address required'),
-  city: z.string().min(2, 'City/Division selection required'), // ড্রপডাউন ভ্যালিডেশন
+  division: z.string().min(1, 'Select a division'),
+  zone: z.string().min(1, 'Select a zone'),
+  area: z.string().min(1, 'Select an area'),
   state: z.string().min(2, 'State / District required'),
   guestEmail: z.string().optional(),
   guestName: z.string().optional(),
@@ -56,21 +46,27 @@ export function CheckoutPage() {
   const [createGuestOrder, { isLoading: creatingGuest }] = useCreateGuestOrderMutation();
   const isLoading = creatingOrder || creatingGuest;
 
-  const { register, handleSubmit, control, formState: { errors } } = useForm<FormValues>({
+  const { register, handleSubmit, control, setValue, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      city: '', // ডিফল্ট ফাঁকা থাকবে যাতে ইউজার সিলেক্ট করতে বাধ্য হয়
-    }
+      division: '',
+      zone: '',
+      area: '',
+    },
   });
 
-  // 'city' ড্রপডাউনের সিলেক্টেড ভ্যালু লাইভ ট্র্যাক করা
-  const selectedCity = useWatch({
+  const selectedDivision = useWatch({
     control,
-    name: 'city',
+    name: 'division',
     defaultValue: '',
   });
+  const selectedZone = useWatch({ control, name: 'zone', defaultValue: '' });
+  const selectedArea = useWatch({ control, name: 'area', defaultValue: '' });
 
-  const shippingCharge = selectedCity === 'Dhaka City' ? 80 : 150;
+  const zones = DELIVERY_DATA.find((division) => division.value === selectedDivision)?.zones ?? [];
+  const areas = zones.find((zone) => zone.value === selectedZone)?.areas ?? [];
+  const selectedAreaLabel = areas.find((area) => area.value === selectedArea)?.label ?? selectedArea;
+  const shippingCharge = selectedArea ? getCharge(selectedArea) : 0;
 
   const items = isAuthenticated
     ? (cart?.items ?? []).map((i) => ({
@@ -118,7 +114,7 @@ export function CheckoutPage() {
             name: data.fullName,
             phone: data.phoneNumber,
             address: data.streetAddress,
-            city: data.city,
+            city: selectedAreaLabel,
             district: data.state,
             shippingCharge,
           },
@@ -155,7 +151,7 @@ export function CheckoutPage() {
             name: data.fullName,
             phone: data.phoneNumber,
             address: data.streetAddress,
-            city: data.city,
+            city: selectedAreaLabel,
             district: data.state,
             shippingCharge,
           },
@@ -214,28 +210,47 @@ export function CheckoutPage() {
             />
             <Input label="Street address" error={errors.streetAddress?.message} {...register('streetAddress')} />
             
-            <div className="grid grid-cols-2 gap-4">
-              {/* 👈 ড্রপডাউন সিলেক্ট ফিল্ড উইথ ট্র্যাডিশনাল টেইলউইন্ড ডিজাইন */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Delivery area</label>
+                <label className="text-sm font-medium text-gray-700">Division</label>
                 <select
-                  {...register('city')}
+                  {...register('division', { onChange: () => { setValue('zone', ''); setValue('area', ''); } })}
                   className="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
                 >
-                  <option value="">Select delivery area</option>
-                  {BANGLADESH_DIVISIONS.map((div) => (
-                    <option key={div.value} value={div.value}>
-                      {div.label}
-                    </option>
-                  ))}
+                  <option value="">Select division</option>
+                  {DELIVERY_DATA.map((division) => <option key={division.value} value={division.value}>{division.label}</option>)}
                 </select>
-                {errors.city?.message && (
-                  <p className="text-xs text-red-500">{errors.city.message}</p>
-                )}
+                {errors.division?.message && <p className="text-xs text-red-500">{errors.division.message}</p>}
               </div>
 
-              <Input label="State / District" placeholder="e.g. Gazipur, Mirpur" error={errors.state?.message} {...register('state')} />
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-gray-700">Area / Zone</label>
+                <select
+                  {...register('zone', { onChange: () => setValue('area', '') })}
+                  disabled={!selectedDivision}
+                  className="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors disabled:bg-gray-100"
+                >
+                  <option value="">Select area / zone</option>
+                  {zones.map((zone) => <option key={zone.value} value={zone.value}>{zone.label}</option>)}
+                </select>
+                {errors.zone?.message && <p className="text-xs text-red-500">{errors.zone.message}</p>}
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-gray-700">Sub-area</label>
+                <select
+                  {...register('area')}
+                  disabled={!selectedZone}
+                  className="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors disabled:bg-gray-100"
+                >
+                  <option value="">Select sub-area</option>
+                  {areas.map((area) => <option key={area.value} value={area.value}>{area.label} (৳{area.charge})</option>)}
+                </select>
+                {errors.area?.message && <p className="text-xs text-red-500">{errors.area.message}</p>}
+              </div>
             </div>
+
+            <Input label="State / District" placeholder="e.g. Gazipur, Mirpur" error={errors.state?.message} {...register('state')} />
             
             
           </div>
@@ -267,8 +282,8 @@ export function CheckoutPage() {
               
               <div className="flex justify-between text-gray-600">
                 <span>Shipping</span>
-                {!selectedCity ? (
-                  <span className="text-gray-400">Select delivery area</span>
+                {!selectedArea ? (
+                  <span className="text-gray-400">Select sub-area</span>
                 ) : (
                   <span>{formatCurrency(shippingCharge)}</span>
                 )}
@@ -279,7 +294,7 @@ export function CheckoutPage() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full" isLoading={isLoading} disabled={!selectedCity}>
+            <Button type="submit" className="w-full" isLoading={isLoading} disabled={!selectedArea}>
               Place order
             </Button>
           </div>

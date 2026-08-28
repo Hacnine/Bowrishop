@@ -8,7 +8,7 @@ import { useGetCategoriesQuery } from '../features/categories/categoriesApi';
 import { ProductCard } from '../components/ProductCard';
 import { ProductCardSkeleton } from '../components/ui/Skeleton';
 import { Button } from '../components/ui/button';
-import type { Product } from '../types/types.index';
+import type { Category, PaginatedResponse, Product } from '../types/types.index';
 
 const SORT_OPTIONS = [
   { value: '', label: 'Newest' },
@@ -17,7 +17,12 @@ const SORT_OPTIONS = [
   { value: 'rating', label: 'Top Rated' },
 ];
 
-export function ProductsPage() {
+type ProductsPageProps = {
+  products?: PaginatedResponse<Product>;
+  categories?: Category[];
+};
+
+export function ProductsPage({ products: initialProducts, categories: initialCategories }: ProductsPageProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showFilters, setShowFilters] = useState(false);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
@@ -44,7 +49,7 @@ export function ProductsPage() {
 
   const filterKey = `${q}|${categoryId}|${minPrice}|${maxPrice}|${sort}|${inStock}|${preOrder}`;
 
-  const { data: categories } = useGetCategoriesQuery();
+  const { data: categories = initialCategories } = useGetCategoriesQuery();
 
   const toggleCatExpand = (id: string) => {
     setExpandedCats((prev) => {
@@ -189,6 +194,7 @@ export function ProductsPage() {
             sort={sort}
             inStock={inStock}
             preOrder={preOrder}
+            initialData={initialProducts}
             onClear={() => setSearchParams({})}
           />
         </div>
@@ -205,6 +211,7 @@ type ProductResultsProps = {
   sort: string;
   inStock: boolean;
   preOrder: boolean;
+  initialData?: PaginatedResponse<Product>;
   onClear: () => void;
 };
 
@@ -215,9 +222,9 @@ function productReducer(previous: Product[], action: ProductAction) {
   return [...previous, ...action.products.filter((p) => !previous.some((item) => item.id === p.id))];
 }
 
-function ProductResults({ q, categoryId, minPrice, maxPrice, sort, inStock, preOrder, onClear }: ProductResultsProps) {
+function ProductResults({ q, categoryId, minPrice, maxPrice, sort, inStock, preOrder, initialData, onClear }: ProductResultsProps) {
   const [page, setPage] = useState(1);
-  const [products, dispatch] = useReducer(productReducer, []);
+  const [products, dispatch] = useReducer(productReducer, initialData?.data ?? []);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   // page ref — observer closure এ stale state এর সমস্যা avoid করতে
   const pageRef = useRef(page);
@@ -270,7 +277,7 @@ function ProductResults({ q, categoryId, minPrice, maxPrice, sort, inStock, preO
     return () => observer.disconnect();
   }, [products]); // products change হলে sentinel এর position update হয়, reconnect করো
 
-  if (isLoading) {
+  if (isLoading && products.length === 0) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {Array.from({ length: 12 }).map((_, i) => <ProductCardSkeleton key={i} />)}
@@ -289,7 +296,7 @@ function ProductResults({ q, categoryId, minPrice, maxPrice, sort, inStock, preO
 
   return (
     <>
-      <p className="text-sm text-gray-500 mb-4">{data?.total} products</p>
+      <p className="text-sm text-gray-500 mb-4">{data?.total ?? initialData?.total} products</p>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {products.map((product) => <ProductCard key={product.id} product={product} />)}
       </div>
