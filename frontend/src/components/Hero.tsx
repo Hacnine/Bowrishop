@@ -1,5 +1,7 @@
+'use client';
+
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import {
   ArrowRight,
   Droplet,
@@ -18,7 +20,7 @@ import {
   BedDouble,
   Monitor,
 } from 'lucide-react';
-import { Button } from '../components/ui/Button';
+import { Button } from '../components/ui/button';
 
 // ---- Slide content (dynamic: swap/add slides freely) ----
 // Each slide carries its own perks (icon/title/desc + colors) plus its
@@ -312,11 +314,16 @@ function Perks({ slide }) {
   );
 }
 
-/**
- * Hero section: autoplaying slider + per-slide perks bar + category icon strip.
- * @param {{ categories?: Array<{ id: string|number, name: string }> }} props
- */
-export function Hero({ categories = [] }) {
+type HeroCategory = {
+  id: string | number;
+  name: string;
+};
+
+type HeroProps = {
+  categories?: HeroCategory[];
+};
+
+export function Hero({ categories = [] }: HeroProps) {
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
@@ -338,7 +345,7 @@ export function Hero({ categories = [] }) {
           {heroSlides.map((s, index) => (
             <Link
               key={s.title}
-              to={s.link}
+              href={s.link}
               className={`absolute inset-0 transition-opacity duration-700 ease-out ${
                 index === activeIndex ? 'opacity-100 z-10' : 'opacity-0 pointer-events-none'
               }`}
@@ -379,7 +386,7 @@ export function Hero({ categories = [] }) {
               size="lg"
               className={`${slide.buttonClass} rounded-full font-semibold tracking-wide mt-2`}
             >
-              <Link to={slide.link}>
+              <Link href={slide.link}>
                 Shop Now
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Link>
@@ -415,7 +422,7 @@ export function Hero({ categories = [] }) {
               return (
                 <Link
                   key={cat.id}
-                  to={`/products?categoryId=${cat.id}`}
+                  href={`/products?categoryId=${cat.id}`}
                   className="flex items-center gap-2 text-gray-700 hover:text-indigo-600 transition-colors"
                 >
                   <Icon className="w-4 h-4" />

@@ -59,3 +59,4 @@ coverage/
 # Chakra UI (optional)
 *.lock.json
 
+frontend/NEXTJS_CONVERSION_PROGRESS.md
