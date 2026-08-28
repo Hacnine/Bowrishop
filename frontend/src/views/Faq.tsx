@@ -1,8 +1,9 @@
+ 'use client';
+
 import { useState } from 'react';
 import { ChevronDown, ShoppingBag, CreditCard, RotateCcw, MessageCircle } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { Button } from '../components/ui/button';
-import SEO from '../components/SEO';
 
 interface FaqItem {
   question: string;
@@ -180,12 +181,6 @@ function FaqSection({ category }: { category: FaqCategory }) {
 export function FaqPage() {
   return (
     <>
-      <SEO
-        title="সাধারণ জিজ্ঞাসা (FAQ) | Bowri Shop"
-        description="Bowri Shop-এর অর্ডার, ডেলিভারি, পেমেন্ট এবং রিটার্ন সংক্রান্ত সাধারণ প্রশ্নের উত্তর।"
-        canonical="https://www.bowrishop.com/faq"
-      />
-
       {/* ── Hero banner ─────────────────────────────────────────────────── */}
       <section className="bg-[#F7F1EA] border-b border-[#EFE4D8]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20 text-center">
@@ -221,13 +216,13 @@ export function FaqPage() {
             যেকোনো সমস্যায় আমাদের সাথে যোগাযোগ করুন।
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link to="/contact">
+            <Link href="/contact">
               <Button className="bg-[#C7927E] hover:bg-[#A97462] text-white rounded-full px-8">
                 <MessageCircle className="w-4 h-4 mr-2" />
                 আমাদের সাথে যোগাযোগ করুন
               </Button>
             </Link>
-            <Link to="/products">
+            <Link href="/products">
               <Button
                 variant="outline"
                 className="border-white/20 text-white hover:bg-white/10 rounded-full px-8"

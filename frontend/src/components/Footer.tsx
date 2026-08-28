@@ -1,5 +1,7 @@
-import { Link } from 'react-router-dom';
-import { useLocation } from 'react-router-dom';
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '../hooks/useAuth';
 import { useGetCartQuery } from '../features/cart/cartApi';
 import { useAppSelector } from '../app/hooks';
@@ -76,11 +78,11 @@ export function Footer() {
             <div>
               <h4 className="text-white font-semibold mb-3 text-sm uppercase tracking-wider">Shop</h4>
               <ul className="space-y-2 text-sm">
-                <li><Link to="/products" className="hover:text-white transition-colors">All Products</Link></li>
-                <li><Link to="/products?sort=newest" className="hover:text-white transition-colors">New Arrivals</Link></li>
-                <li><Link to="/products?sale=true" className="hover:text-white transition-colors">On Sale</Link></li>
-                <li><Link to="/products?preOrder=true" className="hover:text-white transition-colors">Pre-order</Link></li>
-                <li><Link to="/products?inStock=true" className="hover:text-white transition-colors">In Stock</Link></li>
+                <li><Link href="/products" className="hover:text-white transition-colors">All Products</Link></li>
+                <li><Link href="/products?sort=newest" className="hover:text-white transition-colors">New Arrivals</Link></li>
+                <li><Link href="/products?sale=true" className="hover:text-white transition-colors">On Sale</Link></li>
+                <li><Link href="/products?preOrder=true" className="hover:text-white transition-colors">Pre-order</Link></li>
+                <li><Link href="/products?inStock=true" className="hover:text-white transition-colors">In Stock</Link></li>
               </ul>
             </div>
 
@@ -88,10 +90,10 @@ export function Footer() {
             <div>
               <h4 className="text-white font-semibold mb-3 text-sm uppercase tracking-wider">Account</h4>
               <ul className="space-y-2 text-sm">
-                <li><Link to="/profile" className="hover:text-white transition-colors">My Profile</Link></li>
-                <li><Link to="/profile/orders" className="hover:text-white transition-colors">My Orders</Link></li>
-                <li><Link to="/profile/wishlist" className="hover:text-white transition-colors">Wishlist</Link></li>
-                <li><Link to="/login" className="hover:text-white transition-colors">Login</Link></li>
+                <li><Link href="/profile" className="hover:text-white transition-colors">My Profile</Link></li>
+                <li><Link href="/profile/orders" className="hover:text-white transition-colors">My Orders</Link></li>
+                <li><Link href="/profile/wishlist" className="hover:text-white transition-colors">Wishlist</Link></li>
+                <li><Link href="/login" className="hover:text-white transition-colors">Login</Link></li>
               </ul>
             </div>
 
@@ -99,8 +101,8 @@ export function Footer() {
             <div>
               <h4 className="text-white font-semibold mb-3 text-sm uppercase tracking-wider">Support</h4>
               <ul className="space-y-2 text-sm">
-                <li><Link to="/contact" className="hover:text-white transition-colors">Contact Us</Link></li>
-                <li><Link to="/about" className="hover:text-white transition-colors">About Us</Link></li>
+                <li><Link href="/contact" className="hover:text-white transition-colors">Contact Us</Link></li>
+                <li><Link href="/about" className="hover:text-white transition-colors">About Us</Link></li>
                 <li><a href="/faq" className="hover:text-white transition-colors">FAQ</a></li>
                 <li><a href="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</a></li>
               </ul>
@@ -135,8 +137,7 @@ export function Footer() {
 }
 
 function MobileBottomNav() {
-  const location = useLocation();
-  const path = location.pathname;
+  const path = usePathname() ?? '/';
   const { isAuthenticated } = useAuth();
   const { data: cart } = useGetCartQuery(undefined, { skip: !isAuthenticated });
   const guestCartCount = useAppSelector((state) =>
@@ -164,7 +165,7 @@ function MobileBottomNav() {
         ].map(({ to, label, icon }) => (
           <Link
             key={to}
-            to={to}
+            href={to}
             className={`flex flex-col items-center justify-center gap-0.5 transition-colors ${
               isActive(to) ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-500'
             }`}

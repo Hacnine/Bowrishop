@@ -1,7 +1,6 @@
 import { Heart, MapPin, Globe, ShoppingBag, Sparkles, Truck, ShieldCheck } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { Button } from '../components/ui/button';
-import SEO from '../components/SEO';
 
 const values = [
   {
@@ -38,12 +37,6 @@ const categories = [
 export function AboutPage() {
   return (
     <>
-      <SEO
-        title="About Us | Bowri Shop"
-        description="Learn about Bowri Shop — your destination for home essentials, kitchenware, beauty products, electronics, clothing and more at affordable prices."
-        canonical="https://www.bowrishop.com/about"
-      />
-
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <section className="relative h-[520px] lg:h-[600px] overflow-hidden">
         <img
@@ -67,7 +60,7 @@ export function AboutPage() {
             can make everyday life a little more beautiful. We're a Bangladeshi shop built
             for real homes, real kitchens, and real people.
           </p>
-          <Link to="/products">
+          <Link href="/products">
             <Button className="bg-[#C7927E] hover:bg-[#A97462] text-white rounded-full px-8 w-fit">
               <ShoppingBag className="w-4 h-4 mr-2" />
               Shop Now
@@ -271,7 +264,7 @@ export function AboutPage() {
           <p className="text-[#D8CEC5] text-lg mb-8">
             Quality products, affordable prices — delivered to your door across Bangladesh.
           </p>
-          <Link to="/products">
+          <Link href="/products">
             <Button className="bg-[#C7927E] hover:bg-[#A97462] text-white rounded-full px-10 py-3 text-base font-semibold">
               Browse All Products
             </Button>

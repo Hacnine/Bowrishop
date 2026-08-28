@@ -23,10 +23,10 @@ import {
   useGetProductBySlugQuery,
   useGetProductsQuery,
 } from "../features/products/productsApi";
-import type { ProductVariant } from "../types/types.index";
+import type { Product, ProductVariant } from "../types/types.index";
 import { Button } from "@/components/ui/button";
 
-export function ProductDetailPage() {
+export function ProductDetailPage({ initialProduct }: { initialProduct?: Product }) {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -37,7 +37,11 @@ export function ProductDetailPage() {
   const urlColor = searchParams.get("color");
   const urlSize = searchParams.get("size");
 
-  const { data: product, isLoading } = useGetProductBySlugQuery(slug!);
+  const { data: fetchedProduct, isLoading: isProductLoading } = useGetProductBySlugQuery(slug!, {
+    skip: !!initialProduct,
+  });
+  const product = fetchedProduct ?? initialProduct;
+  const isLoading = isProductLoading && !initialProduct;
   const { data: reviews } = useGetProductReviewsQuery(product?.id ?? "", {
     skip: !product,
   });
@@ -469,7 +473,7 @@ export function ProductDetailPage() {
               {product.videoUrl && (
                 <button
                   onClick={() => setShowVideo(true)}
-                  className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-colors relative flex items-center justify-center bg-gray-900 flex-shrink-0 ${
+                  className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-colors relative flex items-center justify-center bg-gray-900 shrink-0 ${
                     showVideo ? "border-indigo-600" : "border-transparent hover:border-gray-300"
                   }`}
                   title="Watch video"
@@ -538,7 +542,7 @@ export function ProductDetailPage() {
             {/* Pre-order notice */}
             {product.isPreOrder && (
               <div className="mb-4 flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                <Clock className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                <Clock className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-sm font-semibold text-amber-800">Pre-order item</p>
                   {product.preOrderNote && (
@@ -609,7 +613,7 @@ export function ProductDetailPage() {
                             {size}
                             {!hasStock && !product!.isPreOrder && (
                               <span className="absolute inset-0 overflow-hidden rounded-xl pointer-events-none">
-                                <span className="absolute top-1/2 left-0 right-0 h-px bg-gray-300 rotate-[-12deg]" />
+                                <span className="absolute top-1/2 left-0 right-0 h-px bg-gray-300 -rotate-12" />
                               </span>
                             )}
                           </button>

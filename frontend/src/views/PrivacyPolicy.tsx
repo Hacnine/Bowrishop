@@ -1,6 +1,5 @@
 import { Shield, Info, Share2, Cookie, UserCheck, RefreshCw, Mail, ExternalLink } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import SEO from '../components/SEO';
+import Link from 'next/link';
 
 interface Section {
   id: string;
@@ -35,7 +34,7 @@ const sections: Section[] = [
             },
           ].map(({ label, desc }) => (
             <div key={label} className="flex gap-3 p-4 bg-[#F7F1EA] rounded-xl border border-[#EFE4D8]">
-              <span className="w-2 h-2 rounded-full bg-[#C7927E] flex-shrink-0 mt-2" />
+              <span className="w-2 h-2 rounded-full bg-[#C7927E] shrink-0 mt-2" />
               <div>
                 <p className="text-sm font-semibold text-[#4A3328] mb-1">{label}</p>
                 <p className="text-sm text-[#8A7D70] leading-relaxed">{desc}</p>
@@ -63,7 +62,7 @@ const sections: Section[] = [
             'কোনো বিশেষ অফার, ডিসকাউন্ট বা নতুন পণ্যের খবর ইমেইল বা এসএমএস (SMS)-এর মাধ্যমে জানাতে (আপনি চাইলে যেকোনো সময় এটি বন্ধ করতে পারবেন)।',
           ].map((item, i) => (
             <li key={i} className="flex items-start gap-3 text-sm text-[#8A7D70] leading-relaxed">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#C7927E]/10 text-[#C7927E] font-bold text-xs flex items-center justify-center mt-0.5">
+              <span className="shrink-0 w-6 h-6 rounded-full bg-[#C7927E]/10 text-[#C7927E] font-bold text-xs flex items-center justify-center mt-0.5">
                 {i + 1}
               </span>
               {item}
@@ -132,17 +131,11 @@ const sections: Section[] = [
 export function PrivacyPolicyPage() {
   return (
     <>
-      <SEO
-        title="গোপনীয়তা নীতি | Bowri Shop"
-        description="Bowri Shop-এর গোপনীয়তা নীতি — আমরা আপনার তথ্য কীভাবে সংগ্রহ, ব্যবহার ও সুরক্ষিত রাখি।"
-        canonical="https://www.bowrishop.com/privacy-policy"
-      />
-
       {/* ── Hero ────────────────────────────────────────────────────────── */}
       <section className="bg-[#F7F1EA] border-b border-[#EFE4D8]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-18">
           <div className="flex items-center gap-4 mb-5">
-            <div className="w-12 h-12 rounded-2xl bg-[#C7927E]/10 border border-[#EFE4D8] flex items-center justify-center flex-shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-[#C7927E]/10 border border-[#EFE4D8] flex items-center justify-center shrink-0">
               <Shield className="w-6 h-6 text-[#C7927E]" />
             </div>
             <div>
@@ -192,7 +185,7 @@ export function PrivacyPolicyPage() {
                     href={`#${s.id}`}
                     className="flex items-center gap-2 px-3 py-2 text-sm text-[#8A7D70] rounded-lg hover:bg-[#F7F1EA] hover:text-[#4A3328] transition-colors group"
                   >
-                    <Icon className="w-3.5 h-3.5 flex-shrink-0 text-[#C7927E] opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <Icon className="w-3.5 h-3.5 shrink-0 text-[#C7927E] opacity-0 group-hover:opacity-100 transition-opacity" />
                     <span className="leading-snug line-clamp-1">
                       {s.title.replace(/^[০-৯]+\.\s*/, '')}
                     </span>
@@ -213,7 +206,7 @@ export function PrivacyPolicyPage() {
                   className="bg-white border border-[#EFE4D8] rounded-2xl p-6 lg:p-8 scroll-mt-24"
                 >
                   <div className="flex items-center gap-3 mb-5 pb-5 border-b border-[#F7F1EA]">
-                    <div className="w-9 h-9 rounded-xl bg-[#F7F1EA] border border-[#EFE4D8] flex items-center justify-center flex-shrink-0">
+                    <div className="w-9 h-9 rounded-xl bg-[#F7F1EA] border border-[#EFE4D8] flex items-center justify-center shrink-0">
                       <Icon className="w-4 h-4 text-[#C7927E]" />
                     </div>
                     <h2 className="font-semibold text-[#4A3328] text-lg leading-snug">
@@ -231,7 +224,7 @@ export function PrivacyPolicyPage() {
               className="bg-[#4A3328] rounded-2xl p-6 lg:p-8"
             >
               <div className="flex items-center gap-3 mb-5 pb-5 border-b border-white/10">
-                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
                   <Mail className="w-4 h-4 text-[#D7A99A]" />
                 </div>
                 <h2 className="font-semibold text-white text-lg">যোগাযোগ</h2>
@@ -245,7 +238,7 @@ export function PrivacyPolicyPage() {
                   href="mailto:support@bowrishop.com"
                   className="flex items-center gap-3 text-sm text-[#D7A99A] hover:text-white transition-colors"
                 >
-                  <Mail className="w-4 h-4 flex-shrink-0" />
+                  <Mail className="w-4 h-4 shrink-0" />
                   support@bowrishop.com
                 </a>
                 <a
@@ -254,13 +247,13 @@ export function PrivacyPolicyPage() {
                   rel="noopener noreferrer"
                   className="flex items-center gap-3 text-sm text-[#D7A99A] hover:text-white transition-colors"
                 >
-                  <ExternalLink className="w-4 h-4 flex-shrink-0" />
+                  <ExternalLink className="w-4 h-4 shrink-0" />
                   Facebook পেজ
                 </a>
               </div>
               <div className="mt-6 pt-5 border-t border-white/10">
                 <Link
-                  to="/faq"
+                  href="/faq"
                   className="inline-flex items-center gap-2 text-sm text-[#D7A99A] hover:text-white transition-colors"
                 >
                   সাধারণ জিজ্ঞাসা (FAQ) দেখুন →
