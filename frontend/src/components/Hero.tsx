@@ -18,7 +18,7 @@ import {
   BedDouble,
   Monitor,
 } from 'lucide-react';
-import { Button } from '../components/ui/Button';
+import { Button } from '../components/ui/button';
 
 // ---- Slide content (dynamic: swap/add slides freely) ----
 // Each slide carries its own perks (icon/title/desc + colors) plus its
@@ -312,11 +312,16 @@ function Perks({ slide }) {
   );
 }
 
-/**
- * Hero section: autoplaying slider + per-slide perks bar + category icon strip.
- * @param {{ categories?: Array<{ id: string|number, name: string }> }} props
- */
-export function Hero({ categories = [] }) {
+type HeroCategory = {
+  id: string | number;
+  name: string;
+};
+
+type HeroProps = {
+  categories?: HeroCategory[];
+};
+
+export function Hero({ categories = [] }: HeroProps) {
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {

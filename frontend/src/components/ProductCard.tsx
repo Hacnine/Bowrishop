@@ -3,7 +3,7 @@ import { ShoppingCart, Heart, Clock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import type { Product } from '../types/types.index';
 import { StarRating } from './ui/StarRating';
-import { Button } from './ui/Button';
+import { Button } from './ui/button';
 import { formatCurrency, getDiscountPercent } from '../utils';
 import { useAddToCartMutation } from '../features/cart/cartApi';
 import { useAddToWishlistMutation } from '../features/wishlist/wishlistApi';
