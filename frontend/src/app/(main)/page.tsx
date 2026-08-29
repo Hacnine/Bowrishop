@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
 
 async function getCategories(): Promise<Category[]> {
 	try {
-		const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://backend:3001';
+		const apiUrl = process.env.API_URL ?? 'http://backend:3001';
 		const base = apiUrl.endsWith('/api') ? apiUrl : `${apiUrl}/api`;
 		const res = await fetch(`${base}/categories`, { cache: 'no-store' });
 		if (!res.ok) return [];
