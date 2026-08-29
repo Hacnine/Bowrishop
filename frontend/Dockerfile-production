@@ -40,4 +40,4 @@ COPY --from=build /app/frontend/public ./public
 
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+CMD ["node", "frontend/server.js"]
