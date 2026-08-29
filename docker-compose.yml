@@ -51,14 +51,12 @@ services:
       context: .
       dockerfile: frontend/Dockerfile-production
       args:
-        VITE_API_URL: /api
+        NEXT_PUBLIC_API_URL: /api
     image: ${DOCKERHUB_USERNAME}/trendora-frontend:latest
     container_name: trendora-frontend-prod
     restart: always
     expose:
-      - "80"
-    environment:
-      DOCKER_PAT: ${DOCKER_PAT}
+      - "3000"
     networks:
       - trendora-network
 
@@ -67,7 +65,7 @@ services:
     container_name: trendora-nginx-proxy
     restart: always
     ports:
-      - "8080:80"
+      - "3000:80"
       - "8443:443"
     volumes:
       - ./nginx-reverse-proxy.conf:/etc/nginx/conf.d/default.conf:ro
