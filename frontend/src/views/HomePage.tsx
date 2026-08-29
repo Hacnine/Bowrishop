@@ -1,5 +1,3 @@
-'use client';
-
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -7,35 +5,14 @@ import {
   RotateCcw,
   Shield,
   Clock,
-  Flame,
-  Tag,
-  Sparkles,
   BadgeCheck,
   PackageCheck,
   Headset,
-  Eye,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 
-// Import Swiper React components and styles
-import { Swiper, SwiperSlide } from "swiper/react";
-import { Navigation, Autoplay } from "swiper/modules";
-import "swiper/css";
-import "swiper/css/navigation";
-
-import {
-  useGetFeaturedProductsQuery,
-  useGetBestSellingProductsQuery,
-  useGetOnSaleProductsQuery,
-  useGetNewArrivalProductsQuery,
-  useGetMostViewedProductsQuery,
-} from "../features/products/productsApi";
-import { useGetCategoriesQuery } from "../features/categories/categoriesApi";
-import { ProductCard } from "../components/ProductCard";
-import { ProductCardSkeleton } from "../components/ui/Skeleton";
+import { HomePageCarousels, NewsletterForm } from './HomePageCarousels';
 import { Hero } from "../components/Hero";
-import type { Category, Product } from '../types/types.index';
+import type { Category } from '../types/types.index';
 
 const perks = [
   { icon: Truck, title: "Free Delivery", desc: "On orders over ৳500" },
@@ -44,158 +21,11 @@ const perks = [
   { icon: Clock, title: "Fast Dispatch", desc: "Ships within 24 hours" },
 ];
 
-function SectionHeader({
-  eyebrow,
-  title,
-  icon: Icon,
-  href,
-  accentColor = "text-[#C7927E]",
-  bgColor = "bg-[#F7EDE6]",
-  prevId,
-  nextId,
-}: {
-  eyebrow: string;
-  title: string;
-  icon: any;
-  href: string;
-  accentColor?: string;
-  bgColor?: string;
-  prevId: string;
-  nextId: string;
-}) {
-  return (
-    <div className="flex items-end justify-between mb-7">
-      <div className="flex items-center gap-3">
-        <div
-          className={`w-10 h-10 ${bgColor} rounded-full flex items-center justify-center flex-shrink-0`}
-        >
-          <Icon className={`w-5 h-5 ${accentColor}`} />
-        </div>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#C7927E] mb-0.5">
-            {eyebrow}
-          </p>
-          <h2 className="text-2xl font-bold text-gray-900 leading-tight">
-            {title}
-          </h2>
-        </div>
-      </div>
-      
-      <div className="flex items-center gap-4 mb-1">
-        {/* Custom Navigation Elements */}
-        <div className="flex items-center gap-1.5">
-          <button
-            id={prevId}
-            className="w-8 h-8 rounded-xl bg-white border border-[#EFE5DD] text-[#4A3328] flex items-center justify-center hover:bg-[#F7EDE6] hover:text-[#C7927E] transition-colors disabled:opacity-40 disabled:pointer-events-none"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <button
-            id={nextId}
-            className="w-8 h-8 rounded-xl bg-white border border-[#EFE5DD] text-[#4A3328] flex items-center justify-center hover:bg-[#F7EDE6] hover:text-[#C7927E] transition-colors disabled:opacity-40 disabled:pointer-events-none"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-
-        <span className="w-px h-4 bg-gray-200" />
-
-        <Link
-          href={href}
-          className="text-sm text-[#C7927E] font-medium hover:underline flex items-center gap-1 whitespace-nowrap"
-        >
-          View all <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
-      </div>
-    </div>
-  );
+interface HomePageProps {
+  categories: Category[];
 }
 
-function ProductCarousel({
-  isLoading,
-  products,
-  count = 10,
-  prevId,
-  nextId,
-}: {
-  isLoading: boolean;
-  products?: any[];
-  count?: number;
-  prevId: string;
-  nextId: string;
-}) {
-  const sliderBreakpoints = {
-    320: { slidesPerView: 2, spaceBetween: 12 },
-    640: { slidesPerView: 3, spaceBetween: 16 },
-    1024: { slidesPerView: 5, spaceBetween: 16 },
-  };
-
-  if (isLoading) {
-    return (
-      <Swiper
-        modules={[Navigation]}
-        navigation={{ prevEl: `#${prevId}`, nextEl: `#${nextId}` }}
-        breakpoints={sliderBreakpoints}
-        className="product-swiper"
-      >
-        {Array.from({ length: 5 }).map((_, i) => (
-          <SwiperSlide key={i}>
-            <ProductCardSkeleton />
-          </SwiperSlide>
-        ))}
-      </Swiper>
-    );
-  }
-
-  return (
-    <Swiper
-      modules={[Navigation, Autoplay]}
-      navigation={{ prevEl: `#${prevId}`, nextEl: `#${nextId}` }}
-      loop={true}
-      autoplay={{
-        delay: 3500,
-        disableOnInteraction: false,
-        pauseOnMouseEnter: true,
-      }}
-      breakpoints={sliderBreakpoints}
-      className="product-swiper"
-    >
-      {products?.slice(0, count).map((p) => (
-        <SwiperSlide key={p.id} className="h-full">
-          <ProductCard product={p} />
-        </SwiperSlide>
-      ))}
-    </Swiper>
-  );
-}
-
-type HomePageProps = {
-  categories?: Category[];
-  featured?: Product[];
-  bestSelling?: Product[];
-  onSale?: Product[];
-  newArrivals?: Product[];
-  mostViewed?: Product[];
-};
-
-export function HomePage({ categories: initialCategories, featured: initialFeatured, bestSelling: initialBestSelling, onSale: initialOnSale, newArrivals: initialNewArrivals, mostViewed: initialMostViewed }: HomePageProps) {
-  const { data: categories = initialCategories, isLoading: loadingCats } = useGetCategoriesQuery(undefined, { skip: !!initialCategories });
-  const { data: featured, isLoading: loadingFeatured } =
-    useGetFeaturedProductsQuery(10, { skip: !!initialFeatured });
-  const { data: bestSelling, isLoading: loadingBest } =
-    useGetBestSellingProductsQuery(10, { skip: !!initialBestSelling });
-  const { data: onSale, isLoading: loadingSale } =
-    useGetOnSaleProductsQuery(10, { skip: !!initialOnSale });
-  const { data: newArrivals, isLoading: loadingNew } =
-    useGetNewArrivalProductsQuery(10, { skip: !!initialNewArrivals });
-  const { data: mostViewed, isLoading: loadingViewed } =
-    useGetMostViewedProductsQuery(10, { skip: !!initialMostViewed });
-
-  const featuredProducts = featured ?? initialFeatured;
-  const bestSellingProducts = bestSelling ?? initialBestSelling;
-  const saleProducts = onSale ?? initialOnSale;
-  const arrivalProducts = newArrivals ?? initialNewArrivals;
-  const viewedProducts = mostViewed ?? initialMostViewed;
+export function HomePage({ categories }: HomePageProps) {
 
   return (
     <>
@@ -241,14 +71,7 @@ export function HomePage({ categories: initialCategories, featured: initialFeatu
             </Link>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-            {loadingCats
-              ? Array.from({ length: 6 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="aspect-square rounded-2xl bg-gray-100 animate-pulse"
-                  />
-                ))
-              : categories?.map((cat) => (
+            {categories.map((cat) => (
                   <Link
                     key={cat.id}
                     href={`/products?categoryId=${cat.id}`}
@@ -324,255 +147,19 @@ export function HomePage({ categories: initialCategories, featured: initialFeatu
           </div>
         </section>
 
-        {/* ── Best Selling ── */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <SectionHeader
-            eyebrow="Most Popular"
-            title="Best Selling"
-            icon={Flame}
-            href="/products?sort=best_selling"
-            prevId="best-prev"
-            nextId="best-next"
-          />
-          <ProductCarousel
-            isLoading={loadingBest}
-            products={bestSellingProducts}
-            prevId="best-prev"
-            nextId="best-next"
-          />
-        </section>
+        {/* Carousels — client component, RTK Query */}
+        <HomePageCarousels />
 
-        {/* ── Flash Sale Banner ── */}
-        {saleProducts && saleProducts.length > 0 && (
-          <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="relative bg-gradient-to-r from-[#C7927E] to-[#A97462] rounded-3xl px-8 py-6 flex items-center justify-between overflow-hidden">
-              <div className="relative z-10">
-                <p className="text-white/80 text-xs font-bold uppercase tracking-widest mb-1">
-                  Limited Time
-                </p>
-                <h3 className="text-white text-2xl font-bold">
-                  Special Offers & Deals
-                </h3>
-                <p className="text-white/80 text-sm mt-1">
-                  Save big on selected items — while stocks last
-                </p>
-              </div>
-              <Link
-                href="/products?sale=true"
-                className="relative z-10 flex-shrink-0 bg-white text-[#C7927E] font-bold text-sm px-6 py-3 rounded-xl hover:bg-[#FFF5F0] transition-colors"
-              >
-                Shop Deals →
-              </Link>
-              <div className="absolute right-0 top-0 w-48 h-full opacity-10 bg-white rounded-full translate-x-20" />
-            </div>
-          </section>
-        )}
-
-        {/* ── On Sale ── */}
-        {saleProducts && saleProducts.length > 0 && (
-          <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <SectionHeader
-              eyebrow="Save More"
-              title="On Sale Now"
-              icon={Tag}
-              href="/products?sale=true"
-              prevId="sale-prev"
-              nextId="sale-next"
-            />
-            <ProductCarousel
-              isLoading={loadingSale}
-              products={saleProducts}
-              prevId="sale-prev"
-              nextId="sale-next"
-            />
-          </section>
-        )}
-
-        {/* ── Featured ── */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <SectionHeader
-            eyebrow="Hand-picked"
-            title="Featured Products"
-            icon={Sparkles}
-            href="/products?featured=true"
-            prevId="feat-prev"
-            nextId="feat-next"
-          />
-          <ProductCarousel
-            isLoading={loadingFeatured}
-            products={featuredProducts}
-            prevId="feat-prev"
-            nextId="feat-next"
-          />
-        </section>
-
-        {/* ── New Arrivals ── */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <SectionHeader
-            eyebrow="Just Landed"
-            title="New Arrivals"
-            icon={ArrowRight}
-            href="/products?sort=newest"
-            prevId="new-prev"
-            nextId="new-next"
-          />
-          <ProductCarousel
-            isLoading={loadingNew}
-            products={arrivalProducts}
-            prevId="new-prev"
-            nextId="new-next"
-          />
-        </section>
-
-        {/* ── Most Viewed ── */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <SectionHeader
-            eyebrow="Trending Now"
-            title="Most Viewed"
-            icon={Eye}
-            href="/products"
-            accentColor="text-purple-500"
-            bgColor="bg-purple-50"
-            prevId="viewed-prev"
-            nextId="viewed-next"
-          />
-          <ProductCarousel
-            isLoading={loadingViewed}
-            products={viewedProducts}
-            prevId="viewed-prev"
-            nextId="viewed-next"
-          />
-        </section>
-
-        {/* ── Promo Banners (Bottom Set: Unique Categories) ── */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Link
-              href="/products?categoryId=4"
-              className="group relative h-44 rounded-3xl overflow-hidden bg-gradient-to-br from-[#E2EAFC] to-[#C1D3FE] flex items-center px-8"
-            >
-              <div className="relative z-10">
-                <p className="text-xs font-bold uppercase tracking-widest text-[#3F37C9] mb-1">
-                  Smart Tech
-                </p>
-                <h3 className="text-2xl font-bold font-cormorant text-[#1F1A3A] leading-tight mb-3">
-                  Latest
-                  <br />
-                  Electronics
-                </h3>
-                <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#3F37C9] group-hover:gap-2 transition-all">
-                  Shop Tech <ArrowRight className="w-4 h-4" />
-                </span>
-              </div>
-              <div className="absolute right-0 bottom-0 w-40 h-40 opacity-15 bg-[#3F37C9] rounded-full translate-x-10 translate-y-10" />
-            </Link>
-            <Link
-              href="/products?categoryId=5"
-              className="group relative h-44 rounded-3xl overflow-hidden bg-gradient-to-br from-[#F5E6E8] to-[#D5B9B2] flex items-center px-8"
-            >
-              <div className="relative z-10">
-                <p className="text-xs font-bold uppercase tracking-widest text-[#8A5A44] mb-1">
-                  Step Out In Style
-                </p>
-                <h3 className="text-2xl font-bold font-cormorant text-[#4A3328] leading-tight mb-3">
-                  Clothing &
-                  <br />
-                  Footwear
-                </h3>
-                <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#8A5A44] group-hover:gap-2 transition-all">
-                  Explore Fashion <ArrowRight className="w-4 h-4" />
-                </span>
-              </div>
-              <div className="absolute right-6 top-1/2 -translate-y-1/2 w-32 h-32 opacity-15 bg-[#8A5A44] rounded-full" />
-            </Link>
-          </div>
-        </section>
-
-        {/* ── Why Choose Us ── */}
-        <section className="bg-[#F7EDE6] py-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-10">
-              <p className="text-xs font-semibold uppercase tracking-widest text-[#C7927E] mb-2">
-                Our Promise
-              </p>
-              <h2 className="text-2xl font-bold text-gray-900">
-                Why Shop with Bowri?
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
-              {[
-                {
-                  Icon: BadgeCheck,
-                  title: "Curated Quality",
-                  desc: "Every product is hand-picked for style, durability, and value. No compromises.",
-                },
-                {
-                  Icon: PackageCheck,
-                  title: "Fast & Safe Delivery",
-                  desc: "We pack with care and ship fast. Your order arrives exactly as expected.",
-                },
-                {
-                  Icon: Headset,
-                  title: "Friendly Support",
-                  desc: "Questions? Our team responds quickly to help you before and after your purchase.",
-                },
-              ].map(({ Icon, title, desc }) => (
-                <div
-                  key={title}
-                  className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-md transition-shadow"
-                >
-                  <div className="flex justify-center mb-4">
-                    <div className="flex items-center justify-center w-14 h-14 rounded-full bg-[#F7EDE6]">
-                      <Icon
-                        className="w-7 h-7 text-[#C7927E]"
-                        strokeWidth={2}
-                      />
-                    </div>
-                  </div>
-
-                  <h3 className="font-bold text-gray-900 mb-2">{title}</h3>
-                  <p className="text-sm text-gray-500 leading-relaxed">
-                    {desc}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── Newsletter ── */}
+        {/* Newsletter — client component */}
         <section className="bg-[#2C2118] py-16">
           <div className="max-w-2xl mx-auto px-4 text-center">
-            <p className="text-xs font-semibold uppercase tracking-widest text-[#C9A46A] mb-3">
-              Stay in the loop
-            </p>
-            <h2 className="text-3xl font-bold text-white mb-3">
-              Get Exclusive Deals
-            </h2>
+            <p className="text-xs font-semibold uppercase tracking-widest text-[#C9A46A] mb-3">Stay in the loop</p>
+            <h2 className="text-3xl font-bold text-white mb-3">Get Exclusive Deals</h2>
             <p className="text-[#A8957F] text-sm pb-4">
-              Subscribe and be the first to know about new arrivals, flash
-              sales, and special offers.
+              Subscribe and be the first to know about new arrivals, flash sales, and special offers.
             </p>
-            <form
-              className="flex gap-2 max-w-md mx-auto"
-              onSubmit={(e) => e.preventDefault()}
-            >
-              <input
-                type="email"
-                placeholder="Enter your email"
-                className="flex-1 px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 text-sm focus:outline-none focus:border-[#C9A46A] transition-colors"
-              />
-              <button
-                type="submit"
-                className="px-6 py-3 bg-[#C9A46A] text-[#2C2118] font-semibold text-sm rounded-xl hover:bg-[#D7B87A] transition-colors whitespace-nowrap"
-              >
-                Subscribe
-              </button>
-            </form>
-            <p className="text-xs text-white/30 mt-4">
-              No spam. Unsubscribe anytime.
-            </p>
+            <NewsletterForm />
+            <p className="text-xs text-white/30 mt-4">No spam. Unsubscribe anytime.</p>
           </div>
         </section>
       </div>
