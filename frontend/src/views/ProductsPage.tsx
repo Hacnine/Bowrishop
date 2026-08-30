@@ -3,12 +3,12 @@
 import { useState, useCallback, useEffect, useReducer, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Search, SlidersHorizontal, X, ChevronDown, ChevronRight, Clock } from 'lucide-react';
-import { useGetProductsQuery } from '../features/products/productsApi';
-import { useGetCategoriesQuery } from '../features/categories/categoriesApi';
-import { ProductCard } from '../components/ProductCard';
-import { ProductCardSkeleton } from '../components/ui/Skeleton';
-import { Button } from '../components/ui/button';
-import type { Category, PaginatedResponse, Product } from '../types/types.index';
+import { useGetProductsQuery } from '@/features/products/productsApi';
+import { useGetCategoriesQuery } from '@/features/categories/categoriesApi';
+import { ProductCard } from '@/components/ProductCard';
+import { ProductCardSkeleton } from '@/components/ui/Skeleton';
+import { Button } from '@/components/ui/button';
+import type { Category, PaginatedResponse, Product } from '@/types/types.index';
 
 const SORT_OPTIONS = [
   { value: '', label: 'Newest' },
