@@ -4,10 +4,13 @@ import { ProductDetailPage } from '@/views/products/ProductDetailPage';
 import { ProductDetailSkeleton } from '@/views/products/ProductDetailSkeleton';
 import type { Product } from '@/types/types.index';
 
-export const revalidate = 86400;
+// SSR — runtime-এ fetch করবে, build time-এ না
+export const dynamic = 'force-dynamic';
 
 async function getProduct(slug: string): Promise<Product | null> {
-  const backendUrl = process.env.API_URL ?? 'http://localhost:3001';
+  // API_URL = runtime env var, Docker-এ http://backend:3001
+  const backendUrl = process.env.API_URL ?? 'http://backend:3001';
+  
   try {
     const res = await fetch(`${backendUrl}/api/products/${slug}`, {
       next: { revalidate: 86400 },
