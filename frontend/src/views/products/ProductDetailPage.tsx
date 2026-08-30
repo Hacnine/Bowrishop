@@ -5,26 +5,20 @@ import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ShoppingCart, Heart, ChevronLeft, Minus, Plus, Clock } from "lucide-react";
 import toast from "react-hot-toast";
-import {
-  useGetProductReviewsQuery,
-  useCreateReviewMutation,
-} from "../features/reviews/reviewsApi";
-import { useAddToCartMutation } from "../features/cart/cartApi";
-import { useAddToWishlistMutation } from "../features/wishlist/wishlistApi";
-import { useAppSelector, useAppDispatch } from "../app/hooks";
-import { addGuestItem } from "../features/cart/guestCartSlice";
-import { StarRating } from "../components/ui/StarRating";
-import { Skeleton } from "../components/ui/Skeleton";
-import { formatCurrency } from "../utils";
-import { ProductCard } from "../components/ProductCard";
-import { VideoPlayer } from "../components/VideoPlayer";
-import { ProductCardSkeleton } from "../components/ui/Skeleton";
-import {
-  useGetProductBySlugQuery,
-  useGetProductsQuery,
-} from "../features/products/productsApi";
-import type { Product, ProductVariant } from "../types/types.index";
 import { Button } from "@/components/ui/button";
+import { useGetProductBySlugQuery, useGetProductsQuery } from "@/features/products/productsApi";
+import { useAddToWishlistMutation } from "@/features/wishlist/wishlistApi";
+import { useAddToCartMutation } from "@/features/cart/cartApi";
+import { useCreateReviewMutation, useGetProductReviewsQuery } from "@/features/reviews/reviewsApi";
+import { useAppDispatch, useAppSelector } from "@/app/hooks";
+import type { Product, ProductVariant } from "@/types/types.index";
+import { addGuestItem } from "@/features/cart/guestCartSlice";
+import { StarRating } from "@/components/ui/StarRating";
+import { ProductCardSkeleton, Skeleton } from "@/components/ui/Skeleton";
+import { formatCurrency } from "@/utils";
+import { VideoPlayer } from "@/components/VideoPlayer";
+import { ProductCard } from "@/components/ProductCard";
+
 
 export function ProductDetailPage({ initialProduct }: { initialProduct?: Product }) {
   const { slug } = useParams<{ slug: string }>();
