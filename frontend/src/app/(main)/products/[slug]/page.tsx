@@ -7,7 +7,7 @@ import type { Product } from '@/types/types.index';
 export const revalidate = 86400;
 
 async function getProduct(slug: string): Promise<Product | null> {
-  const backendUrl = process.env.BACKEND_URL ?? 'http://localhost:3001';
+  const backendUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
   try {
     const res = await fetch(`${backendUrl}/api/products/${slug}`, {
       next: { revalidate: 86400 },
