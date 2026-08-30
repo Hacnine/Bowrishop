@@ -8,22 +8,22 @@ import toast from "react-hot-toast";
 import {
   useGetProductReviewsQuery,
   useCreateReviewMutation,
-} from "../features/reviews/reviewsApi";
-import { useAddToCartMutation } from "../features/cart/cartApi";
-import { useAddToWishlistMutation } from "../features/wishlist/wishlistApi";
-import { useAppSelector, useAppDispatch } from "../app/hooks";
-import { addGuestItem } from "../features/cart/guestCartSlice";
-import { StarRating } from "../components/ui/StarRating";
-import { Skeleton } from "../components/ui/Skeleton";
-import { formatCurrency } from "../utils";
-import { ProductCard } from "../components/ProductCard";
-import { VideoPlayer } from "../components/VideoPlayer";
-import { ProductCardSkeleton } from "../components/ui/Skeleton";
+} from "@/features/reviews/reviewsApi";
+import { useAddToCartMutation } from "@/features/cart/cartApi";
+import { useAddToWishlistMutation } from "@/features/wishlist/wishlistApi";
+import { useAppSelector, useAppDispatch } from "@/app/hooks";
+import { addGuestItem } from "@/features/cart/guestCartSlice";
+import { StarRating } from "@/components/ui/StarRating";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { formatCurrency } from "@/utils";
+import { ProductCard } from "@/components/ProductCard";
+import { VideoPlayer } from "@/components/VideoPlayer";
+import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import {
   useGetProductBySlugQuery,
   useGetProductsQuery,
-} from "../features/products/productsApi";
-import type { Product, ProductVariant } from "../types/types.index";
+} from "@/features/products/productsApi";
+import type { Product, ProductVariant } from "@/types/types.index";
 import { Button } from "@/components/ui/button";
 
 export function ProductDetailPage({ initialProduct }: { initialProduct?: Product }) {
