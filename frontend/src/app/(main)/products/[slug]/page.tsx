@@ -1,70 +1,51 @@
 import { Suspense } from 'react';
-import type { Metadata } from 'next';
-import { ProductDetailPage } from '@/views/ProductDetailPage';
+import { notFound } from 'next/navigation';
+import { ProductDetailPage } from '@/views/products/ProductDetailPage';
+import { ProductDetailSkeleton } from '@/views/products/ProductDetailSkeleton';
 import type { Product } from '@/types/types.index';
 
-export const revalidate = 300;
+export const revalidate = 86400;
 
-function getApiUrl(path: string) {
-  const configuredUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
-  const baseUrl = configuredUrl.endsWith('/api') ? configuredUrl : `${configuredUrl}/api`;
-  return `${baseUrl}${path}`;
-}
-
-async function getProducts() {
+async function getProduct(slug: string): Promise<Product | null> {
+  const backendUrl = process.env.BACKEND_URL ?? 'http://localhost:3001';
   try {
-    const response = await fetch(getApiUrl('/products?page=1&limit=100'), { cache: 'force-cache' });
-    if (!response.ok) return [];
-    const body = (await response.json()) as { products?: Product[] };
-    return body.products ?? [];
-  } catch {
-    return [];
-  }
-}
-
-export async function generateStaticParams() {
-  const products = await getProducts();
-  return products.map((product) => ({ slug: product.slug }));
-}
-
-async function getProduct(slug: string) {
-  try {
-    const response = await fetch(getApiUrl(`/products/${encodeURIComponent(slug)}`), {
-      next: { revalidate: 300 },
+    const res = await fetch(`${backendUrl}/api/products/${slug}`, {
+      next: { revalidate: 86400 },
     });
-    if (!response.ok) return undefined;
-    return (await response.json()) as Product;
+    if (!res.ok) return null;
+    return res.json();
   } catch {
-    return undefined;
+    return null;
   }
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+interface PageProps {
+  params: Promise<{ slug: string }>;
+}
+
+export async function generateMetadata({ params }: PageProps) {
   const { slug } = await params;
   const product = await getProduct(slug);
-
-  if (!product) {
-    return { title: 'Product Not Found | Bowri Shop' };
-  }
-
+  if (!product) return { title: 'Product Not Found | Bowri Shop' };
   return {
     title: `${product.name} | Bowri Shop`,
-    description: product.description,
-    alternates: { canonical: `https://www.bowrishop.com/products/${product.slug}` },
+    description: product.description?.slice(0, 160),
     openGraph: {
-      title: `${product.name} | Bowri Shop`,
-      description: product.description,
-      images: product.images[0] ? [product.images[0]] : undefined,
+      title: product.name,
+      description: product.description?.slice(0, 160),
+      images: product.images?.[0] ? [{ url: product.images[0] }] : [],
     },
   };
 }
 
-export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+export default async function Page({ params }: PageProps) {
   const { slug } = await params;
   const product = await getProduct(slug);
 
+  if (!product) notFound();
+
   return (
-    <Suspense fallback={<div className="p-6">Loading product...</div>}>
+    <Suspense fallback={<ProductDetailSkeleton />}>
       <ProductDetailPage initialProduct={product} />
     </Suspense>
   );
