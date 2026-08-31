@@ -68,7 +68,11 @@ export function ImageZoom({ src, alt, className = '' }: ImageZoomProps) {
     });
   }, []);
 
-  const onTouchEnd = useCallback(() => { isDragging.current = false; }, []);
+  const onTouchEnd = useCallback(() => {
+    isDragging.current = false;
+    setZoomActive(false);           // finger তুললেই zoom off
+    setBtnPos({ x: 50, y: 50 });   // button আবার center-এ
+  }, []);
 
   // ── Zoomed background position (inverted for natural feel) ─────────────
   const zoomedBg = (pos: { x: number; y: number }) =>
@@ -141,18 +145,15 @@ export function ImageZoom({ src, alt, className = '' }: ImageZoomProps) {
               touchAction: 'none',
             }}
             onTouchStart={(e) => {
-              if (!zoomActive) {
-                // first tap — activate zoom
-                setZoomActive(true);
-              }
+              setZoomActive(true);  // hold শুরু = zoom on
               onTouchStart(e);
             }}
             onTouchEnd={(e) => {
               e.stopPropagation();
               onTouchEnd();
             }}
-            onClick={() => setZoomActive((v) => !v)}
-            title={zoomActive ? 'Drag to pan • Tap to exit' : 'Tap to zoom'}
+            onClick={() => {}}  // hold করো zoom দেখতে
+            title='Hold & drag to zoom'
           >
             <ZoomIn className="w-5 h-5" />
           </button>
