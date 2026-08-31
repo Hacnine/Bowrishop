@@ -7,6 +7,7 @@ import {
   ShoppingCart,
   Heart,
   ChevronLeft,
+  ChevronRight,
   Minus,
   Plus,
   Clock,
@@ -32,6 +33,10 @@ import { formatCurrency } from "@/utils";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { ProductCard } from "@/components/ProductCard";
 import { ImageZoom } from "@/components/ImageZoom";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Navigation } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/navigation";
 
 export function ProductDetailPage({
   initialProduct,
@@ -344,13 +349,13 @@ export function ProductDetailPage({
   };
 
   const { data: relatedData, isLoading: relatedLoading } = useGetProductsQuery(
-    { categoryId: product?.category?.id, limit: 8 },
+    { categoryId: product?.category?.id, limit: 20 },
     { skip: !product?.category?.id },
   );
 
   const relatedProducts = useMemo(() => {
     if (!relatedData?.data || !product) return [];
-    return relatedData.data.filter((p) => p.id !== product.id).slice(0, 4);
+    return relatedData.data.filter((p) => p.id !== product.id).slice(0, 20); // ← 4 → 20
   }, [relatedData, product]);
 
   const handleAddToWishlist = async () => {
@@ -862,18 +867,58 @@ export function ProductDetailPage({
         {/* ── Related products ── */}
         {(relatedLoading || relatedProducts.length > 0) && (
           <div className="mt-16">
-            <h2 className="text-2xl font-bold text-gray-900 mb-8">
-              You may also like
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {relatedLoading
-                ? Array.from({ length: 4 }).map((_, i) => (
-                    <ProductCardSkeleton key={i} />
-                  ))
-                : relatedProducts.map((p) => (
-                    <ProductCard key={p.id} product={p} />
-                  ))}
+            <div className="flex items-end justify-between mb-8">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-[#C7927E] mb-1">
+                  Similar Items
+                </p>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  You may also like
+                </h2>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  id="related-prev"
+                  className="w-8 h-8 rounded-xl bg-white border border-gray-200 text-gray-600 flex items-center justify-center hover:bg-gray-50 hover:text-indigo-600 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  id="related-next"
+                  className="w-8 h-8 rounded-xl bg-white border border-gray-200 text-gray-600 flex items-center justify-center hover:bg-gray-50 hover:text-indigo-600 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
+
+            {relatedLoading ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <ProductCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : (
+              <Swiper
+                modules={[Navigation]}
+                navigation={{
+                  prevEl: "#related-prev",
+                  nextEl: "#related-next",
+                }}
+                breakpoints={{
+                  320: { slidesPerView: 2, spaceBetween: 12 },
+                  640: { slidesPerView: 3, spaceBetween: 16 },
+                  1024: { slidesPerView: 5, spaceBetween: 16 },
+                }}
+                className="related-swiper"
+              >
+                {relatedProducts.map((p) => (
+                  <SwiperSlide key={p.id} className="h-full">
+                    <ProductCard product={p} />
+                  </SwiperSlide>
+                ))}
+              </Swiper>
+            )}
           </div>
         )}
       </div>
