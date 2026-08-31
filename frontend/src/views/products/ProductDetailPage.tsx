@@ -89,7 +89,9 @@ export function ProductDetailPage({ initialProduct }: { initialProduct?: Product
     if (size) next.set('size', size);
     else next.delete('size');
     const query = next.toString();
-    router.replace(query ? `?${query}` : window.location.pathname);
+    router.replace( 
+      query ? `?${query}` : window.location.pathname,
+    { scroll: false } );
   };
 
   // Initial setup: URL params থাকলে সেটা use করো, নইলে first variant
