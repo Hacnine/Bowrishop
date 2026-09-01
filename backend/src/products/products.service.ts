@@ -367,6 +367,47 @@ export class ProductsService {
     });
     return ids.map((id) => products.find((p) => p.id === id)).filter(Boolean);
   }
+  async getRelated(productId: string, limit = 20) {
+    // Current product এর category আর tags আনো
+    const current = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true, categoryId: true, tags: true, price: true },
+    });
+    if (!current) return [];
+
+    // Same category এর products আনো (current বাদে)
+    const sameCat = await this.prisma.product.findMany({
+      where: {
+        isActive: true,
+        id: { not: productId },
+        categoryId: current.categoryId,
+      },
+      take: 100,
+      include: {
+        ...PRODUCT_WITH_VARIANTS,
+        _count: { select: { reviews: true, orderItems: true } },
+      },
+    });
+
+    // Score করো: tag match + order count + review count
+    const scored = sameCat.map((p) => {
+      const tagMatches = current.tags.filter((t) => p.tags.includes(t)).length;
+      const orderScore = (p._count as any).orderItems ?? 0;
+      const reviewScore = p._count.reviews ?? 0;
+      // Price range similarity (similar price = higher score)
+      const priceDiff = Math.abs(Number(p.price) - Number(current.price));
+      const priceScore = priceDiff < 200 ? 2 : priceDiff < 500 ? 1 : 0;
+
+      const score = tagMatches * 3 + orderScore * 0.5 + reviewScore * 1 + priceScore;
+      return { ...p, _score: score };
+    });
+
+    // Score দিয়ে sort, same score হলে orderItems বেশি আগে
+    scored.sort((a, b) => b._score - a._score);
+
+    return scored.slice(0, limit);
+  }
+
 
   // ─── Variant CRUD ─────────────────────────────────────────────────────────────
 

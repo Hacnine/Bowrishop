@@ -68,6 +68,15 @@ export const productsApi = baseApi.injectEndpoints({
       providesTags: ['Products'],
     }),
 
+
+    getRelatedProducts: builder.query<Product[], { productId: string; limit?: number }>({
+      query: ({ productId, limit = 20 }) => ({
+        url: `/products/${productId}/related`,
+        params: { limit },
+      }),
+      providesTags: ['Products'],
+    }),
+
     // Sends x-session-id header so the backend can record the view
     getProductBySlug: builder.query<Product, string>({
       query: (slug) => ({
@@ -130,6 +139,7 @@ export const {
   useGetOnSaleProductsQuery,
   useGetNewArrivalProductsQuery,
   useGetMostViewedProductsQuery,
+  useGetRelatedProductsQuery,
   useGetProductBySlugQuery,
   useCreateProductMutation,
   useUpdateProductMutation,

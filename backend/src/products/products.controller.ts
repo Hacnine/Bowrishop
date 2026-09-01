@@ -58,6 +58,15 @@ export class ProductsController {
     return this.productsService.searchAdminProducts(query);
   }
 
+
+  @Get(':id/related')
+  getRelated(
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.productsService.getRelated(id, limit ? parseInt(limit) : 20);
+  }
+
   @Get(':slug')
   findOne(
     @Param('slug') slug: string,
