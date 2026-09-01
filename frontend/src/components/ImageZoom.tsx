@@ -20,7 +20,7 @@ export function ImageZoom({ src, alt, className = '' }: ImageZoomProps) {
 
   // ── Mobile: draggable button state ────────────────────────────────────
   const [zoomActive, setZoomActive] = useState(false);
-  const [btnPos, setBtnPos] = useState({ x: 50, y: 50 });        // button pos (%)
+  const [btnPos, setBtnPos] = useState({ x: 85, y: 85 }); // bottom right
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0, bx: 0, by: 0 });
 
@@ -134,7 +134,7 @@ export function ImageZoom({ src, alt, className = '' }: ImageZoomProps) {
         {/* ── Mobile: draggable zoom button ── */}
         {isMobile && (
           <button
-            className={`absolute z-10 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-colors ${
+            className={`absolute  z-10 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-colors ${
               zoomActive
                 ? 'bg-indigo-600 text-white'
                 : 'bg-white/90 text-gray-700'
