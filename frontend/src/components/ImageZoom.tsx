@@ -71,7 +71,7 @@ export function ImageZoom({ src, alt, className = '' }: ImageZoomProps) {
   const onTouchEnd = useCallback(() => {
     isDragging.current = false;
     setZoomActive(false);           // finger তুললেই zoom off
-    setBtnPos({ x: 50, y: 50 });   // button আবার center-এ
+    setBtnPos({ x: 85, y: 85 });   // button আবার center-এ
   }, []);
 
   // ── Zoomed background position (inverted for natural feel) ─────────────
