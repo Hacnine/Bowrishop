@@ -92,7 +92,6 @@ export function CheckoutPage() {
     const eventId = generateEventId('Purchase');
     const fbp = getFbp();
     const fbc = getFbc();
-    const gaCookie = document.cookie.match(/_ga=([^;]+)/)?.[1];
 
     // Helper function to fire Browser Pixel Purchase event with eventID
     const firePixelPurchase = (order: any) => {
@@ -125,8 +124,6 @@ export function CheckoutPage() {
           fbc,
           eventId,
           clientIp: undefined,
-          gaCookie,
-          gaCookie,
           clientUserAgent: navigator.userAgent,
         }).unwrap();
 
@@ -164,7 +161,6 @@ export function CheckoutPage() {
           fbc,
           eventId,
           clientIp: undefined,
-          gaCookie,
           clientUserAgent: navigator.userAgent,
         }).unwrap();
 
