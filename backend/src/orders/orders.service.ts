@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto, CreateGuestOrderDto, UpdateOrderStatusDto, CreateAdminCustomOrderDto } from './dto/order.dto';
 import { EmailService } from '../email/email.service';
 import { MetaService } from '../meta/meta.service';
+import { GA4Service } from '../ga4/ga4.service';
 import { Prisma, OrderStatus } from '@prisma/client';
 
 @Injectable()
@@ -16,6 +17,7 @@ export class OrdersService {
     private prisma: PrismaService,
     private emailService: EmailService,
     private metaService: MetaService,
+    private ga4Service: GA4Service,
   ) {}
 
   async createOrder(userId: string, dto: CreateOrderDto) {
@@ -143,6 +145,18 @@ export class OrdersService {
       fbp: (dto as any).fbp,
       fbc: (dto as any).fbc,
       eventId: (dto as any).eventId,
+    }).catch(console.error);
+
+    this.ga4Service.trackPurchase({
+      orderId: order.id,
+      value: Number(order.total),
+      items: order.items.map((i) => ({
+        id: i.productId,
+        name: i.product?.name ?? i.productId,
+        price: Number(i.price),
+        quantity: i.quantity,
+      })),
+      gaCookie: (dto as any).gaCookie,
     }).catch(console.error);
 
     return order;

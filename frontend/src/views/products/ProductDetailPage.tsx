@@ -410,7 +410,10 @@ export function ProductDetailPage({
     if (size) next.set("size", size);
     else next.delete("size");
     const query = next.toString();
-    router.replace(query ? `?${query}` : window.location.pathname, {
+    const nextUrl = query ? `?${query}` : window.location.pathname;
+    const nextSearch = query ? `?${query}` : "";
+    if (nextSearch === window.location.search) return;
+    router.replace(nextUrl, {
       scroll: false,
     });
   };
