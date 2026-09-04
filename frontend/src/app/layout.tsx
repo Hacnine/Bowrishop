@@ -5,8 +5,7 @@ import '@/index.css';
 
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID ?? '';
 const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID ?? '2241909363253246';
-const GA4_MEASUREMENT_ID = process.env.GA4_MEASUREMENT_ID ?? '';
-const GA4_API_SECRET = process.env.GA4_API_SECRET ?? '';
+const GA4_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID ?? process.env.GA4_MEASUREMENT_ID ?? '';
 
 export const metadata: Metadata = {
   title: 'Bowri Shop | Home, Kitchen, Beauty, Electronics, Clothing & Footwear',
@@ -38,6 +37,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               })(window,document,'script','dataLayer','${GTM_ID}');
             `}
           </Script>
+        )}
+
+        {/* ── Google Analytics 4 ── */}
+        {GA4_MEASUREMENT_ID && (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${GA4_MEASUREMENT_ID}`}
+              strategy="afterInteractive"
+            />
+            <Script id="ga4-init" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                window.gtag = gtag;
+                gtag('js', new Date());
+                gtag('config', '${GA4_MEASUREMENT_ID}', { send_page_view: false });
+              `}
+            </Script>
+          </>
         )}
 
         {/* ── Meta Pixel ── */}

@@ -9,11 +9,15 @@ import { useAppDispatch, useAppSelector } from '../app/hooks';
 import { logout } from '../features/auth/authSlice';
 import { useGetCartQuery } from '../features/cart/cartApi';
 import { toast } from 'react-hot-toast';
+import { useGTM } from '@/hooks/useGTM';
+import { useGA4 } from '@/hooks/useGA4';
 
 export function Header() {
   const { isAuthenticated, user, isAdmin } = useAuth();
   const dispatch = useAppDispatch();
   const router = useRouter();
+  const { trackSearch } = useGTM();
+  const { trackSearch: trackGA4Search } = useGA4();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   // ── hydration fix ──────────────────────────────────────────────────────────
@@ -36,7 +40,12 @@ export function Header() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) router.push(`/products?q=${encodeURIComponent(searchQuery.trim())}`);
+    const term = searchQuery.trim();
+    if (term) {
+      trackSearch(term);
+      trackGA4Search(term);
+      router.push(`/products?q=${encodeURIComponent(term)}`);
+    }
   };
 
   // What to render before hydration — always "logged out" shape, matches server HTML

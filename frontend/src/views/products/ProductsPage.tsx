@@ -9,6 +9,8 @@ import { ProductCard } from '@/components/ProductCard';
 import { ProductCardSkeleton } from '@/components/ui/Skeleton';
 import type { Category, PaginatedResponse, Product } from '@/types/types.index';
 import { Button } from '@/components/ui/button';
+import { useGTM } from '@/hooks/useGTM';
+import { useGA4 } from '@/hooks/useGA4';
 
 const SORT_OPTIONS = [
   { value: '', label: 'Newest' },
@@ -26,6 +28,8 @@ export function ProductsPage({ products: initialProducts, categories: initialCat
   const router = useRouter();
   const pathname = usePathname() ?? '/products';
   const searchParams = useSearchParams();
+  const { trackSearch } = useGTM();
+  const { trackSearch: trackGA4Search } = useGA4();
   const [showFilters, setShowFilters] = useState(false);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
 
@@ -71,7 +75,14 @@ export function ProductsPage({ products: initialProducts, categories: initialCat
             placeholder="Search products…"
             defaultValue={q}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') setParam('q', (e.target as HTMLInputElement).value);
+              if (e.key === 'Enter') {
+                const term = (e.target as HTMLInputElement).value.trim();
+                if (term) {
+                  trackSearch(term);
+                  trackGA4Search(term);
+                }
+                setParam('q', term);
+              }
             }}
           />
         </div>

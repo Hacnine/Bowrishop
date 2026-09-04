@@ -52,6 +52,9 @@ services:
       dockerfile: frontend/Dockerfile-production
       args:
         NEXT_PUBLIC_API_URL: /api
+        NEXT_PUBLIC_GTM_ID: ${NEXT_PUBLIC_GTM_ID}
+        NEXT_PUBLIC_GA4_MEASUREMENT_ID: ${GA4_MEASUREMENT_ID}
+        NEXT_PUBLIC_META_PIXEL_ID: ${NEXT_PUBLIC_META_PIXEL_ID}
     image: ${DOCKERHUB_USERNAME}/trendora-frontend:latest
     container_name: trendora-frontend-prod
     restart: always

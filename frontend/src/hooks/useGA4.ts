@@ -7,11 +7,23 @@ type GtagFn = (...args: unknown[]) => void;
 function gtag(...args: unknown[]) {
   if (typeof window === 'undefined') return;
   const w = window as unknown as { dataLayer?: unknown[]; gtag?: GtagFn };
-  if (!w.dataLayer) return;
+  if (w.gtag) {
+    w.gtag(...args);
+    return;
+  }
+  w.dataLayer = w.dataLayer || [];
   w.dataLayer.push(args);
 }
 
 export function useGA4() {
+  const trackPageView = (url: string) => {
+    gtag('event', 'page_view', {
+      page_path: url,
+      page_location: window.location.href,
+      page_title: document.title,
+    });
+  };
+
   const trackViewItem = (product: {
     id: string;
     name: string;
@@ -89,5 +101,5 @@ export function useGA4() {
     gtag('event', 'search', { search_term: searchTerm });
   };
 
-  return { trackViewItem, trackAddToCart, trackBeginCheckout, trackPurchase, trackSearch };
+  return { trackPageView, trackViewItem, trackAddToCart, trackBeginCheckout, trackPurchase, trackSearch };
 }

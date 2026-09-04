@@ -37,6 +37,8 @@ import { formatCurrency } from "@/utils";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { ProductCard } from "@/components/ProductCard";
 import { ImageZoom } from "@/components/ImageZoom";
+import { useGTM } from "@/hooks/useGTM";
+import { useGA4 } from "@/hooks/useGA4";
 
 // ── Recently Viewed utils ──────────────────────────────────────────────────────
 const RV_KEY = "recently_viewed";
@@ -353,6 +355,8 @@ export function ProductDetailPage({
   });
   const [addToCart, { isLoading: addingCart }] = useAddToCartMutation();
   const [addToWishlist] = useAddToWishlistMutation();
+  const { trackViewItem: trackGTMViewItem, trackAddToCart: trackGTMAddToCart } = useGTM();
+  const { trackViewItem: trackGA4ViewItem, trackAddToCart: trackGA4AddToCart } = useGA4();
   const [createReview, { isLoading: submittingReview }] =
     useCreateReviewMutation();
 
@@ -374,6 +378,18 @@ export function ProductDetailPage({
   // Track view in localStorage
   useEffect(() => {
     if (product?.id) addRecentlyViewed(product.id);
+  }, [product?.id]);
+
+  useEffect(() => {
+    if (!product) return;
+    const item = {
+      id: product.id,
+      name: product.name,
+      price: Number(product.price),
+      category: product.category?.name,
+    };
+    trackGTMViewItem(item);
+    trackGA4ViewItem(item);
   }, [product?.id]);
 
   const hasVariants = !!(product?.variants && product.variants.length > 0);
@@ -566,6 +582,9 @@ export function ProductDetailPage({
       );
       toast.success("Added to cart");
       firePixel();
+      const item = { id: product!.id, name: product!.name, price: displayPrice, quantity: qty, category: product!.category?.name };
+      trackGTMAddToCart(item);
+      trackGA4AddToCart(item);
       return;
     }
     try {
@@ -576,6 +595,9 @@ export function ProductDetailPage({
       } as any).unwrap();
       toast.success("Added to cart");
       firePixel();
+      const item = { id: product!.id, name: product!.name, price: displayPrice, quantity: qty, category: product!.category?.name };
+      trackGTMAddToCart(item);
+      trackGA4AddToCart(item);
     } catch {
       toast.error("Could not add to cart");
     }
@@ -607,6 +629,9 @@ export function ProductDetailPage({
           variant: hasVariants ? selectedVariant : null,
         }),
       );
+      const item = { id: product!.id, name: product!.name, price: displayPrice, quantity: qty, category: product!.category?.name };
+      trackGTMAddToCart(item);
+      trackGA4AddToCart(item);
       router.push("/checkout");
       return;
     }
@@ -616,6 +641,9 @@ export function ProductDetailPage({
         quantity: qty,
         ...(selectedVariant ? { variantId: selectedVariant.id } : {}),
       }).unwrap();
+      const item = { id: product!.id, name: product!.name, price: displayPrice, quantity: qty, category: product!.category?.name };
+      trackGTMAddToCart(item);
+      trackGA4AddToCart(item);
       router.push("/checkout");
     } catch {
       toast.error("Could not start checkout");

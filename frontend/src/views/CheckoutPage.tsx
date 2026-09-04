@@ -8,6 +8,8 @@ import toast from 'react-hot-toast';
 import { useGetCartQuery } from '../features/cart/cartApi';
 import { useCreateOrderMutation, useCreateGuestOrderMutation } from '../features/orders/ordersApi';
 import { useMetaPixel } from '../hooks/useMetaPixel';
+import { useGTM } from '../hooks/useGTM';
+import { useGA4 } from '../hooks/useGA4';
 import { useAppDispatch, useAppSelector } from '../app/hooks';
 import { clearGuestCart } from '../features/cart/guestCartSlice';
 import { Button } from '../components/ui/button';
@@ -86,8 +88,13 @@ export function CheckoutPage() {
   const discount = Number.isFinite(couponDiscount) ? couponDiscount : 0;
   const total = Math.max(0, subtotal - discount + shippingCharge);
   const { getFbp, getFbc, generateEventId, firePixelEvent } = useMetaPixel();
+  const { trackBeginCheckout: trackGTMCheckout, trackPurchase: trackGTMPurchase } = useGTM();
+  const { trackBeginCheckout: trackGA4Checkout, trackPurchase: trackGA4Purchase } = useGA4();
 
   const onSubmit = async (data: FormValues) => {
+    trackGTMCheckout({ value: total, items });
+    trackGA4Checkout({ value: total, items });
+
     // generate event id and meta cookies
     const eventId = generateEventId('Purchase');
     const fbp = getFbp();
@@ -105,6 +112,16 @@ export function CheckoutPage() {
         },
         eventId,
       );
+    };
+
+    const trackPurchase = (order: any) => {
+      const purchase = {
+        orderId: order.id,
+        value: Number(order.totalAmount || order.total || total),
+        items,
+      };
+      trackGTMPurchase(purchase);
+      trackGA4Purchase(purchase);
     };
 
     if (isAuthenticated) {
@@ -128,6 +145,7 @@ export function CheckoutPage() {
         }).unwrap();
 
         firePixelPurchase(order); // 👈 রেজিস্টার্ড ইউজারের অর্ডার সফল হলে পিক্সেল ফায়ার
+        trackPurchase(order);
         router.push(`/orders/success/${order.id}`);
       } catch (err: unknown) {
         const e = err as { data?: { message?: string } };
@@ -165,6 +183,7 @@ export function CheckoutPage() {
         }).unwrap();
 
         firePixelPurchase(order); // 👈 গেস্ট ইউজারের অর্ডার সফল হলে পিক্সেল ফায়ার
+        trackPurchase(order);
         dispatch(clearGuestCart());
         router.push(`/orders/guest-success/${order.id}`);
       } catch (err: unknown) {
