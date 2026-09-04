@@ -32,7 +32,7 @@ function ReviewScreenshot({ src, label }: { src: string; label: string }) {
     <img
       src={src}
       alt={label}
-      className="h-full min-h-[320px] w-full object-contain bg-[#F7F1EA]"
+      className="h-32 min-h-[320px] w-full object-contain bg-[#F7F1EA]"
       onError={() => setFailed(true)}
     />
   );
