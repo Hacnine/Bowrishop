@@ -202,7 +202,7 @@ export function FaqPage() {
             সাধারণ জিজ্ঞাসা
           </h1>
 
-          <p className="text-[#8A7D70] text-lg max-w-xl mx-auto">
+          <p className="text-[#8A7D70] text-lg max-w-7xl mx-auto">
             অর্ডার, পেমেন্ট, ডেলিভারি বা রিটার্ন নিয়ে কোনো প্রশ্ন আছে? এখানে
             আপনার সব উত্তর পেয়ে যাবেন।
           </p>

@@ -13,7 +13,8 @@ import {
 import { HomePageCarousels, NewsletterForm } from './HomePageCarousels';
 import { Hero } from "../components/Hero";
 import { FacebookReviewSlider } from "../components/FacebookReviewSlider";
-import { faqCategories, FaqSection } from "../components/FaqContent";
+import { FaqSection } from "../components/FaqContent";
+import { faqCategories } from "../data/faqData";
 import type { Category } from '../types/types.index';
 
 const perks = [
