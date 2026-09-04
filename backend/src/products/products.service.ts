@@ -14,6 +14,7 @@ import {
   CreateVariantDto,
   UpdateVariantDto,
 } from './dto/product.dto';
+import { Prisma } from '@prisma/client';
 
 const VARIANT_SELECT = {
   id: true,
@@ -188,14 +189,6 @@ export class ProductsService {
     const where: any = { isActive: true };
     const search = normalizeSearch(query.search ?? query.q);
 
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-        { tags: { has: search } },
-      ];
-    }
-
     // Nested category support: categoryId দিলে শুধু সেই category;
     // category slug দিলে parent + সব subCategories include করো
     if (query.categoryId) {
@@ -221,16 +214,83 @@ export class ProductsService {
     if (query.sale === 'true') where.comparePrice = { not: null };
     if (query.preOrder === 'true') where.isPreOrder = true;
 
+    let searchIds: string[] | undefined;
+    if (search) {
+      const searchTokens = [...new Set(search.split(/\s+/).filter(Boolean))];
+      const tokenConditions = searchTokens.map((token) => {
+        const pattern = `%${token}%`;
+        return Prisma.sql`(
+          p."name" ILIKE ${pattern}
+          OR EXISTS (
+            SELECT 1 FROM unnest(p."tags") AS tag
+            WHERE tag ILIKE ${pattern}
+          )
+          OR c."name" ILIKE ${pattern}
+          OR p."description" ILIKE ${pattern}
+          OR COALESCE(p."specifications"::text, '') ILIKE ${pattern}
+        )`;
+      });
+
+      const matches = await this.prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+        SELECT p."id"
+        FROM "Product" p
+        INNER JOIN "Category" c ON c."id" = p."categoryId"
+        WHERE p."isActive" = true
+          AND (${Prisma.join(tokenConditions, ' OR ')})
+      `);
+      searchIds = matches.map(({ id }) => id);
+
+      if (searchIds.length === 0) {
+        return { products: [], total: 0, page, limit, totalPages: 0 };
+      }
+
+      where.id = { in: searchIds };
+    }
+
     let orderBy: any = { createdAt: 'desc' };
     if (query.sort === 'price_asc') orderBy = { price: 'asc' };
     if (query.sort === 'price_desc') orderBy = { price: 'desc' };
     if (query.sort === 'name_asc') orderBy = { name: 'asc' };
     if (query.sort === 'popular') orderBy = { reviews: { _count: 'desc' } };
 
-    const [products, total] = await Promise.all([
-      this.prisma.product.findMany({ where, skip, take: limit, orderBy, include: PRODUCT_WITH_VARIANTS }),
+    if (!search) {
+      const [products, total] = await Promise.all([
+        this.prisma.product.findMany({ where, skip, take: limit, orderBy, include: PRODUCT_WITH_VARIANTS }),
+        this.prisma.product.count({ where }),
+      ]);
+
+      return { products, total, page, limit, totalPages: Math.ceil(total / limit) };
+    }
+
+    const [matchedProducts, total] = await Promise.all([
+      this.prisma.product.findMany({ where, include: PRODUCT_WITH_VARIANTS }),
       this.prisma.product.count({ where }),
     ]);
+
+    const searchTokens = [...new Set(search.split(/\s+/).filter(Boolean))];
+    const rankedProducts = matchedProducts
+      .map((product) => {
+        const searchableTags = product.tags.map((tag) => tag.toLocaleLowerCase());
+        const categoryName = product.category?.name.toLocaleLowerCase() ?? '';
+        const name = product.name.toLocaleLowerCase();
+        const description = product.description.toLocaleLowerCase();
+        const specifications = JSON.stringify(product.specifications ?? {}).toLocaleLowerCase();
+        let score = 0;
+
+        for (const token of searchTokens) {
+          if (name.includes(token)) score += 1000;
+          if (searchableTags.some((tag) => tag.includes(token))) score += 500;
+          if (categoryName.includes(token)) score += 300;
+          if (description.includes(token)) score += 100;
+          if (specifications.includes(token)) score += 80;
+        }
+
+        return { product, score };
+      })
+      .sort((a, b) => b.score - a.score)
+      .map(({ product }) => product);
+
+    const products = rankedProducts.slice(skip, skip + limit);
 
     return { products, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
