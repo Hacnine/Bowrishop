@@ -50,9 +50,11 @@ export function AdminProducts() {
   const router = useRouter();
   const pathname = usePathname() ?? '/admin/products';
   const searchParams = useSearchParams();
-  const page = parseInt(searchParams.get('page') ?? '1', 10);
   const searchQuery = searchParams.get('q') ?? '';
   const [searchInput, setSearchInput] = useState(searchQuery);
+  const [page, setPage] = useState(1);
+  const [loadedProducts, setLoadedProducts] = useState<Product[]>([]);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [variantProduct, setVariantProduct] = useState<Product | null>(null);
@@ -80,7 +82,7 @@ export function AdminProducts() {
     setSpecs((prev) => prev.map((s, idx) => idx === i ? { ...s, [field]: val } : s));
   };
 
-  const { data, isLoading } = useGetAdminProductsQuery({ page, limit: 15, q: searchQuery || undefined });
+  const { data, isLoading, isFetching } = useGetAdminProductsQuery({ page, limit: 15, q: searchQuery || undefined });
   const { data: flatCategories } = useGetFlatCategoriesQuery();
   const [createProduct, { isLoading: creating }] = useCreateProductMutation();
   const [updateProduct, { isLoading: updating }] = useUpdateProductMutation();
@@ -104,6 +106,42 @@ export function AdminProducts() {
   useEffect(() => { setSearchInput(searchQuery); }, [searchQuery]);
 
   useEffect(() => {
+    setPage(1);
+    setLoadedProducts([]);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (!data) return;
+    setLoadedProducts((previous) => {
+      if (data.page === 1) return data.data;
+      const existingIds = new Set(previous.map((product) => product.id));
+      return [...previous, ...data.data.filter((product) => !existingIds.has(product.id))];
+    });
+  }, [data]);
+
+  const hasMoreRef = useRef(false);
+  const isFetchingRef = useRef(false);
+  hasMoreRef.current = !!data && data.page < data.totalPages;
+  isFetchingRef.current = isFetching;
+
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasMoreRef.current && !isFetchingRef.current) {
+          setPage((currentPage) => currentPage + 1);
+        }
+      },
+      { rootMargin: '500px', threshold: 0 },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loadedProducts.length]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       const next = new URLSearchParams(searchParams.toString());
         if (searchInput.trim()) next.set('q', searchInput.trim());
@@ -113,12 +151,6 @@ export function AdminProducts() {
     }, 400);
     return () => clearTimeout(timer);
   }, [searchInput]);
-
-  const setPage = (p: number) => {
-    const next = new URLSearchParams(searchParams.toString());
-    next.set('page', String(p));
-    router.push(`${pathname}?${next.toString()}`);
-  };
 
   const openCreate = () => {
     setEditProduct(null);
@@ -384,14 +416,14 @@ export function AdminProducts() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {data?.data.length === 0 ? (
+                {loadedProducts.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-400">
                       {searchQuery ? `No products found for "${searchQuery}"` : 'No products yet.'}
                     </td>
                   </tr>
                 ) : (
-                  data?.data.map((p) => (
+                  loadedProducts.map((p) => (
                     <tr key={p.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -447,28 +479,12 @@ export function AdminProducts() {
               </tbody>
             </table>
 
-            {data && data.totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
-                <p className="text-sm text-gray-500">Page {page} of {data.totalPages} · {data.total} products</p>
-                <div className="flex gap-1.5">
-                  <button onClick={() => setPage(page - 1)} disabled={page === 1} className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">← Prev</button>
-                  {Array.from({ length: data.totalPages }, (_, i) => i + 1)
-                    .filter((p) => p === 1 || p === data.totalPages || Math.abs(p - page) <= 1)
-                    .reduce<(number | '...')[]>((acc, p, idx, arr) => {
-                      if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push('...');
-                      acc.push(p);
-                      return acc;
-                    }, [])
-                    .map((p, idx) =>
-                      p === '...' ? (
-                        <span key={`e-${idx}`} className="px-2 py-1.5 text-sm text-gray-400">…</span>
-                      ) : (
-                        <button key={p} onClick={() => setPage(p as number)} className={`w-8 h-8 rounded-lg text-sm ${p === page ? 'bg-indigo-600 text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'}`}>{p}</button>
-                      )
-                    )}
-                  <button onClick={() => setPage(page + 1)} disabled={page === data.totalPages} className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">Next →</button>
-                </div>
-              </div>
+            <div ref={loadMoreRef} className="h-4" />
+            {isFetching && loadedProducts.length > 0 && (
+              <div className="px-6 py-4 text-center text-sm text-gray-500">Loading more products…</div>
+            )}
+            {data && !hasMoreRef.current && loadedProducts.length > 0 && (
+              <div className="px-6 py-4 text-center text-xs text-gray-400">All {data.total} products loaded</div>
             )}
           </>
         )}
