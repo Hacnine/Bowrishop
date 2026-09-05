@@ -247,7 +247,10 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/trendora-frontend:latest
           build-args: |
-            VITE_API_URL=${{ secrets.VITE_API_URL }}
+            NEXT_PUBLIC_API_URL=/api
+            NEXT_PUBLIC_GTM_ID=${{ secrets.NEXT_PUBLIC_GTM_ID }}
+            NEXT_PUBLIC_GA4_MEASUREMENT_ID=${{ secrets.NEXT_PUBLIC_GA4_MEASUREMENT_ID }}
+            NEXT_PUBLIC_META_PIXEL_ID=${{ secrets.NEXT_PUBLIC_META_PIXEL_ID }}
           cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/trendora-frontend:cache
           cache-to:   type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/trendora-frontend:cache,mode=max
 

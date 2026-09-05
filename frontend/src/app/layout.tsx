@@ -3,9 +3,9 @@ import Script from 'next/script';
 import { Providers } from '@/providers';
 import '@/index.css';
 
-const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID ?? '';
+const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID ?? 'GTM-WLJXLZMX';
 const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID ?? '2241909363253246';
-const GA4_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID ?? process.env.GA4_MEASUREMENT_ID ?? '';
+const GA4_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID ?? process.env.GA4_MEASUREMENT_ID ?? 'G-S5BD3E8JHP';
 
 export const metadata: Metadata = {
   title: 'Bowri Shop | Home, Kitchen, Beauty, Electronics, Clothing & Footwear',
@@ -28,7 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         {/* ── Google Tag Manager ── */}
         {GTM_ID && (
-          <Script id="gtm-init" strategy="afterInteractive">
+          <Script id="gtm-init" strategy="beforeInteractive">
             {`
               (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
               new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
