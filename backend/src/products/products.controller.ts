@@ -7,7 +7,7 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
 import {
   AdminProductQueryDto, CreateProductDto, UpdateProductDto, ProductQueryDto,
-  CreateVariantDto, UpdateVariantDto,
+  CreateVariantDto, UpdateVariantDto, RemoveProductImageDto,
 } from './dto/product.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -91,6 +91,14 @@ export class ProductsController {
   @Roles(Role.ADMIN)
   update(@Param('id') id: string, @Body() dto: UpdateProductDto) {
     return this.productsService.update(id, dto);
+  }
+
+  @Delete(':id/images')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.ADMIN)
+  removeImage(@Param('id') id: string, @Body() dto: RemoveProductImageDto) {
+    return this.productsService.removeImage(id, dto.url);
   }
 
   @Delete(':id')

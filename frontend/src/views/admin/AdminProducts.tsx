@@ -11,6 +11,7 @@ import {
   useGetAdminProductsQuery,
   useCreateProductMutation,
   useUpdateProductMutation,
+  useRemoveProductImageMutation,
   useDeleteProductMutation,
 } from '../../features/products/productsApi';
 import { useGetFlatCategoriesQuery } from '../../features/categories/categoriesApi';
@@ -86,6 +87,7 @@ export function AdminProducts() {
   const { data: flatCategories } = useGetFlatCategoriesQuery();
   const [createProduct, { isLoading: creating }] = useCreateProductMutation();
   const [updateProduct, { isLoading: updating }] = useUpdateProductMutation();
+  const [removeProductImage] = useRemoveProductImageMutation();
   const [deleteProduct] = useDeleteProductMutation();
   const [uploadImage] = useUploadImageMutation();
   const { data: cloudinaryImages, isLoading: loadingCloudinaryImages } = useGetCloudinaryImagesQuery(undefined, {
@@ -197,6 +199,31 @@ export function AdminProducts() {
 
   const addCloudinaryImage = (url: string) => {
     setImageUrls((prev) => (prev.includes(url) ? prev : [...prev, url]));
+  };
+
+  const handleRemoveImage = async (index: number) => {
+    const imageUrl = imageUrls[index];
+    if (!imageUrl) return;
+
+    if (!editProduct) {
+      setImageUrls((previous) => previous.filter((_, currentIndex) => currentIndex !== index));
+      return;
+    }
+
+    try {
+      await removeProductImage({ id: editProduct.id, url: imageUrl }).unwrap();
+      setImageUrls((previous) => previous.filter((_, currentIndex) => currentIndex !== index));
+      setLoadedProducts((previous) => previous.map((product) => (
+        product.id === editProduct.id
+          ? { ...product, images: product.images.filter((url) => url !== imageUrl) }
+          : product
+      )));
+      setEditProduct((previous) => previous ? { ...previous, images: previous.images.filter((url) => url !== imageUrl) } : previous);
+      toast.success('Image removed');
+    } catch (err: unknown) {
+      const error = err as { data?: { message?: string } };
+      toast.error(error?.data?.message ?? 'Could not remove image');
+    }
   };
 
   // ── Batch image upload (multiple files) ────────────────────────────────
@@ -803,8 +830,10 @@ export function AdminProducts() {
                       )}
                       <button
                         type="button"
-                        onClick={() => setImageUrls((prev) => prev.filter((_, idx) => idx !== i))}
-                        className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs"
+                        onClick={() => handleRemoveImage(i)}
+                        title="Remove image from this product"
+                        aria-label={`Remove image ${i + 1}`}
+                        className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-700"
                       >×</button>
                     </div>
                   ))}

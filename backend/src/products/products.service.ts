@@ -181,6 +181,25 @@ export class ProductsService {
     }
   }
 
+  async removeImage(id: string, imageUrl: string) {
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+      select: { images: true },
+    });
+    if (!product) throw new NotFoundException('Product not found');
+
+    const images = product.images.filter((url) => url !== imageUrl);
+    if (images.length === product.images.length) {
+      throw new NotFoundException('Image not found on this product');
+    }
+
+    return this.prisma.product.update({
+      where: { id },
+      data: { images },
+      include: PRODUCT_WITH_VARIANTS,
+    });
+  }
+
   async findAll(query: ProductQueryDto) {
     const page = parseInt(query.page ?? '1');
     const limit = parseInt(query.limit ?? '12');

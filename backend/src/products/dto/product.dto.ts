@@ -191,6 +191,11 @@ export class UpdateProductDto {
   specifications?: Record<string, string>;
 }
 
+export class RemoveProductImageDto {
+  @IsString()
+  url: string;
+}
+
 export class ProductQueryDto {
   @IsOptional() @IsString() page?: string;
   @IsOptional() @IsString() limit?: string;
