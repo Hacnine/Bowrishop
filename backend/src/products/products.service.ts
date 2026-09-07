@@ -130,6 +130,7 @@ export class ProductsService {
     try {
       const product = await this.prisma.product.findUnique({ where: { id } });
       if (!product) throw new NotFoundException('Product not found');
+      const previousSlug = product.slug;
 
       const data: any = { ...dto };
       if (dto.name) data.slug = slugify(dto.name);
@@ -151,6 +152,10 @@ export class ProductsService {
         include: PRODUCT_WITH_VARIANTS,
       });
 
+      await this.revalidateProductPage(previousSlug);
+      if (updated.slug !== previousSlug) {
+        await this.revalidateProductPage(updated.slug);
+      }
       this.logger.log(`Product updated successfully: ${id}`);
       return updated;
     } catch (error) {
@@ -160,6 +165,31 @@ export class ProductsService {
         error instanceof Error ? error.message : JSON.stringify(error),
       );
       throw error;
+    }
+  }
+
+  private async revalidateProductPage(slug: string) {
+    const nextUrl = process.env.NEXT_INTERNAL_URL ?? 'http://frontend:3000';
+    const secret = process.env.REVALIDATE_SECRET;
+
+    if (!secret) {
+      this.logger.warn('REVALIDATE_SECRET is not configured; skipping product revalidation');
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${nextUrl}/api/revalidate?tag=${encodeURIComponent(`product-${slug}`)}&secret=${encodeURIComponent(secret)}`,
+        { method: 'POST' },
+      );
+
+      if (!response.ok) {
+        this.logger.warn(`Product revalidation failed for ${slug}: ${response.status}`);
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Product revalidation request failed for ${slug}: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
@@ -193,11 +223,13 @@ export class ProductsService {
       throw new NotFoundException('Image not found on this product');
     }
 
-    return this.prisma.product.update({
+    const updated = await this.prisma.product.update({
       where: { id },
       data: { images },
       include: PRODUCT_WITH_VARIANTS,
     });
+    await this.revalidateProductPage(updated.slug);
+    return updated;
   }
 
   async findAll(query: ProductQueryDto) {
@@ -510,6 +542,7 @@ export class ProductsService {
         data: { productId, ...dto, images: dto.images ?? [] },
       });
 
+      await this.revalidateProductPage(product.slug);
       this.logger.log(`Variant created: ${variant.id} for product: ${productId}`);
       return variant;
     } catch (error) {
@@ -523,10 +556,14 @@ export class ProductsService {
 
   async updateVariant(variantId: string, dto: UpdateVariantDto) {
     try {
-      const variant = await this.prisma.productVariant.findUnique({ where: { id: variantId } });
+      const variant = await this.prisma.productVariant.findUnique({
+        where: { id: variantId },
+        include: { product: { select: { slug: true } } },
+      });
       if (!variant) throw new NotFoundException('Variant not found');
 
       const updated = await this.prisma.productVariant.update({ where: { id: variantId }, data: dto });
+      await this.revalidateProductPage(variant.product.slug);
       this.logger.log(`Variant updated: ${variantId}`);
       return updated;
     } catch (error) {
@@ -539,10 +576,14 @@ export class ProductsService {
 
   async deleteVariant(variantId: string) {
     try {
-      const variant = await this.prisma.productVariant.findUnique({ where: { id: variantId } });
+      const variant = await this.prisma.productVariant.findUnique({
+        where: { id: variantId },
+        include: { product: { select: { slug: true } } },
+      });
       if (!variant) throw new NotFoundException('Variant not found');
 
       const deleted = await this.prisma.productVariant.delete({ where: { id: variantId } });
+      await this.revalidateProductPage(variant.product.slug);
       this.logger.log(`Variant deleted: ${variantId}`);
       return deleted;
     } catch (error) {

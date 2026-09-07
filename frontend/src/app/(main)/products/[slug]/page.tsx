@@ -4,16 +4,14 @@ import { ProductDetailPage } from '@/views/products/ProductDetailPage';
 import { ProductDetailSkeleton } from '@/views/products/ProductDetailSkeleton';
 import type { Product } from '@/types/types.index';
 
-// SSR — runtime-এ fetch করবে, build time-এ না
-export const dynamic = 'force-dynamic';
+// SSG — build/revalidate-এর পর static হবে
+export const dynamic = 'force-static';
 
 async function getProduct(slug: string): Promise<Product | null> {
-  // API_URL = runtime env var, Docker-এ http://backend:3001
   const backendUrl = process.env.API_URL ?? 'http://backend:3001';
-  
   try {
     const res = await fetch(`${backendUrl}/api/products/${slug}`, {
-      next: { revalidate: 86400 },
+      next: { tags: [`product-${slug}`] }, // tag দিয়ে on-demand revalidate হবে
     });
     if (!res.ok) return null;
     return res.json();
@@ -44,9 +42,7 @@ export async function generateMetadata({ params }: PageProps) {
 export default async function Page({ params }: PageProps) {
   const { slug } = await params;
   const product = await getProduct(slug);
-
   if (!product) notFound();
-
   return (
     <Suspense fallback={<ProductDetailSkeleton />}>
       <ProductDetailPage initialProduct={product} />
