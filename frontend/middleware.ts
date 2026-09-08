@@ -4,6 +4,12 @@ export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isAuthenticated = request.cookies.has('auth_token');
 
+  if (pathname === '/products' && request.nextUrl.search) {
+    const rewriteUrl = request.nextUrl.clone();
+    rewriteUrl.pathname = '/products/search';
+    return NextResponse.rewrite(rewriteUrl);
+  }
+
   // Protected routes that require authentication
   const protectedRoutes = [
     '/profile',
