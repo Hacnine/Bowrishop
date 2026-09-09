@@ -270,7 +270,10 @@ export function AdminProducts() {
     };
     try {
       if (editProduct) {
-        await updateProduct({ id: editProduct.id, ...payload }).unwrap();
+        const updatedProduct = await updateProduct({ id: editProduct.id, ...payload }).unwrap();
+        setLoadedProducts((previous) => previous.map((product) => (
+          product.id === updatedProduct.id ? updatedProduct : product
+        )));
         toast.success('Product updated');
       } else {
         await createProduct(payload).unwrap();
@@ -300,7 +303,10 @@ export function AdminProducts() {
 
   const toggleProductStatus = async (product: Product) => {
     try {
-      await updateProduct({ id: product.id, isActive: !product.isActive }).unwrap();
+      const updatedProduct = await updateProduct({ id: product.id, isActive: !product.isActive }).unwrap();
+      setLoadedProducts((previous) => previous.map((currentProduct) => (
+        currentProduct.id === updatedProduct.id ? updatedProduct : currentProduct
+      )));
       toast.success(product.isActive ? 'Product deactivated' : 'Product activated');
     } catch (err: unknown) {
       const e = err as { data?: { message?: string } };
