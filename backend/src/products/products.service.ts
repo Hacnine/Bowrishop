@@ -184,7 +184,10 @@ export class ProductsService {
       );
 
       if (!response.ok) {
-        this.logger.warn(`Product revalidation failed for ${slug}: ${response.status}`);
+        const body = await response.text().catch(() => '');
+        this.logger.warn(`Product revalidation failed for ${slug}: ${response.status} ${body}`);
+      } else {
+        this.logger.log(`Product page revalidated for ${slug}`);
       }
     } catch (error) {
       this.logger.warn(

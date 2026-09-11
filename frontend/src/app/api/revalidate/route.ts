@@ -1,4 +1,4 @@
-import { revalidateTag } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -15,5 +15,13 @@ export async function POST(request: NextRequest) {
   }
 
   revalidateTag(tag);
+  if (tag.startsWith('product-')) {
+    const slug = tag.slice('product-'.length);
+    if (!slug) {
+      return NextResponse.json({ error: 'Product slug required' }, { status: 400 });
+    }
+    revalidatePath(`/products/${slug}`);
+  }
+
   return NextResponse.json({ revalidated: true, tag });
 }
