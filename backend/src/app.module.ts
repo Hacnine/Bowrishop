@@ -18,8 +18,11 @@ import { UploadModule } from './upload/upload.module';
 import { EmailModule } from './email/email.module';
 import { AdminModule } from './admin/admin.module';
 import { FeedModule } from './feed/feed.module';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 
 @Module({
+  controllers: [AppController],
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot({ throttlers: [{ ttl: 60000, limit: 100 }] }),
@@ -40,6 +43,7 @@ import { FeedModule } from './feed/feed.module';
     FeedModule,
   ],
   providers: [
+    AppService,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
