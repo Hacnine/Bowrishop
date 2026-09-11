@@ -4,14 +4,14 @@ import { ProductDetailPage } from '@/views/products/ProductDetailPage';
 import { ProductDetailSkeleton } from '@/views/products/ProductDetailSkeleton';
 import type { Product } from '@/types/types.index';
 
-// SSG — build/revalidate-এর পর static হবে
+// ISR — the page is regenerated when the product cache is revalidated.
 export const dynamic = 'force-static';
 
 async function getProduct(slug: string): Promise<Product | null> {
   const backendUrl = process.env.API_URL ?? 'http://backend:3001';
   try {
     const res = await fetch(`${backendUrl}/api/products/${slug}`, {
-      next: { tags: [`product-${slug}`] }, // tag দিয়ে on-demand revalidate হবে
+      next: { tags: [`product-${slug}`] },
     });
     if (!res.ok) return null;
     return res.json();

@@ -2,6 +2,7 @@ import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   const secret = request.nextUrl.searchParams.get('secret');
@@ -25,7 +26,10 @@ export async function POST(request: NextRequest) {
       revalidatePath(`/products/${slug}`, 'page');
     }
   } catch (error) {
-    console.error('[revalidate] Cache invalidation failed', error);
+    console.error('[revalidate] Cache invalidation failed', {
+      tag,
+      error: error instanceof Error ? error.stack : error,
+    });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Cache invalidation failed' },
       { status: 500 },

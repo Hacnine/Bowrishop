@@ -172,10 +172,6 @@ export class ProductsService {
     const nextUrl = process.env.NEXT_INTERNAL_URL ?? 'http://frontend:3000';
     const secret = process.env.REVALIDATE_SECRET;
 
-    this.logger.log(
-      `Starting product page revalidation: slug=${slug}, url=${nextUrl}, secretConfigured=${Boolean(secret)}`,
-    );
-
     if (!secret) {
       this.logger.warn('REVALIDATE_SECRET is not configured; skipping product revalidation');
       return;
@@ -186,13 +182,14 @@ export class ProductsService {
         `${nextUrl}/api/revalidate?tag=${encodeURIComponent(`product-${slug}`)}&secret=${encodeURIComponent(secret)}`,
         { method: 'POST' },
       );
+      const body = await response.text().catch(() => '');
 
       if (!response.ok) {
-        const body = await response.text().catch(() => '');
         this.logger.warn(`Product revalidation failed for ${slug}: ${response.status} ${body}`);
-      } else {
-        this.logger.log(`Product page revalidated for ${slug}`);
+        return;
       }
+
+      this.logger.log(`Product page revalidated for ${slug}: ${body}`);
     } catch (error) {
       this.logger.warn(
         `Product revalidation request failed for ${slug}: ${error instanceof Error ? error.message : String(error)}`,
