@@ -172,6 +172,10 @@ export class ProductsService {
     const nextUrl = process.env.NEXT_INTERNAL_URL ?? 'http://frontend:3000';
     const secret = process.env.REVALIDATE_SECRET;
 
+    this.logger.log(
+      `Starting product page revalidation: slug=${slug}, url=${nextUrl}, secretConfigured=${Boolean(secret)}`,
+    );
+
     if (!secret) {
       this.logger.warn('REVALIDATE_SECRET is not configured; skipping product revalidation');
       return;
