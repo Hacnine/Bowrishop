@@ -20,6 +20,7 @@ import {
 } from "../features/cart/guestCartSlice";
 import { Button } from "../components/ui/button";
 import { Skeleton } from "../components/ui/Skeleton";
+import { Loader } from '../components/ui/loader';
 import { formatCurrency } from "../utils";
 import type { Coupon } from "../types/types.index";
 
@@ -125,11 +126,7 @@ export function CartPage() {
 
   if (isAuthenticated && isLoading) {
     return (
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-4">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-24 rounded-2xl" />
-        ))}
-      </div>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10"><Loader size="lg" label="Loading cart" /></div>
     );
   }
 

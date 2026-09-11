@@ -1,5 +1,6 @@
 import { useGetUsersQuery } from '../../features/admin/adminApi';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { Loader } from '../../components/ui/loader';
 import { formatDate } from '../../utils';
 
 export function AdminUsers() {
@@ -11,7 +12,7 @@ export function AdminUsers() {
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {isLoading ? (
-          <div className="p-6 space-y-3">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-12" />)}</div>
+          <div className="p-6"><Loader size="lg" label="Loading users" /></div>
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-gray-50">

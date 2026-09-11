@@ -1,58 +1,66 @@
-import { type ButtonHTMLAttributes, forwardRef, cloneElement, isValidElement, Children, type ReactElement } from 'react';
-import { cn } from '../../utils';
+import { Button as ButtonPrimitive } from '@base-ui/react/button';
+import { cva, type VariantProps } from 'class-variance-authority';
+import type { ReactElement } from 'react';
+import { cn } from '@/lib/utils';
+import { Loader } from './loader';
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
-  size?: 'sm' | 'md' | 'lg';
-  isLoading?: boolean;
-  asChild?: boolean;
-}
-
-const variants: Record<string, string> = {
-  primary: 'bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500',
-  secondary: 'bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500',
-  outline: 'border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-indigo-500',
-  ghost: 'text-gray-700 hover:bg-gray-100 focus:ring-gray-500',
-  danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
-};
-
-const sizes: Record<string, string> = {
-  sm: 'px-3 py-1.5 text-sm',
-  md: 'px-4 py-2 text-sm',
-  lg: 'px-6 py-3 text-base',
-};
-
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ variant = 'primary', size = 'md', isLoading, disabled, children, className, asChild, ...props }, ref) => {
-    const classes = cn(
-      'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed',
-      variants[variant],
-      sizes[size],
-      className,
-    );
-
-    if (asChild && isValidElement(children)) {
-      const child = Children.only(children) as ReactElement<{ className?: string }>;
-      return cloneElement(child, { className: cn(classes, child.props.className) });
-    }
-
-    return (
-      <button
-        ref={ref}
-        disabled={disabled || isLoading}
-        className={classes}
-        {...props}
-      >
-        {isLoading && (
-          <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" />
-            <path fill="currentColor" className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-        )}
-        {children}
-      </button>
-    );
+const buttonVariants = cva(
+  'group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*=\'size-\'])]:size-4',
+  {
+    variants: {
+      variant: {
+        default: 'bg-primary text-primary-foreground hover:bg-primary/80',
+        outline: 'border-border bg-background hover:bg-muted hover:text-foreground',
+        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+        ghost: 'hover:bg-muted hover:text-foreground',
+        destructive: 'bg-destructive/10 text-destructive hover:bg-destructive/20',
+        link: 'text-primary underline-offset-4 hover:underline',
+        primary: 'bg-primary text-primary-foreground hover:bg-primary/80',
+        danger: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+      },
+      size: {
+        default: 'h-8 gap-1.5 px-2.5',
+        sm: 'h-7 gap-1 rounded-lg px-2.5 text-xs',
+        md: 'h-8 gap-1.5 px-3',
+        lg: 'h-9 gap-1.5 px-2.5',
+        icon: 'size-8',
+      },
+    },
+    defaultVariants: {
+      variant: 'default',
+      size: 'default',
+    },
   },
 );
-Button.displayName = 'Button';
 
+type ButtonProps = ButtonPrimitive.Props &
+  VariantProps<typeof buttonVariants> & {
+    isLoading?: boolean;
+    asChild?: boolean;
+  };
+
+function Button({
+  className,
+  variant = 'default',
+  size = 'default',
+  isLoading = false,
+  asChild = false,
+  disabled,
+  children,
+  ...props
+}: ButtonProps) {
+  return (
+    <ButtonPrimitive
+      data-slot="button"
+      disabled={disabled || isLoading}
+      className={cn(buttonVariants({ variant, size, className }))}
+      render={asChild ? (children as ReactElement) : undefined}
+      {...props}
+    >
+      {!asChild && isLoading && <Loader size="sm" />}
+      {!asChild && children}
+    </ButtonPrimitive>
+  );
+}
+
+export { Button, buttonVariants };

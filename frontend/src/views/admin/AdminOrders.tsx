@@ -18,6 +18,7 @@ import {
 } from "../../features/orders/ordersApi";
 import { Button } from '../../components/ui/button';
 import { Skeleton } from "../../components/ui/Skeleton";
+import { Loader } from '../../components/ui/loader';
 import { formatCurrency, formatDate, getOrderStatusColor } from "../../utils";
 import type { Order } from "../../types/types.index";
 
@@ -283,11 +284,7 @@ export function AdminOrders() {
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {isLoading ? (
-          <div className="p-6 space-y-3">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <Skeleton key={i} className="h-12" />
-            ))}
-          </div>
+          <div className="p-6"><Loader size="lg" label="Loading orders" /></div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

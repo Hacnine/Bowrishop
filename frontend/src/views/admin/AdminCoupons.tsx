@@ -13,6 +13,7 @@ import {
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { Loader } from '../../components/ui/loader';
 import { formatCurrency, formatDate } from '../../utils';
 import type { Coupon } from '../../types/types.index';
 
@@ -113,7 +114,7 @@ export function AdminCoupons() {
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {isLoading ? (
-          <div className="p-6 space-y-3">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12" />)}</div>
+          <div className="p-6"><Loader size="lg" label="Loading coupons" /></div>
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-gray-50">

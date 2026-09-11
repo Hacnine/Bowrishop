@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { useGetInquiriesQuery, useRespondInquiryMutation } from '../../features/inquiries/inquiriesApi';
 import { Button } from '../../components/ui/button';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { Loader } from '../../components/ui/loader';
 import { formatDate, getInquiryStatusColor } from '../../utils';
 import type { Inquiry } from '../../types/types.index';
 
@@ -32,7 +33,7 @@ export function AdminInquiries() {
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {isLoading ? (
-          <div className="p-6 space-y-3">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-14" />)}</div>
+          <div className="p-6"><Loader size="lg" label="Loading inquiries" /></div>
         ) : !inquiries || inquiries.length === 0 ? (
           <p className="p-6 text-gray-400 text-sm">No inquiries yet.</p>
         ) : (

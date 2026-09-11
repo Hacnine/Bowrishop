@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Package } from 'lucide-react';
 import { useGetOrdersQuery } from '../features/orders/ordersApi';
 import { Skeleton } from '../components/ui/Skeleton';
+import { Loader } from '../components/ui/loader';
 import { Button } from '../components/ui/button';
 import { formatCurrency, formatDate, getOrderStatusColor } from '../utils';
 
@@ -10,9 +11,7 @@ export function OrdersPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 space-y-4">
-        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-2xl" />)}
-      </div>
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10"><Loader size="lg" label="Loading orders" /></div>
     );
   }
 

@@ -10,6 +10,7 @@ import { updateUser } from '../features/auth/authSlice';
 import { useUploadImageMutation } from '../features/admin/adminApi';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import { Loader } from '../components/ui/loader';
 import { Skeleton } from '../components/ui/Skeleton';
 
 const profileSchema = z.object({
@@ -92,10 +93,7 @@ export function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10 space-y-4">
-        <Skeleton className="h-10 w-1/3" />
-        <Skeleton className="h-64 rounded-2xl" />
-      </div>
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10"><Loader size="lg" label="Loading profile" /></div>
     );
   }
 
@@ -113,7 +111,7 @@ export function ProfilePage() {
           />
           {avatarUploading && (
             <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
-              <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
+              <Loader size="sm" label="Uploading avatar" />
             </div>
           )}
         </div>

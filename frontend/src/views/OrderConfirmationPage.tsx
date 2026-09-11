@@ -4,6 +4,7 @@ import { CheckCircle, Package } from 'lucide-react';
 import { useGetOrderByIdQuery, useGetGuestOrderQuery } from '../features/orders/ordersApi';
 import { Button } from '../components/ui/button';
 import { Skeleton } from '../components/ui/Skeleton';
+import { Loader } from '../components/ui/loader';
 import { formatCurrency } from '../utils';
 
 export function OrderConfirmationPage() {
@@ -19,10 +20,7 @@ export function OrderConfirmationPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-20 space-y-4">
-        <Skeleton className="h-8 w-1/2 mx-auto" />
-        <Skeleton className="h-64 rounded-2xl" />
-      </div>
+      <div className="max-w-2xl mx-auto px-4 py-20"><Loader size="lg" label="Loading order" /></div>
     );
   }
 

@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { useGetWishlistQuery, useRemoveFromWishlistMutation } from '../features/wishlist/wishlistApi';
 import { useAddToCartMutation } from '../features/cart/cartApi';
 import { Button } from '../components/ui/button';
+import { Loader } from '../components/ui/loader';
 import { formatCurrency } from '../utils';
 
 function RowSkeleton() {
@@ -126,9 +127,7 @@ const handleAddToCart = async (productId: string, name: string, price?: number) 
       {/* Main panel */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         {isLoading ? (
-          <div>
-            {Array.from({ length: 4 }).map((_, i) => <RowSkeleton key={i} />)}
-          </div>
+          <div className="p-6"><Loader size="lg" label="Loading wishlist" /></div>
         ) : (
           <ul className="divide-y divide-gray-100">
             {wishlist!.map((item) => {

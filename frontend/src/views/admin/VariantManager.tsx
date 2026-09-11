@@ -9,6 +9,7 @@ import {
 } from '../../features/products/productsApi';
 import { useUploadImageMutation } from '../../features/admin/adminApi';
 import { formatCurrency } from '../../utils';
+import { Loader } from '../../components/ui/loader';
 import type { ProductVariant, CreateVariantPayload } from '../../types/types.index';
 
 const EMPTY_FORM: CreateVariantPayload = {
@@ -86,7 +87,7 @@ function VariantImageUploader({ images, onChange }: { images: string[]; onChange
         </div>
       ))}
       <label className="w-14 h-14 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-indigo-400 flex-shrink-0">
-        {uploading ? <div className="animate-spin w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full" /> : <ImagePlus className="w-5 h-5 text-gray-400" />}
+        {uploading ? <Loader size="sm" label="Uploading images" /> : <ImagePlus className="w-5 h-5 text-gray-400" />}
         <input type="file" accept="image/*" multiple className="hidden" onChange={handleUpload} disabled={uploading} />
       </label>
     </div>
@@ -458,7 +459,7 @@ export function VariantManager({ productId }: { productId: string }) {
     return sizeMap;
   }, [variants]);
 
-  if (isLoading) return <div className="text-sm text-gray-400 py-4">Loading variants…</div>;
+  if (isLoading) return <div className="py-4 flex justify-center"><Loader size="md" label="Loading variants" /></div>;
 
   return (
     <div className="space-y-4">

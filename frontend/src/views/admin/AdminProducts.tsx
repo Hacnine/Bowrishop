@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { Boxes, Plus, Pencil, Trash2, X, AlertTriangle, Search, Clock, Upload, FileJson, CheckCircle2, XCircle, Loader2, Eye, EyeOff, Images } from 'lucide-react';
+import { Boxes, Plus, Pencil, Trash2, X, AlertTriangle, Search, Clock, Upload, FileJson, CheckCircle2, XCircle, Eye, EyeOff, Images } from 'lucide-react';
 import {
   useGetAdminProductsQuery,
   useCreateProductMutation,
@@ -19,6 +19,7 @@ import { useGetCloudinaryImagesQuery, useUploadImageMutation } from '../../featu
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { Loader } from '../../components/ui/loader';
 import { VariantManager } from './VariantManager';
 import { formatCurrency } from '../../utils';
 import type { Product } from '../../types/types.index';
@@ -433,9 +434,7 @@ export function AdminProducts() {
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {isLoading ? (
-          <div className="p-6 space-y-3">
-            {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-12" />)}
-          </div>
+          <div className="p-6"><Loader size="lg" label="Loading products" /></div>
         ) : (
           <>
             <table className="w-full text-sm">
@@ -514,7 +513,7 @@ export function AdminProducts() {
 
             <div ref={loadMoreRef} className="h-4" />
             {isFetching && loadedProducts.length > 0 && (
-              <div className="px-6 py-4 text-center text-sm text-gray-500">Loading more products…</div>
+              <div className="px-6 py-4 flex justify-center"><Loader size="sm" label="Loading more products" /></div>
             )}
             {data && !hasMoreRef.current && loadedProducts.length > 0 && (
               <div className="px-6 py-4 text-center text-xs text-gray-400">All {data.total} products loaded</div>
@@ -557,7 +556,7 @@ export function AdminProducts() {
             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2">
               {importResults.length === 0 && importing && (
                 <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
+                  <Loader size="md" label="Importing products" />
                   <span className="ml-2 text-sm text-gray-500">Reading JSON file…</span>
                 </div>
               )}
@@ -575,7 +574,7 @@ export function AdminProducts() {
               {/* Currently processing indicator */}
               {importing && importProgress < importTotal && importResults.length > 0 && (
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-indigo-50">
-                  <Loader2 className="w-4 h-4 text-indigo-500 animate-spin flex-shrink-0" />
+                  <Loader size="sm" label="Importing product" />
                   <p className="text-sm text-indigo-700">Processing…</p>
                 </div>
               )}
@@ -846,7 +845,7 @@ export function AdminProducts() {
                   {/* Multiple files allowed */}
                   <label className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-indigo-400 gap-0.5">
                     {uploading
-                      ? <div className="animate-spin w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full" />
+                      ? <Loader size="sm" label="Uploading image" />
                       : <>
                           <Upload className="w-4 h-4 text-gray-400" />
                           <span className="text-[10px] text-gray-400">Multi</span>
@@ -858,7 +857,7 @@ export function AdminProducts() {
                   <div className="mt-3 border border-indigo-100 rounded-xl p-3 bg-indigo-50/30">
                     <p className="text-xs font-medium text-gray-700 mb-2">Choose an existing Cloudinary image</p>
                     {loadingCloudinaryImages ? (
-                      <p className="text-xs text-gray-400 py-3">Loading images…</p>
+                      <div className="py-3 flex justify-center"><Loader size="sm" label="Loading images" /></div>
                     ) : cloudinaryImages?.length ? (
                       <div className="grid grid-cols-5 sm:grid-cols-8 gap-2 max-h-40 overflow-y-auto">
                         {cloudinaryImages.map((image) => (

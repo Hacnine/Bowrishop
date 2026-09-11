@@ -2,6 +2,10 @@ import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
 import { Providers } from '@/providers';
 import '@/index.css';
+import { Geist } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID ?? 'GTM-WLJXLZMX';
 const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID ?? '2241909363253246';
@@ -24,7 +28,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={cn("font-sans", geist.variable)}>
       <head>
         {/* ── Google Tag Manager ── */}
         {GTM_ID && (

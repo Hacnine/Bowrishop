@@ -14,6 +14,7 @@ import { useUploadImageMutation } from '../../features/admin/adminApi';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { Loader } from '../../components/ui/loader';
 import type { Category } from '../../types/types.index';
 
 const schema = z.object({
@@ -166,11 +167,7 @@ export function AdminCategories() {
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {isLoading ? (
-          <div className="p-6 space-y-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-12" />
-            ))}
-          </div>
+          <div className="p-6"><Loader size="lg" label="Loading categories" /></div>
         ) : rootCategories.length === 0 ? (
           <div className="py-16 text-center text-gray-400 text-sm">
             No categories yet.{' '}
