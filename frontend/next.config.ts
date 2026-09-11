@@ -25,7 +25,7 @@ const nextConfig: NextConfig = {
     return {
       beforeFiles: [
         {
-          source: "/api/:path*",
+          source: "/api/:path((?!revalidate(?:/|$)).*)",
           destination: "http://localhost:3001/api/:path*",
         },
       ],
