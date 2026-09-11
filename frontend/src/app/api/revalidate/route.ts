@@ -1,4 +1,4 @@
-import { revalidatePath } from 'next/cache';
+import { revalidateTag } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       if (!slug) {
         return NextResponse.json({ error: 'Product slug required' }, { status: 400 });
       }
-      revalidatePath(`/products/${slug}`, 'page');
+      revalidateTag(tag); // revalidates all fetches tagged with `product-${slug}`
     }
   } catch (error) {
     console.error('[revalidate] Cache invalidation failed', {

@@ -130,10 +130,12 @@ export class ProductsService {
     try {
       const product = await this.prisma.product.findUnique({ where: { id } });
       if (!product) throw new NotFoundException('Product not found');
-      const previousSlug = product.slug;
 
       const data: any = { ...dto };
-      if (dto.name) data.slug = slugify(dto.name);
+      // Slug is intentionally NOT regenerated on name update.
+      // Changing the slug breaks existing URLs and ISR cache entries.
+      // The slug is fixed at creation time.
+      delete data.slug;
 
       // preOrderDate string → DateTime
       if (dto.preOrderDate !== undefined) {
@@ -152,10 +154,7 @@ export class ProductsService {
         include: PRODUCT_WITH_VARIANTS,
       });
 
-      await this.revalidateProductPage(previousSlug);
-      if (updated.slug !== previousSlug) {
-        await this.revalidateProductPage(updated.slug);
-      }
+      await this.revalidateProductPage(updated.slug);
       this.logger.log(`Product updated successfully: ${id}`);
       return updated;
     } catch (error) {
