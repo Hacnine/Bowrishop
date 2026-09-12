@@ -4,38 +4,35 @@ import { ProductDetailPage } from '@/views/products/ProductDetailPage';
 import { ProductDetailSkeleton } from '@/views/products/ProductDetailSkeleton';
 import type { Product } from '@/types/types.index';
 
+// ISR with tag-based invalidation.
+//
+// force-static: Next.js renders and caches the page on the server.
+// The browser never caches the HTML (next.config.ts sets Cache-Control:
+// no-cache on all HTML routes), so after revalidateTag fires the browser
+// always gets the freshly rendered page on the next load.
+//
+// Stale data flow:
+//   admin updates product → backend calls /api/revalidate
+//   → revalidateTag('product-<slug>') busts the server cache
+//   → next browser request gets a fresh server render with new data
 export const dynamic = 'force-static';
 
 async function getProduct(slug: string): Promise<Product | null> {
   const backendUrl = process.env.API_URL ?? 'http://backend:3001';
   const url = `${backendUrl}/api/products/${slug}`;
-  const tag = `product-${slug}`;
-  const renderTime = new Date().toISOString();
-
-  console.log(`[product-page] ========== NEW RENDER ==========`);
-  console.log(`[product-page] time: ${renderTime}`);
-  console.log(`[product-page] slug: ${slug}`);
-  console.log(`[product-page] tag: ${tag}`);
   console.log(`[product-page] fetching: ${url}`);
-
   try {
     const res = await fetch(url, {
-      next: { tags: [tag] },
+      // Tag this fetch — revalidateTag('product-<slug>') will bust it.
+      next: { tags: [`product-${slug}`] },
     });
-
-    console.log(`[product-page] fetch status: ${res.status}`);
-
-    if (!res.ok) {
-      console.error(`[product-page] fetch failed: ${res.status}`);
-      return null;
-    }
-
+    console.log(`[product-page] status: ${res.status} slug: ${slug}`);
+    if (!res.ok) return null;
     const data = await res.json();
-    console.log(`[product-page] got id: ${data?.id} price: ${data?.price} name: ${data?.name}`);
-    console.log(`[product-page] ===================================`);
+    console.log(`[product-page] got id: ${data?.id} price: ${data?.price}`);
     return data;
   } catch (err) {
-    console.error(`[product-page] fetch error:`, err);
+    console.error(`[product-page] fetch error for slug "${slug}":`, err);
     return null;
   }
 }
