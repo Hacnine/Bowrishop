@@ -10,7 +10,13 @@ export class WishlistService {
       where: { userId },
       include: {
         product: {
-          select: { id: true, name: true, slug: true, images: true, isActive: true },
+          select: {
+            id: true, name: true, slug: true, images: true, isActive: true,
+            variants: {
+              where: { isActive: true },
+              select: { id: true, price: true, comparePrice: true, stock: true },
+            },
+          },
         },
       },
       orderBy: { createdAt: 'desc' },

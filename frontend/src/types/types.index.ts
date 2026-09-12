@@ -138,7 +138,7 @@ export interface WishlistItem {
   id: string;
   productId: string;
   product: Pick<Product, 'id' | 'name' | 'slug' | 'images'> & {
-    variants?: Pick<ProductVariant, 'id' | 'price' | 'stock'>[];
+    variants?: Pick<ProductVariant, 'id' | 'price' | 'comparePrice' | 'stock'>[];
   };
 }
 

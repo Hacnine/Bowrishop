@@ -61,13 +61,13 @@ export function AdminCreateOrder() {
       ? [selectedVariant.color, selectedVariant.size].filter(Boolean).join(' / ')
       : undefined;
 
-    const basePrice = selectedVariant
-      ? Number(selectedVariant.price)
-      : Number(selectedProduct.price);
+    const variant = selectedVariant ?? selectedProduct.variants?.[0];
+    if (!variant) return;
+    const basePrice = Number(variant.price);
 
     const newItem: OrderItem = {
       productId: selectedProduct.id,
-      variantId: selectedVariant?.id,
+      variantId: variant.id,
       productName: selectedProduct.name,
       variantLabel,
       quantity: 1,
@@ -233,7 +233,7 @@ export function AdminCreateOrder() {
                       />
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
-                        <p className="text-xs text-gray-500">{formatCurrency(product.price)}</p>
+                        <p className="text-xs text-gray-500">{formatCurrency(Number(product.variants?.[0]?.price ?? 0))}</p>
                       </div>
                     </button>
                   ))}
@@ -248,7 +248,7 @@ export function AdminCreateOrder() {
                   <img src={selectedProduct.images[0] ?? '/placeholder.jpg'} alt="" className="w-12 h-12 rounded-lg object-cover" />
                   <div>
                     <p className="font-medium text-gray-900 text-sm">{selectedProduct.name}</p>
-                    <p className="text-xs text-gray-500">Original: {formatCurrency(selectedProduct.price)}</p>
+                    <p className="text-xs text-gray-500">Original: {formatCurrency(Number(selectedProduct.variants?.[0]?.price ?? 0))}</p>
                   </div>
                   <button onClick={() => setSelectedProduct(null)} className="ml-auto text-gray-400 hover:text-gray-600">
                     <X className="w-4 h-4" />

@@ -56,7 +56,7 @@ export function CartPage() {
       }));
 
   const subtotal = items.reduce((sum, item) => {
-    const price = Number(item.variant?.price ?? item.product.price);
+    const price = Number(item.variant?.price ?? 0);
     return sum + price * item.quantity;
   }, 0);
   const total = Math.max(0, subtotal - couponDiscount);
@@ -167,7 +167,7 @@ export function CartPage() {
               item.product.images?.[0] ??
               "/placeholder.jpg";
 
-            const price = Number(item.variant?.price ?? item.product.price);
+            const price = Number(item.variant?.price ?? 0);
 
             return (
               <div

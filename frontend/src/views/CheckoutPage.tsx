@@ -74,13 +74,13 @@ export function CheckoutPage() {
     ? (cart?.items ?? []).map((i) => ({
         id: i.product.id,
         name: i.product.name,
-        price: Number(i.variant?.price ?? i.product.price),
+        price: Number(i.variant?.price ?? 0),
         quantity: i.quantity,
       }))
     : guestItems.map((i) => ({
         id: i.productId,
         name: i.product.name,
-        price: Number(i.variant?.price ?? i.product.price),
+        price: Number(i.variant?.price ?? 0),
         quantity: i.quantity,
       }));
 

@@ -196,21 +196,12 @@ export function ProductDetailPage({ initialProduct }: { initialProduct?: Product
     );
   }, [product, hasVariants]);
 
-  const displayPrice = selectedVariant
-    ? Number(selectedVariant.price)
-    : Number(product?.price ?? 0);
-  const displayComparePrice = selectedVariant
-    ? selectedVariant.comparePrice
-      ? Number(selectedVariant.comparePrice)
-      : product?.comparePrice
-        ? Number(product.comparePrice)
-        : undefined
-    : product?.comparePrice
-      ? Number(product.comparePrice)
-      : undefined;
-  const displayStock = selectedVariant
-    ? selectedVariant.stock
-    : (product?.stock ?? 0);
+  const effectiveVariant = selectedVariant ?? product?.variants?.[0];
+  const displayPrice = Number(effectiveVariant?.price ?? 0);
+  const displayComparePrice = effectiveVariant?.comparePrice
+    ? Number(effectiveVariant.comparePrice)
+    : undefined;
+  const displayStock = effectiveVariant?.stock ?? 0;
   const mainImage = allProductImages[selectedImage] ?? "/placeholder.jpg";
 
   const discountPct =
@@ -241,7 +232,7 @@ export function ProductDetailPage({ initialProduct }: { initialProduct?: Product
           content_name: product!.name,
           content_ids: [product!.id.toString()],
           content_type: "product",
-          value: Number(product!.price) * qty,
+          value: displayPrice * qty,
           currency: "BDT",
         });
       }
@@ -256,13 +247,8 @@ export function ProductDetailPage({ initialProduct }: { initialProduct?: Product
             id: product!.id,
             name: product!.name,
             slug: product!.slug,
-            price: Number(product!.price),
             isPreOrder: product!.isPreOrder,
-            comparePrice: product!.comparePrice
-              ? Number(product!.comparePrice)
-              : undefined,
             images: product!.images,
-            stock: product!.stock,
             isActive: product!.isActive,
           },
           variant: hasVariants ? selectedVariant : null,
@@ -301,13 +287,8 @@ export function ProductDetailPage({ initialProduct }: { initialProduct?: Product
             id: product!.id,
             name: product!.name,
             slug: product!.slug,
-            price: Number(product!.price),
             isPreOrder: product!.isPreOrder,
-            comparePrice: product!.comparePrice
-              ? Number(product!.comparePrice)
-              : undefined,
             images: product!.images,
-            stock: product!.stock,
             isActive: product!.isActive,
           },
           variant: hasVariants ? selectedVariant : null,

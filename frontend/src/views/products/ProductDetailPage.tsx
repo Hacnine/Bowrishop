@@ -399,7 +399,7 @@ const isLoading = isProductLoading && !initialProduct;
     const item = {
       id: product.id,
       name: product.name,
-      price: Number(product.price),
+      price: Number(product.variants?.[0]?.price ?? 0),
       category: product.category?.name,
     };
     trackGTMViewItem(item);
@@ -539,21 +539,12 @@ const isLoading = isProductLoading && !initialProduct;
     }
   }, [selectedVariant, allProductImages]);
 
-  const displayPrice = selectedVariant
-    ? Number(selectedVariant.price)
-    : Number(product?.price ?? 0);
-  const displayComparePrice = selectedVariant
-    ? selectedVariant.comparePrice
-      ? Number(selectedVariant.comparePrice)
-      : product?.comparePrice
-        ? Number(product.comparePrice)
-        : undefined
-    : product?.comparePrice
-      ? Number(product.comparePrice)
-      : undefined;
-  const displayStock = selectedVariant
-    ? selectedVariant.stock
-    : (product?.stock ?? 0);
+  const effectiveVariant = selectedVariant ?? product?.variants?.[0];
+  const displayPrice = Number(effectiveVariant?.price ?? 0);
+  const displayComparePrice = effectiveVariant?.comparePrice
+    ? Number(effectiveVariant.comparePrice)
+    : undefined;
+  const displayStock = effectiveVariant?.stock ?? 0;
   const mainImage = allProductImages[selectedImage] ?? "/placeholder.jpg";
   const isOutOfStock = !product?.isPreOrder && displayStock <= 0;
 
@@ -568,7 +559,7 @@ const isLoading = isProductLoading && !initialProduct;
           content_name: product!.name,
           content_ids: [product!.id],
           content_type: "product",
-          value: Number(product!.price) * qty,
+          value: displayPrice * qty,
           currency: "BDT",
         });
       }
@@ -582,13 +573,8 @@ const isLoading = isProductLoading && !initialProduct;
             id: product!.id,
             name: product!.name,
             slug: product!.slug,
-            price: Number(product!.price),
             isPreOrder: product!.isPreOrder,
-            comparePrice: product!.comparePrice
-              ? Number(product!.comparePrice)
-              : undefined,
             images: product!.images,
-            stock: product!.stock,
             isActive: product!.isActive,
           },
           variant: hasVariants ? selectedVariant : null,
@@ -631,13 +617,8 @@ const isLoading = isProductLoading && !initialProduct;
             id: product!.id,
             name: product!.name,
             slug: product!.slug,
-            price: Number(product!.price),
             isPreOrder: product!.isPreOrder,
-            comparePrice: product!.comparePrice
-              ? Number(product!.comparePrice)
-              : undefined,
             images: product!.images,
-            stock: product!.stock,
             isActive: product!.isActive,
           },
           variant: hasVariants ? selectedVariant : null,

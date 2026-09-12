@@ -62,7 +62,7 @@ const handleAddToCart = async (productId: string, name: string, price?: number) 
 
   const handleAddAll = async () => {
     if (!wishlist) return;
-    const inStock = wishlist.filter((i) => i.product.stock > 0);
+    const inStock = wishlist.filter((i) => i.product.variants?.some((variant) => variant.stock > 0));
     if (inStock.length === 0) return toast.error('No items in stock');
     await Promise.allSettled(
       inStock.map((i) => addToCart({ productId: i.product.id, quantity: 1 }).unwrap()),
@@ -133,13 +133,19 @@ const handleAddToCart = async (productId: string, name: string, price?: number) 
             {wishlist!.map((item) => {
               const isRemoving = removingIds.has(item.product.id);
               const isAdding = addingIds.has(item.product.id);
-              const outOfStock = item.product.stock <= 0;
+              const displayVariant = item.product.variants?.find((variant) => variant.stock > 0)
+                ?? item.product.variants?.[0];
+              const displayPrice = Number(displayVariant?.price ?? 0);
+              const displayComparePrice = displayVariant?.comparePrice
+                ? Number(displayVariant.comparePrice)
+                : undefined;
+              const outOfStock = (displayVariant?.stock ?? 0) <= 0;
               const hasDiscount =
-                item.product.comparePrice && item.product.comparePrice > item.product.price;
+                displayComparePrice !== undefined && displayComparePrice > displayPrice;
               const discountPct = hasDiscount
                 ? Math.round(
-                    ((item.product.comparePrice! - item.product.price) /
-                      item.product.comparePrice!) *
+                    ((displayComparePrice! - displayPrice) /
+                      displayComparePrice!) *
                       100,
                   )
                 : 0;
@@ -185,12 +191,12 @@ const handleAddToCart = async (productId: string, name: string, price?: number) 
                   {/* Price */}
                   <div className="text-right flex-shrink-0 w-32">
                     <p className="text-lg font-bold text-[#C7927E]">
-                      {formatCurrency(item.product.price)}
+                      {formatCurrency(displayPrice)}
                     </p>
                     {hasDiscount && (
                       <>
                         <p className="text-xs text-gray-400 line-through">
-                          {formatCurrency(item.product.comparePrice!)}
+                          {formatCurrency(displayComparePrice!)}
                         </p>
                         <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-600 mt-0.5">
                           <TrendingDown className="w-3 h-3" />
