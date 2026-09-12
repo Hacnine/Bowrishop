@@ -4,25 +4,35 @@ import { ProductDetailPage } from '@/views/products/ProductDetailPage';
 import { ProductDetailSkeleton } from '@/views/products/ProductDetailSkeleton';
 import type { Product } from '@/types/types.index';
 
-// Do NOT use force-static here.
-// force-static causes Next.js to set Cache-Control: max-age=31536000 on the
-// HTML response, so browsers serve the stale page even after revalidateTag
-// fires on the server. Instead, we use tag-based on-demand ISR: the page is
-// cached on the server only (no browser/CDN caching via next.config headers),
-// and the cache entry is busted whenever the backend calls /api/revalidate.
-export const dynamic = 'force-dynamic'; // never pre-render at build time
-export const fetchCache = 'default-cache'; // still allow fetch() to be cached server-side
+// force-dynamic: render on every request, never statically cache the HTML.
+// This is required because force-static sets Cache-Control: max-age=31536000
+// on the response, meaning browsers serve the old page for a year even after
+// revalidateTag fires on the server.
+//
+// The fetch() inside getProduct still uses next: { tags } so the backend call
+// is cached in Next.js's server-side fetch cache and only re-runs when
+// revalidateTag('product-<slug>') is called by /api/revalidate.
+export const dynamic = 'force-dynamic';
 
 async function getProduct(slug: string): Promise<Product | null> {
   const backendUrl = process.env.API_URL ?? 'http://backend:3001';
+  const url = `${backendUrl}/api/products/${slug}`;
+
+  console.log(`[product-page] fetching: ${url}`);
+
   try {
-    const res = await fetch(`${backendUrl}/api/products/${slug}`, {
-      // Tag this fetch so revalidateTag('product-<slug>') busts it.
+    const res = await fetch(url, {
       next: { tags: [`product-${slug}`] },
     });
+
+    console.log(`[product-page] response status: ${res.status} for slug: ${slug}`);
+
     if (!res.ok) return null;
-    return res.json();
-  } catch {
+    const data = await res.json();
+    console.log(`[product-page] fetched product id: ${data?.id}, price: ${data?.price}`);
+    return data;
+  } catch (err) {
+    console.error(`[product-page] fetch error for slug ${slug}:`, err);
     return null;
   }
 }
@@ -33,8 +43,8 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps) {
   const { slug } = await params;
-  // Next.js dedupes identical fetch() calls within a single render pass,
-  // so this does NOT cause a second HTTP request to the backend.
+  // Next.js deduplicates identical fetch() calls within one render pass —
+  // this does NOT make a second HTTP request to the backend.
   const product = await getProduct(slug);
   if (!product) return { title: 'Product Not Found | Bowri Shop' };
   return {

@@ -171,27 +171,32 @@ export class ProductsService {
     const nextUrl = process.env.NEXT_INTERNAL_URL ?? 'http://frontend:3000';
     const secret = process.env.REVALIDATE_SECRET;
 
+    this.logger.log(`[revalidate] starting for slug: "${slug}", NEXT_INTERNAL_URL: ${nextUrl}`);
+
     if (!secret) {
-      this.logger.warn('REVALIDATE_SECRET is not configured; skipping product revalidation');
+      this.logger.warn('[revalidate] REVALIDATE_SECRET is not set — skipping');
       return;
     }
 
+    const tag = `product-${slug}`;
+    const revalidateUrl = `${nextUrl}/api/revalidate?tag=${encodeURIComponent(tag)}&secret=${encodeURIComponent(secret)}`;
+    this.logger.log(`[revalidate] POST ${revalidateUrl.replace(secret, '***')}`);
+
     try {
-      const response = await fetch(
-        `${nextUrl}/api/revalidate?tag=${encodeURIComponent(`product-${slug}`)}&secret=${encodeURIComponent(secret)}`,
-        { method: 'POST' },
-      );
+      const response = await fetch(revalidateUrl, { method: 'POST' });
       const body = await response.text().catch(() => '');
 
+      this.logger.log(`[revalidate] response status: ${response.status}, body: ${body}`);
+
       if (!response.ok) {
-        this.logger.warn(`Product revalidation failed for ${slug}: ${response.status} ${body}`);
+        this.logger.warn(`[revalidate] FAILED for ${slug}: ${response.status} ${body}`);
         return;
       }
 
-      this.logger.log(`Product page revalidated for ${slug}: ${body}`);
+      this.logger.log(`[revalidate] SUCCESS for slug: "${slug}": ${body}`);
     } catch (error) {
-      this.logger.warn(
-        `Product revalidation request failed for ${slug}: ${error instanceof Error ? error.message : String(error)}`,
+      this.logger.error(
+        `[revalidate] fetch threw for slug "${slug}": ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }
@@ -372,6 +377,7 @@ export class ProductsService {
   }
 
   async findBySlug(slug: string, sessionId?: string) {
+    this.logger.log(`[findBySlug] called with slug: "${slug}" sessionId: ${sessionId ?? 'none'}`);
     const product = await this.prisma.product.findUnique({
       where: { slug },
       include: {
@@ -387,7 +393,11 @@ export class ProductsService {
         },
       },
     });
-    if (!product) throw new NotFoundException('Product not found');
+    if (!product) {
+      this.logger.error(`[findBySlug] NO product in DB for slug: "${slug}"`);
+      throw new NotFoundException('Product not found');
+    }
+    this.logger.log(`[findBySlug] found product id: ${product.id} for slug: "${slug}"`);
 
     if (sessionId) {
       this.prisma.productView

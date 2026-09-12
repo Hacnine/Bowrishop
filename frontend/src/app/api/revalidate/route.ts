@@ -9,7 +9,10 @@ export async function POST(request: NextRequest) {
   const tag = request.nextUrl.searchParams.get('tag');
   const expectedSecret = process.env.REVALIDATE_SECRET;
 
+  console.log(`[revalidate] received POST, tag: ${tag}`);
+
   if (!expectedSecret || secret !== expectedSecret) {
+    console.warn('[revalidate] secret mismatch');
     return NextResponse.json({ error: 'Invalid secret' }, { status: 401 });
   }
 
@@ -18,18 +21,11 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    if (tag.startsWith('product-')) {
-      const slug = tag.slice('product-'.length);
-      if (!slug) {
-        return NextResponse.json({ error: 'Product slug required' }, { status: 400 });
-      }
-      revalidateTag(tag); // revalidates all fetches tagged with `product-${slug}`
-    }
+    console.log(`[revalidate] calling revalidateTag("${tag}")`);
+    revalidateTag(tag);
+    console.log(`[revalidate] revalidateTag done for "${tag}"`);
   } catch (error) {
-    console.error('[revalidate] Cache invalidation failed', {
-      tag,
-      error: error instanceof Error ? error.stack : error,
-    });
+    console.error('[revalidate] revalidateTag threw:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Cache invalidation failed' },
       { status: 500 },
