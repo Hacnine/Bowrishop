@@ -67,6 +67,26 @@ export class ProductsController {
     return this.productsService.getRelated(id, limit ? parseInt(limit) : 20);
   }
 
+  // ─── Admin: Variant CRUD ───────────────────────────────────────────────────
+  // Routes:
+  //   GET    /products/:id/variants         → list all variants for a product
+  //   POST   /products/:id/variants         → add a new variant
+  //   PATCH  /products/:id/variants/:vid    → update a variant
+  //   DELETE /products/:id/variants/:vid    → delete a variant
+  //
+  // NOTE: All `:id/...` sub-resource routes MUST appear before `@Get(':slug')`
+  // or NestJS will swallow them into findBySlug, returning 404 + 401 pairs.
+
+  @Get(':id/variants')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.ADMIN)
+  getVariants(@Param('id') id: string) {
+    return this.productsService.getVariants(id);
+  }
+
+  // ─── Public: single product by slug (must be last among GET :param routes) ─
+
   @Get(':slug')
   findOne(
     @Param('slug') slug: string,
@@ -107,21 +127,6 @@ export class ProductsController {
   @Roles(Role.ADMIN)
   remove(@Param('id') id: string) {
     return this.productsService.remove(id);
-  }
-
-  // ─── Admin: Variant CRUD ───────────────────────────────────────────────────
-  // Routes:
-  //   GET    /products/:id/variants         → list all variants for a product
-  //   POST   /products/:id/variants         → add a new variant
-  //   PATCH  /products/:id/variants/:vid    → update a variant
-  //   DELETE /products/:id/variants/:vid    → delete a variant
-
-  @Get(':id/variants')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(Role.ADMIN)
-  getVariants(@Param('id') id: string) {
-    return this.productsService.getVariants(id);
   }
 
   @Post(':id/variants')
