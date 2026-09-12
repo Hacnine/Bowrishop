@@ -344,21 +344,25 @@ export function ProductDetailPage({
   const urlColor = searchParams.get("color");
   const urlSize = searchParams.get("size");
 
-  // Seed the RTK Query cache with the SSR-fetched product on every render.
-  // Without this, client-side navigation reuses whatever stale value is in the
-  // singleton Redux store from a prior visit instead of the fresh server data.
-  useEffect(() => {
-    if (initialProduct && slug) {
-      dispatch(
-        productsApi.util.upsertQueryData('getProductBySlug', slug, initialProduct),
-      );
-    }
-  }, [initialProduct, slug, dispatch]);
+const [seededSlug, setSeededSlug] = useState<string | null>(
+  initialProduct && slug ? slug : null  // ← mount এর সময়ই set
+);
 
-  const { data: fetchedProduct, isLoading: isProductLoading } =
-    useGetProductBySlugQuery(slug!, { skip: !slug });
-  const product = fetchedProduct ?? initialProduct;
-  const isLoading = isProductLoading && !initialProduct;
+useEffect(() => {
+  if (initialProduct && slug) {
+    dispatch(
+      productsApi.util.upsertQueryData('getProductBySlug', slug, initialProduct),
+    );
+    setSeededSlug(slug);
+  }
+}, [initialProduct, slug, dispatch]);
+
+const { data: fetchedProduct, isLoading: isProductLoading } =
+  useGetProductBySlugQuery(slug!, {
+    skip: !slug || seededSlug === slug,  // ← mount থেকেই সঠিক value
+  });
+const product = fetchedProduct ?? initialProduct;
+const isLoading = isProductLoading && !initialProduct;
 
   const { data: reviews } = useGetProductReviewsQuery(product?.id ?? "", {
     skip: !product,
