@@ -22,11 +22,12 @@ const nextConfig: NextConfig = {
     ],
   },
   rewrites: async () => {
+    const backendUrl = process.env.API_URL ?? 'http://backend:3001';
     return {
       beforeFiles: [
         {
           source: "/api/:path((?!revalidate(?:/|$)).*)",
-          destination: "http://localhost:3001/api/:path*",
+          destination: `${backendUrl}/api/:path*`,  // ← localhost → backendUrl
         },
       ],
     };
