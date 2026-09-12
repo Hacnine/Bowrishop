@@ -40,16 +40,16 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-RUN addgroup -S nextjs && adduser -S nextjs -G nextjs   # ← non-root user
+RUN addgroup -S nextjs && adduser -S nextjs -G nextjs
 
 COPY --from=build /app/frontend/.next/standalone ./
 COPY --from=build /app/frontend/.next/static ./frontend/.next/static
 COPY --from=build /app/frontend/public ./frontend/public
 COPY --from=build /app/frontend/.next/cache ./frontend/.next/cache
 
-RUN chown -R nextjs:nextjs /app/frontend/.next/cache
+RUN chown -R nextjs:nextjs /app/frontend/.next
 
-USER nextjs   
+USER nextjs
 
 EXPOSE 3000
 
