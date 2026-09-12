@@ -4,18 +4,26 @@ import { ProductDetailPage } from '@/views/products/ProductDetailPage';
 import { ProductDetailSkeleton } from '@/views/products/ProductDetailSkeleton';
 import type { Product } from '@/types/types.index';
 
-// ISR — the page is regenerated when the product cache is revalidated.
-export const dynamic = 'force-static';
+// force-dynamic: render fresh on every server request.
+// force-static was setting Cache-Control: max-age=31536000 on the HTML so
+// browsers cached the stale page for a year even after revalidateTag fired.
+export const dynamic = 'force-dynamic';
 
 async function getProduct(slug: string): Promise<Product | null> {
   const backendUrl = process.env.API_URL ?? 'http://backend:3001';
+  const url = `${backendUrl}/api/products/${slug}`;
+  console.log(`[product-page] fetching: ${url}`);
   try {
-    const res = await fetch(`${backendUrl}/api/products/${slug}`, {
+    const res = await fetch(url, {
       next: { tags: [`product-${slug}`] },
     });
+    console.log(`[product-page] status: ${res.status} slug: ${slug}`);
     if (!res.ok) return null;
-    return res.json();
-  } catch {
+    const data = await res.json();
+    console.log(`[product-page] got id: ${data?.id} price: ${data?.price}`);
+    return data;
+  } catch (err) {
+    console.error(`[product-page] fetch error for slug "${slug}":`, err);
     return null;
   }
 }
