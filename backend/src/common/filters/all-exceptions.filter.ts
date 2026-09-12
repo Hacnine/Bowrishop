@@ -6,7 +6,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { Response } from 'express';
+import { Request, Response } from 'express';  // ← Request add করো
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -15,6 +15,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
+    const request = ctx.getRequest<Request>();  // ← add
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Internal server error';
@@ -27,18 +28,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
       details = (exceptionResponse as any)?.error;
     } else if (exception instanceof Error) {
       message = exception.message;
-      // Log detailed error info for debugging
-      this.logger.error(
-        `Unhandled error: ${exception.message}`,
-        exception.stack,
-      );
+      this.logger.error(`Unhandled error: ${exception.message}`, exception.stack);
     } else {
       this.logger.error(`Unknown error:`, exception);
     }
 
-    // Log all errors
+    // ← এইটাই key change — method + url দেখাবে
     this.logger.error(
-      `Status: ${status}, Message: ${message}`,
+      `[${request.method} ${request.url}] Status: ${status}, Message: ${message}`,
       exception instanceof Error ? exception.stack : JSON.stringify(exception),
     );
 

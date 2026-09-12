@@ -345,7 +345,7 @@ export function ProductDetailPage({
   const urlSize = searchParams.get("size");
 
 const [seededSlug, setSeededSlug] = useState<string | null>(
-  initialProduct && slug ? slug : null  // ← mount এর সময়ই set
+  initialProduct?.slug ?? null 
 );
 
 useEffect(() => {
