@@ -45,7 +45,7 @@ const handleAddToCart = async (productId: string, name: string, price?: number) 
           content_ids: [productId],
           content_type: 'product',
           // যদি প্যারামিটার হিসেবে প্রাইস পাস করা থাকে তবে সেটি যাবে, নাহলে ওমিট করবে
-          ...(price ? { value: price, currency: 'BDT' } : {})
+          ...(price ? { value: price, currency: '৳' } : {})
         });
       }
 

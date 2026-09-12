@@ -6,7 +6,14 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatCurrency(amount: number | string): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'BDT' }).format(Number(amount));
+  return `৳${formatCurrencyAmount(amount)}`;
+}
+
+export function formatCurrencyAmount(amount: number | string, fractionDigits = 2): string {
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(Number(amount));
 }
 
 export function formatDate(date: string): string {

@@ -233,7 +233,7 @@ export function ProductDetailPage({ initialProduct }: { initialProduct?: Product
           content_ids: [product!.id.toString()],
           content_type: "product",
           value: displayPrice * qty,
-          currency: "BDT",
+          currency: "৳",
         });
       }
     };

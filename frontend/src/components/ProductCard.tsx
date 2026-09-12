@@ -7,7 +7,7 @@ import { toast } from 'react-hot-toast';
 import type { Product } from '../types/types.index';
 import { StarRating } from './ui/StarRating';
 import { Button } from './ui/button';
-import { formatCurrency, getDiscountPercent } from '../utils';
+import { formatCurrencyAmount, getDiscountPercent } from '../utils';
 import { useAddToCartMutation } from '../features/cart/cartApi';
 import { useAddToWishlistMutation } from '../features/wishlist/wishlistApi';
 import { useAuth } from '../hooks/useAuth';
@@ -168,9 +168,15 @@ export function ProductCard({ product }: ProductCardProps) {
           <div className="flex-1" />
 
           <div className="flex items-center gap-2 mt-2">
-            <span className="font-bold text-gray-900">{formatCurrency(displayPrice)}</span>
+            <span className="font-bold text-gray-900">
+              <span className="mr-0.5 align-super text-[0.62em] font-semibold leading-none">৳</span>
+              {formatCurrencyAmount(displayPrice, 0)}
+            </span>
             {displayComparePrice && (
-              <span className="text-sm text-gray-400 line-through">{formatCurrency(displayComparePrice)}</span>
+              <span className="text-sm text-gray-400 line-through">
+                <span className="mr-0.5 align-super text-[0.62em] leading-none">৳</span>
+                {formatCurrencyAmount(displayComparePrice, 0)}
+              </span>
             )}
           </div>
 

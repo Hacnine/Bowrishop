@@ -106,7 +106,7 @@ export function CheckoutPage() {
         'Purchase',
         {
           value: Number(order.totalAmount || order.total || 0),
-          currency: 'BDT',
+          currency: '৳',
           content_type: 'product',
           content_ids: order.items?.map((item: any) => (item.productId || item.product?.id || '').toString()) || [],
         },
