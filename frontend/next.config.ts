@@ -31,6 +31,31 @@ const nextConfig: NextConfig = {
       ],
     };
   },
+  // Prevent browsers and CDNs from caching HTML pages so that
+  // ISR/revalidateTag updates are visible immediately on next load.
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+        ],
+      },
+      // Static assets (_next/static) are content-hashed — keep them immutable.
+      {
+        source: "/_next/static/(.*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+    ];
+  },
   typescript: {
     tsconfigPath: "./tsconfig.json",
   },
