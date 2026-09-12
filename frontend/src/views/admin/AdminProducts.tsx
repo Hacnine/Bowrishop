@@ -11,6 +11,7 @@ import {
   useGetAdminProductsQuery,
   useCreateProductMutation,
   useUpdateProductMutation,
+  useUpdateVariantMutation,
   useRemoveProductImageMutation,
   useDeleteProductMutation,
 } from '../../features/products/productsApi';
@@ -88,6 +89,7 @@ export function AdminProducts() {
   const { data: flatCategories } = useGetFlatCategoriesQuery();
   const [createProduct, { isLoading: creating }] = useCreateProductMutation();
   const [updateProduct, { isLoading: updating }] = useUpdateProductMutation();
+  const [updateVariant] = useUpdateVariantMutation();
   const [removeProductImage] = useRemoveProductImageMutation();
   const [deleteProduct] = useDeleteProductMutation();
   const [uploadImage] = useUploadImageMutation();
@@ -255,13 +257,6 @@ export function AdminProducts() {
     const { price, comparePrice, stock, ...productFields } = data;
     const payload: any = {
       ...productFields,
-      variants: [{
-        ...(editProduct?.variants?.[0]?.id ? { id: editProduct.variants[0].id } : {}),
-        price: Number(price),
-        comparePrice: comparePrice ? Number(comparePrice) : undefined,
-        stock: Number(stock),
-        images: imageUrls,
-      }],
       images: imageUrls,
       tags: data.tags ? data.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
       isActive: data.isActive ?? true,
@@ -276,7 +271,20 @@ export function AdminProducts() {
     };
     try {
       if (editProduct) {
-        const updatedProduct = await updateProduct({ id: editProduct.id, slug: editProduct.slug, ...payload }).unwrap();
+        const updatedProduct = await updateProduct({ id: editProduct.id, ...payload }).unwrap();
+        const firstVariant = editProduct.variants?.[0];
+        if (firstVariant) {
+          await updateVariant({
+            productId: editProduct.id,
+            variantId: firstVariant.id,
+            data: {
+              price: Number(price),
+              comparePrice: comparePrice ? Number(comparePrice) : undefined,
+              stock: Number(stock),
+              images: imageUrls,
+            },
+          }).unwrap();
+        }
         setLoadedProducts((previous) => previous.map((product) => (
           product.id === updatedProduct.id ? updatedProduct : product
         )));
