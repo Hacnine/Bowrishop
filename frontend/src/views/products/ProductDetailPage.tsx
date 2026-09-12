@@ -361,7 +361,7 @@ const { data: fetchedProduct, isLoading: isProductLoading } =
   useGetProductBySlugQuery(slug!, {
     skip: !slug || seededSlug === slug,  // ← mount থেকেই সঠিক value
   });
-const product = fetchedProduct ?? initialProduct;
+const product = initialProduct ?? fetchedProduct;
 const isLoading = isProductLoading && !initialProduct;
 
   const { data: reviews } = useGetProductReviewsQuery(product?.id ?? "", {

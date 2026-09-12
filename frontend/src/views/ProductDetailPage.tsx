@@ -40,7 +40,7 @@ export function ProductDetailPage({ initialProduct }: { initialProduct?: Product
   const { data: fetchedProduct, isLoading: isProductLoading } = useGetProductBySlugQuery(slug!, {
     skip: !!initialProduct,
   });
-  const product = fetchedProduct ?? initialProduct;
+  const product = initialProduct ?? fetchedProduct;
   const isLoading = isProductLoading && !initialProduct;
   const { data: reviews } = useGetProductReviewsQuery(product?.id ?? "", {
     skip: !product,
