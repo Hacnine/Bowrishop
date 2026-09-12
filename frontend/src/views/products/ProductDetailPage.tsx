@@ -19,6 +19,7 @@ import "swiper/css";
 import "swiper/css/navigation";
 import { Button } from "@/components/ui/button";
 import {
+  productsApi,
   useGetProductBySlugQuery,
   useGetRelatedProductsQuery,
 } from "@/features/products/productsApi";
@@ -343,10 +344,19 @@ export function ProductDetailPage({
   const urlColor = searchParams.get("color");
   const urlSize = searchParams.get("size");
 
+  // Seed the RTK Query cache with the SSR-fetched product on every render.
+  // Without this, client-side navigation reuses whatever stale value is in the
+  // singleton Redux store from a prior visit instead of the fresh server data.
+  useEffect(() => {
+    if (initialProduct && slug) {
+      dispatch(
+        productsApi.util.upsertQueryData('getProductBySlug', slug, initialProduct),
+      );
+    }
+  }, [initialProduct, slug, dispatch]);
+
   const { data: fetchedProduct, isLoading: isProductLoading } =
-    useGetProductBySlugQuery(slug!, {
-      skip: !!initialProduct,
-    });
+    useGetProductBySlugQuery(slug!, { skip: !slug });
   const product = fetchedProduct ?? initialProduct;
   const isLoading = isProductLoading && !initialProduct;
 
