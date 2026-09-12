@@ -271,7 +271,7 @@ export function AdminProducts() {
     };
     try {
       if (editProduct) {
-        const updatedProduct = await updateProduct({ id: editProduct.id, ...payload }).unwrap();
+        const updatedProduct = await updateProduct({ id: editProduct.id, slug: editProduct.slug, ...payload }).unwrap();
         setLoadedProducts((previous) => previous.map((product) => (
           product.id === updatedProduct.id ? updatedProduct : product
         )));
@@ -304,7 +304,7 @@ export function AdminProducts() {
 
   const toggleProductStatus = async (product: Product) => {
     try {
-      const updatedProduct = await updateProduct({ id: product.id, isActive: !product.isActive }).unwrap();
+      const updatedProduct = await updateProduct({ id: product.id, slug: product.slug, isActive: !product.isActive }).unwrap();
       setLoadedProducts((previous) => previous.map((currentProduct) => (
         currentProduct.id === updatedProduct.id ? updatedProduct : currentProduct
       )));
