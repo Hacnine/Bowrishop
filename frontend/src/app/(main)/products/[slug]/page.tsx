@@ -4,10 +4,18 @@ import { ProductDetailPage } from '@/views/products/ProductDetailPage';
 import { ProductDetailSkeleton } from '@/views/products/ProductDetailSkeleton';
 import type { Product } from '@/types/types.index';
 
-// force-dynamic: render fresh on every server request.
-// force-static was setting Cache-Control: max-age=31536000 on the HTML so
-// browsers cached the stale page for a year even after revalidateTag fired.
-export const dynamic = 'force-dynamic';
+// ISR with tag-based invalidation.
+//
+// force-static: Next.js renders and caches the page on the server.
+// The browser never caches the HTML (next.config.ts sets Cache-Control:
+// no-cache on all HTML routes), so after revalidateTag fires the browser
+// always gets the freshly rendered page on the next load.
+//
+// Stale data flow:
+//   admin updates product → backend calls /api/revalidate
+//   → revalidateTag('product-<slug>') busts the server cache
+//   → next browser request gets a fresh server render with new data
+export const dynamic = 'force-static';
 
 async function getProduct(slug: string): Promise<Product | null> {
   const backendUrl = process.env.API_URL ?? 'http://backend:3001';
@@ -15,6 +23,7 @@ async function getProduct(slug: string): Promise<Product | null> {
   console.log(`[product-page] fetching: ${url}`);
   try {
     const res = await fetch(url, {
+      // Tag this fetch — revalidateTag('product-<slug>') will bust it.
       next: { tags: [`product-${slug}`] },
     });
     console.log(`[product-page] status: ${res.status} slug: ${slug}`);
