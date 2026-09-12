@@ -33,14 +33,16 @@ export class OrdersService {
         throw new BadRequestException(`${item.product.name} is no longer available`);
 
       if (!item.product.isPreOrder) {
-        const currentStock = item.variant ? item.variant.stock : item.product.stock;
+        if (!item.variant) throw new BadRequestException(`Variant is required for ${item.product.name}`);
+        const currentStock = item.variant.stock;
         if (currentStock < item.quantity)
           throw new BadRequestException(`Insufficient stock for ${item.product.name}`);
       }
     }
 
     const subtotal = cartItems.reduce((sum, item) => {
-      const price = item.variant ? Number(item.variant.price) : Number(item.product.price);
+      if (!item.variant) throw new BadRequestException(`Variant is required for ${item.product.name}`);
+      const price = Number(item.variant.price);
       return sum + price * item.quantity;
     }, 0);
 
@@ -88,7 +90,7 @@ export class OrdersService {
               productId: item.productId,
               variantId: item.variantId,
               quantity: item.quantity,
-              price: item.variant ? item.variant.price : item.product.price,
+              price: item.variant!.price,
               // Pre-order flag: product এর isPreOrder থেকে copy করো
               isPreOrder: item.product.isPreOrder,
               variantSnapshot: item.variant
@@ -116,10 +118,7 @@ export class OrdersService {
                   where: { id: item.variantId },
                   data: { stock: { decrement: item.quantity } },
                 })
-              : tx.product.update({
-                  where: { id: item.productId },
-                  data: { stock: { decrement: item.quantity } },
-                }),
+              : Promise.reject(new BadRequestException(`Variant is required for ${item.product.name}`)),
           ),
         tx.cartItem.deleteMany({ where: { userId } }),
       ]);
@@ -259,7 +258,8 @@ export class OrdersService {
       // Pre-order items: stock check skip করো
       if (!product.isPreOrder) {
         const variant = variants.find((v) => v.id === item.variantId);
-        const currentStock = variant ? variant.stock : product.stock;
+        if (!variant) throw new BadRequestException(`Variant is required for ${product.name}`);
+        const currentStock = variant.stock;
         if (currentStock < item.quantity)
           throw new BadRequestException(`Insufficient stock for ${product.name}`);
       }
@@ -268,7 +268,8 @@ export class OrdersService {
     const subtotal = items.reduce((sum, item) => {
       const product = products.find((p) => p.id === item.productId)!;
       const variant = variants.find((v) => v.id === item.variantId);
-      return sum + (variant ? Number(variant.price) : Number(product.price)) * item.quantity;
+      if (!variant) throw new BadRequestException(`Variant is required for ${product.name}`);
+      return sum + Number(variant.price) * item.quantity;
     }, 0);
 
     const shippingCharge = shippingAddress?.shippingCharge ?? 80;
@@ -320,7 +321,7 @@ export class OrdersService {
                 productId: item.productId,
                 variantId: item.variantId || null,
                 quantity: item.quantity,
-                price: variant ? variant.price : product.price,
+                price: variant!.price,
                 isPreOrder: product.isPreOrder,
                 variantSnapshot: variant
                   ? {
@@ -351,10 +352,7 @@ export class OrdersService {
                   where: { id: item.variantId },
                   data: { stock: { decrement: item.quantity } },
                 })
-              : tx.product.update({
-                  where: { id: item.productId },
-                  data: { stock: { decrement: item.quantity } },
-                }),
+              : Promise.reject(new BadRequestException(`Variant is required for ${products.find((p) => p.id === item.productId)?.name ?? 'product'}`)),
           ),
       );
 
@@ -409,6 +407,9 @@ export class OrdersService {
     for (const item of dto.items) {
       const product = products.find((p) => p.id === item.productId);
       if (!product) throw new NotFoundException(`Product not found: ${item.productId}`);
+      if (!item.variantId || !variants.some((variant) => variant.id === item.variantId)) {
+        throw new BadRequestException(`Variant is required for ${product.name}`);
+      }
     }
 
     const shippingCharge = dto.shippingCharge ?? 0;
@@ -473,11 +474,6 @@ export class OrdersService {
           if (item.variantId) {
             await tx.productVariant.update({
               where: { id: item.variantId },
-              data: { stock: { decrement: item.quantity } },
-            });
-          } else {
-            await tx.product.update({
-              where: { id: item.productId },
               data: { stock: { decrement: item.quantity } },
             });
           }

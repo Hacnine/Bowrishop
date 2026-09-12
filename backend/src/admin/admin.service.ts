@@ -43,7 +43,7 @@ export class AdminService {
     const topProductIds = topProducts.map((p) => p.productId);
     const topProductDetails = await this.prisma.product.findMany({
       where: { id: { in: topProductIds } },
-      select: { id: true, name: true, images: true, price: true },
+      select: { id: true, name: true, images: true },
     });
 
     const enrichedTop = topProducts.map((tp) => ({

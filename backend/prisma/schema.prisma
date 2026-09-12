@@ -68,9 +68,6 @@ model Product {
   name         String             
   slug         String             @unique
   description  String
-  price        Decimal            @db.Decimal(10, 2)
-  comparePrice Decimal?           @db.Decimal(10, 2)
-  stock        Int                @default(0)
   images       String[]
   videoUrl     String?
   tags         String[]

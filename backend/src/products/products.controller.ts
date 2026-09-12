@@ -118,7 +118,7 @@ export class ProductsController {
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.ADMIN)
   removeImage(@Param('id') id: string, @Body() dto: RemoveProductImageDto) {
-    return this.productsService.removeImage(id, dto.url);
+    return this.productsService.removeProductImage(id, dto.url);
   }
 
   @Delete(':id')

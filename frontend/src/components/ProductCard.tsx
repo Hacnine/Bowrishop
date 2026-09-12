@@ -24,6 +24,10 @@ export function ProductCard({ product }: ProductCardProps) {
   const dispatch = useAppDispatch();
   const [addToCart, { isLoading: addingCart }] = useAddToCartMutation();
   const [addToWishlist] = useAddToWishlistMutation();
+  const displayVariant = product.variants?.find((variant) => variant.stock > 0) ?? product.variants?.[0];
+  const displayPrice = Number(displayVariant?.price ?? 0);
+  const displayComparePrice = displayVariant?.comparePrice ? Number(displayVariant.comparePrice) : undefined;
+  const displayStock = displayVariant?.stock ?? 0;
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -39,7 +43,7 @@ export function ProductCard({ product }: ProductCardProps) {
           content_name: product.name,
           content_ids: [product.id.toString()],
           content_type: 'product',
-          value: Number(defaultVariant?.price ?? product.price),
+          value: Number(defaultVariant?.price ?? 0),
           currency: 'BDT',
         });
       }
@@ -54,10 +58,7 @@ export function ProductCard({ product }: ProductCardProps) {
             id: product.id,
             name: product.name,
             slug: product.slug,
-            price: product.price,
-            comparePrice: product.comparePrice,
             images: product.images,
-            stock: product.stock,
             isActive: product.isActive,
             isPreOrder: product.isPreOrder,
           },
@@ -95,11 +96,11 @@ export function ProductCard({ product }: ProductCardProps) {
     }
   };
 
-  const discountPercent = product.comparePrice
-    ? getDiscountPercent(product.price, product.comparePrice)
+  const discountPercent = displayComparePrice
+    ? getDiscountPercent(displayPrice, displayComparePrice)
     : 0;
 
-  const isOutOfStock = !product.isPreOrder && product.stock === 0;
+  const isOutOfStock = !product.isPreOrder && displayStock === 0;
 
   return (
     <Link href={`/products/${product.slug}`} className="group">
@@ -167,9 +168,9 @@ export function ProductCard({ product }: ProductCardProps) {
           <div className="flex-1" />
 
           <div className="flex items-center gap-2 mt-2">
-            <span className="font-bold text-gray-900">{formatCurrency(product.price)}</span>
-            {product.comparePrice && (
-              <span className="text-sm text-gray-400 line-through">{formatCurrency(product.comparePrice)}</span>
+            <span className="font-bold text-gray-900">{formatCurrency(displayPrice)}</span>
+            {displayComparePrice && (
+              <span className="text-sm text-gray-400 line-through">{formatCurrency(displayComparePrice)}</span>
             )}
           </div>
 

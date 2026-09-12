@@ -29,9 +29,6 @@ export interface Product {
   name: string;
   slug: string;
   description: string;
-  price: number;
-  comparePrice?: number;
-  stock: number;
   images: string[];
   tags: string[];
   isActive: boolean;
@@ -71,7 +68,7 @@ export interface CartItem {
   id: string;
   productId: string;
   quantity: number;
-  product: Pick<Product, 'id' | 'name' | 'slug' | 'price' | 'comparePrice' | 'images' | 'stock' | 'isActive' | 'isPreOrder'>;
+  product: Pick<Product, 'id' | 'name' | 'slug' | 'images' | 'isActive' | 'isPreOrder'>;
   variant?: Pick<ProductVariant, 'id' | 'color' | 'colorHex' | 'size' | 'price' | 'comparePrice' | 'stock' | 'images'>;
 }
 
@@ -140,7 +137,7 @@ export interface Review {
 export interface WishlistItem {
   id: string;
   productId: string;
-  product: Pick<Product, 'id' | 'name' | 'slug' | 'price' | 'comparePrice' | 'images' | 'stock'> & {
+  product: Pick<Product, 'id' | 'name' | 'slug' | 'images'> & {
     variants?: Pick<ProductVariant, 'id' | 'price' | 'stock'>[];
   };
 }

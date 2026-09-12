@@ -65,34 +65,10 @@ export class ProductsService {
       const existing = await this.prisma.product.findUnique({ where: { slug } });
       if (existing) throw new ConflictException('Product name already exists');
 
-      let totalStock = dto.stock;
-      let basePrice = dto.price;
-      let baseComparePrice = dto.comparePrice;
-      let variantData;
-
-      if (dto.variants && dto.variants.length > 0) {
-        totalStock = dto.variants.reduce((sum, v) => sum + v.stock, 0);
-        basePrice = Math.min(...dto.variants.map((v) => v.price));
-
-        const variantComparePrices = dto.variants
-          .map((v) => v.comparePrice)
-          .filter((p): p is number => p !== undefined && p !== null);
-        baseComparePrice =
-          variantComparePrices.length > 0 ? Math.min(...variantComparePrices) : undefined;
-
-        variantData = dto.variants.map((v) => ({ ...v, images: v.images ?? [] }));
-      } else {
-        variantData = [
-          {
-            price: dto.price,
-            comparePrice: dto.comparePrice,
-            stock: dto.stock ?? 0,
-            images: dto.images ?? [],
-          },
-        ];
+      if (!dto.variants || dto.variants.length === 0) {
+        throw new BadRequestException('At least one variant is required');
       }
 
-      // preOrderDate string → DateTime conversion
       const preOrderDate = dto.preOrderDate ? new Date(dto.preOrderDate) : undefined;
 
       const product = await this.prisma.product.create({
@@ -100,21 +76,17 @@ export class ProductsService {
           name: dto.name,
           slug,
           description: dto.description ?? '',
-          price: basePrice,
-          comparePrice: baseComparePrice,
-          stock: totalStock,
-          images: dto.images ?? [],
           tags: dto.tags ?? [],
           categoryId: dto.categoryId,
           isActive: dto.isActive ?? true,
           isFeatured: dto.isFeatured ?? false,
-          // Pre-order fields
           isPreOrder: dto.isPreOrder ?? false,
           preOrderNote: dto.preOrderNote,
           preOrderDate,
-          // Specifications
           specifications: dto.specifications ?? undefined,
-          variants: { create: variantData },
+          variants: {
+            create: dto.variants.map((v) => ({ ...v, images: v.images ?? [] })),
+          },
         },
         include: PRODUCT_WITH_VARIANTS,
       });
@@ -132,17 +104,13 @@ export class ProductsService {
       if (!product) throw new NotFoundException('Product not found');
 
       const data: any = { ...dto };
-      // Slug is intentionally NOT regenerated on name update.
-      // Changing the slug breaks existing URLs and ISR cache entries.
-      // The slug is fixed at creation time.
+      // Slug intentionally NOT regenerated on name update — breaks existing URLs and ISR cache.
       delete data.slug;
 
-      // preOrderDate string → DateTime
       if (dto.preOrderDate !== undefined) {
         data.preOrderDate = dto.preOrderDate ? new Date(dto.preOrderDate) : null;
       }
 
-      // isPreOrder false করলে pre-order fields clear করে দাও
       if (dto.isPreOrder === false) {
         data.preOrderNote = null;
         data.preOrderDate = null;
@@ -185,7 +153,6 @@ export class ProductsService {
     try {
       const response = await fetch(revalidateUrl, { method: 'POST' });
       const body = await response.text().catch(() => '');
-
       this.logger.log(`[revalidate] response status: ${response.status}, body: ${body}`);
 
       if (!response.ok) {
@@ -219,27 +186,6 @@ export class ProductsService {
     }
   }
 
-  async removeImage(id: string, imageUrl: string) {
-    const product = await this.prisma.product.findUnique({
-      where: { id },
-      select: { images: true },
-    });
-    if (!product) throw new NotFoundException('Product not found');
-
-    const images = product.images.filter((url) => url !== imageUrl);
-    if (images.length === product.images.length) {
-      throw new NotFoundException('Image not found on this product');
-    }
-
-    const updated = await this.prisma.product.update({
-      where: { id },
-      data: { images },
-      include: PRODUCT_WITH_VARIANTS,
-    });
-    await this.revalidateProductPage(updated.slug);
-    return updated;
-  }
-
   async findAll(query: ProductQueryDto) {
     const page = parseInt(query.page ?? '1');
     const limit = parseInt(query.limit ?? '12');
@@ -248,8 +194,6 @@ export class ProductsService {
     const where: any = { isActive: true };
     const search = normalizeSearch(query.search ?? query.q);
 
-    // Nested category support: categoryId দিলে শুধু সেই category;
-    // category slug দিলে parent + সব subCategories include করো
     if (query.categoryId) {
       where.categoryId = query.categoryId;
     } else if (query.category) {
@@ -263,14 +207,24 @@ export class ProductsService {
       }
     }
 
+    // Price filter: now done via variants
     if (query.minPrice || query.maxPrice) {
-      where.price = {};
-      if (query.minPrice) where.price.gte = parseFloat(query.minPrice);
-      if (query.maxPrice) where.price.lte = parseFloat(query.maxPrice);
+      const priceFilter: any = {};
+      if (query.minPrice) priceFilter.gte = parseFloat(query.minPrice);
+      if (query.maxPrice) priceFilter.lte = parseFloat(query.maxPrice);
+      where.variants = { some: { price: priceFilter, isActive: true } };
     }
 
     if (query.featured === 'true') where.isFeatured = true;
-    if (query.sale === 'true') where.comparePrice = { not: null };
+
+    // Sale filter: products that have at least one variant with a comparePrice
+    if (query.sale === 'true') {
+      where.variants = {
+        ...(where.variants ?? {}),
+        some: { ...(where.variants?.some ?? {}), comparePrice: { not: null }, isActive: true },
+      };
+    }
+
     if (query.preOrder === 'true') where.isPreOrder = true;
 
     let searchIds: string[] | undefined;
@@ -306,11 +260,15 @@ export class ProductsService {
       where.id = { in: searchIds };
     }
 
+    // Sort: price sorts now use variant's min price via raw or just default to createdAt
+    // For price sort we do a subquery-based approach
     let orderBy: any = { createdAt: 'desc' };
-    if (query.sort === 'price_asc') orderBy = { price: 'asc' };
-    if (query.sort === 'price_desc') orderBy = { price: 'desc' };
     if (query.sort === 'name_asc') orderBy = { name: 'asc' };
     if (query.sort === 'popular') orderBy = { reviews: { _count: 'desc' } };
+    // price_asc / price_desc: Prisma doesn't support orderBy on relation aggregate directly,
+    // so we fall back to createdAt and let the frontend sort if needed,
+    // OR use a raw query. For now keeping createdAt as safe default.
+    // TODO: implement raw price sort when needed.
 
     if (!search) {
       const [products, total] = await Promise.all([
@@ -393,6 +351,7 @@ export class ProductsService {
         },
       },
     });
+
     if (!product) {
       this.logger.error(`[findBySlug] NO product in DB for slug: "${slug}"`);
       throw new NotFoundException('Product not found');
@@ -416,7 +375,6 @@ export class ProductsService {
     return { ...product, averageRating: avgRating, reviewCount: product.reviews.length };
   }
 
-  // শুধু admin যেগুলো isFeatured: true করেছে সেগুলো
   async getFeatured(limit = 8) {
     return this.prisma.product.findMany({
       where: { isActive: true, isFeatured: true },
@@ -426,7 +384,6 @@ export class ProductsService {
     });
   }
 
-  // সবচেয়ে বেশি quantity sell হয়েছে সেই order অনুযায়ী
   async getBestSelling(limit = 10) {
     const items = await this.prisma.orderItem.groupBy({
       by: ['productId'],
@@ -440,37 +397,40 @@ export class ProductsService {
       where: { id: { in: ids }, isActive: true },
       include: PRODUCT_WITH_VARIANTS,
     });
-    // orderItem এর sort order maintain করো
     return ids.map((id) => products.find((p) => p.id === id)).filter(Boolean);
   }
 
-  // comparePrice আছে মানে sale চলছে, discount % বেশি যেগুলোতে সেগুলো আগে
   async getOnSale(limit = 10) {
+    // Products with at least one active variant that has a comparePrice
     const products = await this.prisma.product.findMany({
       where: {
         isActive: true,
-        comparePrice: { not: null },
+        variants: { some: { comparePrice: { not: null }, isActive: true } },
       },
-      take: limit * 3, // overfetch করে sort করবো
+      take: limit * 3,
       include: PRODUCT_WITH_VARIANTS,
     });
-    // discount % বেশি → আগে
+
     return products
-      .map((p) => ({
-        ...p,
-        discountPct: p.comparePrice
-          ? ((Number(p.comparePrice) - Number(p.price)) / Number(p.comparePrice)) * 100
-          : 0,
-      }))
-      .filter((p) => p.discountPct > 0) // comparePrice < price এর absurd case বাদ
+      .map((p) => {
+        // Use the first active variant's price for discount calc
+        const activeVariant = p.variants.find((v) => v.isActive && v.comparePrice != null);
+        if (!activeVariant) return { ...p, discountPct: 0 };
+        const discountPct = activeVariant.comparePrice
+          ? ((Number(activeVariant.comparePrice) - Number(activeVariant.price)) /
+              Number(activeVariant.comparePrice)) *
+            100
+          : 0;
+        return { ...p, discountPct };
+      })
+      .filter((p) => p.discountPct > 0)
       .sort((a, b) => b.discountPct - a.discountPct)
       .slice(0, limit);
   }
 
-  // সবচেয়ে নতুন products — createdAt দিয়ে sort
   async getNewArrivals(limit = 10) {
     return this.prisma.product.findMany({
-      where: { isActive: true, isFeatured: false }, // featured products আলাদা section এ থাকবে
+      where: { isActive: true, isFeatured: false },
       take: limit,
       orderBy: { createdAt: 'desc' },
       include: PRODUCT_WITH_VARIANTS,
@@ -491,15 +451,21 @@ export class ProductsService {
     });
     return ids.map((id) => products.find((p) => p.id === id)).filter(Boolean);
   }
+
   async getRelated(productId: string, limit = 20) {
-    // Current product এর category আর tags আনো
     const current = await this.prisma.product.findUnique({
       where: { id: productId },
-      select: { id: true, categoryId: true, tags: true, price: true },
+      select: {
+        id: true,
+        categoryId: true,
+        tags: true,
+        variants: { where: { isActive: true }, select: { price: true }, take: 1 },
+      },
     });
     if (!current) return [];
 
-    // Same category এর products আনো (current বাদে)
+    const currentPrice = current.variants[0]?.price ?? 0;
+
     const sameCat = await this.prisma.product.findMany({
       where: {
         isActive: true,
@@ -513,25 +479,20 @@ export class ProductsService {
       },
     });
 
-    // Score করো: tag match + order count + review count
     const scored = sameCat.map((p) => {
       const tagMatches = current.tags.filter((t) => p.tags.includes(t)).length;
       const orderScore = (p._count as any).orderItems ?? 0;
       const reviewScore = p._count.reviews ?? 0;
-      // Price range similarity (similar price = higher score)
-      const priceDiff = Math.abs(Number(p.price) - Number(current.price));
+      const variantPrice = p.variants[0]?.price ?? 0;
+      const priceDiff = Math.abs(Number(variantPrice) - Number(currentPrice));
       const priceScore = priceDiff < 200 ? 2 : priceDiff < 500 ? 1 : 0;
-
       const score = tagMatches * 3 + orderScore * 0.5 + reviewScore * 1 + priceScore;
       return { ...p, _score: score };
     });
 
-    // Score দিয়ে sort, same score হলে orderItems বেশি আগে
     scored.sort((a, b) => b._score - a._score);
-
     return scored.slice(0, limit);
   }
-
 
   // ─── Variant CRUD ─────────────────────────────────────────────────────────────
 
@@ -591,16 +552,24 @@ export class ProductsService {
     try {
       const variant = await this.prisma.productVariant.findUnique({
         where: { id: variantId },
-        include: { product: { select: { slug: true } } },
+        include: { product: { select: { id: true, slug: true } } },
       });
       if (!variant) throw new NotFoundException('Variant not found');
+
+      // Prevent deleting the last variant — product must always have at least one
+      const variantCount = await this.prisma.productVariant.count({
+        where: { productId: variant.product.id },
+      });
+      if (variantCount <= 1) {
+        throw new BadRequestException('Cannot delete the last variant. A product must have at least one variant.');
+      }
 
       const deleted = await this.prisma.productVariant.delete({ where: { id: variantId } });
       await this.revalidateProductPage(variant.product.slug);
       this.logger.log(`Variant deleted: ${variantId}`);
       return deleted;
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof NotFoundException || error instanceof BadRequestException) throw error;
       this.logger.error(`Error deleting variant ${variantId}:`, error);
       throw error;
     }

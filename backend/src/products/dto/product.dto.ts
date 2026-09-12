@@ -90,18 +90,6 @@ export class CreateProductDto {
   @IsString()
   description: string;
 
-  @ApiProperty()
-  @IsNumber() @Min(0)
-  price: number;
-
-  @ApiProperty({ required: false })
-  @IsOptional() @IsNumber() @Min(0)
-  comparePrice?: number;
-
-  @ApiProperty()
-  @IsInt() @Min(0)
-  stock: number;
-
   @ApiProperty({ type: [String] })
   @IsArray() @IsString({ each: true })
   images: string[];
@@ -118,11 +106,10 @@ export class CreateProductDto {
   @IsOptional() @IsBoolean()
   isActive?: boolean;
 
-  @ApiProperty({ required: false, type: [CreateVariantDto] })
-  @IsOptional()
+  @ApiProperty({ type: [CreateVariantDto] })
   @ValidateNested({ each: true })
   @Type(() => CreateVariantDto)
-  variants?: CreateVariantDto[];
+  variants: CreateVariantDto[];
 
   // ─── Pre-order fields ───────────────────────────────────────────
   @ApiProperty({ required: false, description: 'Mark product as pre-order' })
@@ -151,15 +138,6 @@ export class UpdateProductDto {
 
   @IsOptional() @IsString()
   description?: string;
-
-  @IsOptional() @IsNumber() @Min(0)
-  price?: number;
-
-  @IsOptional() @IsNumber() @Min(0)
-  comparePrice?: number;
-
-  @IsOptional() @IsInt() @Min(0)
-  stock?: number;
 
   @IsOptional() @IsArray() @IsString({ each: true })
   images?: string[];

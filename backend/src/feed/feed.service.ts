@@ -38,20 +38,12 @@ export class FeedService {
     };
 
     const items = products.map((product) => {
-      // Lowest price — variant আছে তো variant price, নাহলে product price
       const lowestVariant = product.variants[0];
-      const price = lowestVariant ? Number(lowestVariant.price) : Number(product.price);
-      const comparePrice = lowestVariant?.comparePrice
-        ? Number(lowestVariant.comparePrice)
-        : product.comparePrice
-          ? Number(product.comparePrice)
-          : null;
+      const price = lowestVariant ? Number(lowestVariant.price) : 0;
+      const comparePrice = lowestVariant?.comparePrice ? Number(lowestVariant.comparePrice) : null;
 
       // Availability
-      // Total stock — সব variants এর stock যোগ করো
-      const totalStock = product.variants.length > 0
-        ? product.variants.reduce((sum: number, v: any) => sum + v.stock, 0)
-        : product.stock;
+      const totalStock = product.variants.reduce((sum: number, v: any) => sum + v.stock, 0);
       let availability: string;
       if (product.isPreOrder) {
         availability = 'preorder';
@@ -115,8 +107,8 @@ ${items.join('\n')}
   async getFeedStats() {
     const [total, inStock, outOfStock, preOrder] = await Promise.all([
       this.prisma.product.count({ where: { isActive: true } }),
-      this.prisma.product.count({ where: { isActive: true, stock: { gt: 0 }, isPreOrder: false } }),
-      this.prisma.product.count({ where: { isActive: true, stock: 0, isPreOrder: false } }),
+      this.prisma.product.count({ where: { isActive: true, isPreOrder: false, variants: { some: { isActive: true, stock: { gt: 0 } } } } }),
+      this.prisma.product.count({ where: { isActive: true, isPreOrder: false, variants: { none: { isActive: true, stock: { gt: 0 } } } } }),
       this.prisma.product.count({ where: { isActive: true, isPreOrder: true } }),
     ]);
     return { total, inStock, outOfStock, preOrder };

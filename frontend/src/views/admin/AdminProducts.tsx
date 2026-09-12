@@ -27,9 +27,9 @@ import type { Product } from '../../types/types.index';
 const schema = z.object({
   name: z.string().min(2).max(80, 'Name must be 80 characters or less'),
   description: z.string().min(10),
-  price: z.union([z.coerce.number().positive(), z.literal('')]),
+  price: z.coerce.number().nonnegative(),
   comparePrice: z.union([z.coerce.number().positive(), z.literal('')]).optional(),
-  stock: z.union([z.coerce.number().int().min(0), z.literal('')]),
+  stock: z.coerce.number().int().min(0),
   categoryId: z.string().min(1, 'Select a category'),
   tags: z.string().optional(),
   isActive: z.boolean().optional(),
@@ -176,9 +176,9 @@ export function AdminProducts() {
     reset({
       name: p.name,
       description: p.description,
-      price: p.price,
-      comparePrice: p.comparePrice ?? '',
-      stock: p.stock,
+      price: p.variants?.[0]?.price ?? 0,
+      comparePrice: p.variants?.[0]?.comparePrice ?? '',
+      stock: p.variants?.[0]?.stock ?? 0,
       categoryId: p.categoryId,
       tags: p.tags?.join(', ') ?? '',
       isActive: p.isActive ?? true,
@@ -252,11 +252,16 @@ export function AdminProducts() {
   };
 
   const onSubmit = async (data: FormValues) => {
+    const { price, comparePrice, stock, ...productFields } = data;
     const payload: any = {
-      ...data,
-      price: Number(data.price),
-      comparePrice: data.comparePrice ? Number(data.comparePrice) : undefined,
-      stock: Number(data.stock),
+      ...productFields,
+      variants: [{
+        ...(editProduct?.variants?.[0]?.id ? { id: editProduct.variants[0].id } : {}),
+        price: Number(price),
+        comparePrice: comparePrice ? Number(comparePrice) : undefined,
+        stock: Number(stock),
+        images: imageUrls,
+      }],
       images: imageUrls,
       tags: data.tags ? data.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
       isActive: data.isActive ?? true,
@@ -352,16 +357,19 @@ export function AdminProducts() {
         // Basic validation
         if (!p.name) throw new Error('Missing name');
         if (!p.description) throw new Error('Missing description');
-        if (!p.price) throw new Error('Missing price');
+        if (p.price === undefined || p.price === null) throw new Error('Missing price');
         if (!p.categoryId) throw new Error('Missing categoryId');
         if (!p.images || !Array.isArray(p.images) || p.images.length === 0) throw new Error('Missing images array');
 
         await createProduct({
           name: p.name,
           description: p.description,
-          price: Number(p.price),
-          comparePrice: p.comparePrice ? Number(p.comparePrice) : undefined,
-          stock: Number(p.stock ?? 0),
+          variants: [{
+            price: Number(p.price),
+            comparePrice: p.comparePrice ? Number(p.comparePrice) : undefined,
+            stock: Number(p.stock ?? 0),
+            images: p.images,
+          }],
           images: p.images,
           tags: Array.isArray(p.tags) ? p.tags : [],
           categoryId: p.categoryId,
@@ -478,13 +486,13 @@ export function AdminProducts() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-gray-700">{formatCurrency(p.price)}</td>
+                      <td className="px-6 py-4 text-gray-700">{formatCurrency(Number(p.variants?.[0]?.price ?? 0))}</td>
                       <td className="px-6 py-4">
                         {p.isPreOrder ? (
                           <span className="text-xs font-semibold px-2 py-1 rounded-full bg-amber-50 text-amber-700">Pre-order</span>
                         ) : (
-                          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${p.stock > 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                            {p.stock > 0 ? p.stock : 'Out of stock'}
+                          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${(p.variants?.reduce((sum, variant) => sum + variant.stock, 0) ?? 0) > 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                            {(p.variants?.reduce((sum, variant) => sum + variant.stock, 0) ?? 0) > 0 ? p.variants?.reduce((sum, variant) => sum + variant.stock, 0) : 'Out of stock'}
                           </span>
                         )}
                       </td>

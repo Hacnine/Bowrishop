@@ -5,10 +5,7 @@ export interface GuestCartProduct {
   id: string;
   name: string;
   slug: string;
-  price: number;
-  comparePrice?: number;
   images: string[];
-  stock: number;
   isActive: boolean;
   isPreOrder: boolean;
 }
@@ -65,9 +62,7 @@ const guestCartSlice = createSlice({
           i.variant?.id === action.payload.variant?.id
       );
 
-      const maxStock = action.payload.variant 
-        ? action.payload.variant.stock 
-        : action.payload.product.stock;
+      const maxStock = action.payload.variant?.stock ?? 0;
 
       if (existing) {
         existing.quantity = Math.min(

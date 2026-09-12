@@ -201,15 +201,21 @@ async function main() {
   ];
 
   for (const product of products) {
-    const { categorySlug, comparePrice, price, ...rest } = product;
+    const { categorySlug, comparePrice, price, stock, ...rest } = product;
     await prisma.product.upsert({
       where: { slug: product.slug },
       update: {},
       create: {
         ...rest,
-        price: price,
-        comparePrice: comparePrice ?? undefined,
         categoryId: createdCategories[categorySlug],
+        variants: {
+          create: {
+            price,
+            comparePrice: comparePrice ?? undefined,
+            stock,
+            images: rest.images,
+          },
+        },
       },
     });
   }
