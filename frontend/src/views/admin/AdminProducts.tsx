@@ -257,6 +257,14 @@ export function AdminProducts() {
     const { price, comparePrice, stock, ...productFields } = data;
     const payload: any = {
       ...productFields,
+      ...(!editProduct ? {
+        variants: [{
+          price: Number(price),
+          comparePrice: comparePrice ? Number(comparePrice) : undefined,
+          stock: Number(stock),
+          images: imageUrls,
+        }],
+      } : {}),
       images: imageUrls,
       tags: data.tags ? data.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
       isActive: data.isActive ?? true,

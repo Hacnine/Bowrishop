@@ -106,10 +106,11 @@ export class CreateProductDto {
   @IsOptional() @IsBoolean()
   isActive?: boolean;
 
-  @ApiProperty({ type: [CreateVariantDto] })
+  @ApiProperty({ required: false, type: [CreateVariantDto] })
+  @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => CreateVariantDto)
-  variants: CreateVariantDto[];
+  variants?: CreateVariantDto[];
 
   // ─── Pre-order fields ───────────────────────────────────────────
   @ApiProperty({ required: false, description: 'Mark product as pre-order' })

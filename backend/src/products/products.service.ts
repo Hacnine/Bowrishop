@@ -65,11 +65,10 @@ export class ProductsService {
       const existing = await this.prisma.product.findUnique({ where: { slug } });
       if (existing) throw new ConflictException('Product name already exists');
 
-      if (!dto.variants || dto.variants.length === 0) {
-        throw new BadRequestException('At least one variant is required');
-      }
-
       const preOrderDate = dto.preOrderDate ? new Date(dto.preOrderDate) : undefined;
+      const variants = dto.variants?.length
+        ? dto.variants
+        : [{ price: 0, stock: 0, images: dto.images ?? [] }];
 
       const product = await this.prisma.product.create({
         data: {
@@ -85,7 +84,7 @@ export class ProductsService {
           preOrderDate,
           specifications: dto.specifications ?? undefined,
           variants: {
-            create: dto.variants.map((v) => ({ ...v, images: v.images ?? [] })),
+            create: variants.map((v) => ({ ...v, images: v.images ?? [] })),
           },
         },
         include: PRODUCT_WITH_VARIANTS,
