@@ -500,19 +500,30 @@ export class ProductsService {
       const product = await this.prisma.product.findUnique({ where: { id: productId } });
       if (!product) throw new NotFoundException('Product not found');
 
-      if (dto.color || dto.size) {
+      const normalizedColor = dto.color?.trim() || null;
+      const normalizedSize = dto.size?.trim() || null;
+      const normalizedSku = dto.sku?.trim() || null;
+
+      if (normalizedColor || normalizedSize) {
         const dupe = await this.prisma.productVariant.findFirst({
-          where: { productId, color: dto.color ?? null, size: dto.size ?? null },
+          where: { productId, color: normalizedColor, size: normalizedSize },
         });
         if (dupe) {
           throw new ConflictException(
-            `A variant with color "${dto.color ?? '—'}" and size "${dto.size ?? '—'}" already exists`,
+            `A variant with color "${normalizedColor ?? '—'}" and size "${normalizedSize ?? '—'}" already exists`,
           );
         }
       }
 
       const variant = await this.prisma.productVariant.create({
-        data: { productId, ...dto, images: dto.images ?? [] },
+        data: {
+          productId,
+          ...dto,
+          color: normalizedColor,
+          size: normalizedSize,
+          sku: normalizedSku,
+          images: dto.images ?? [],
+        },
       });
 
       await this.revalidateProductPage(product.slug);
@@ -535,7 +546,13 @@ export class ProductsService {
       });
       if (!variant) throw new NotFoundException('Variant not found');
 
-      const updated = await this.prisma.productVariant.update({ where: { id: variantId }, data: dto });
+      const data = {
+        ...dto,
+        ...(dto.color !== undefined ? { color: dto.color.trim() || null } : {}),
+        ...(dto.size !== undefined ? { size: dto.size.trim() || null } : {}),
+        ...(dto.sku !== undefined ? { sku: dto.sku.trim() || null } : {}),
+      };
+      const updated = await this.prisma.productVariant.update({ where: { id: variantId }, data });
       await this.revalidateProductPage(variant.product.slug);
       this.logger.log(`Variant updated: ${variantId}`);
       return updated;
