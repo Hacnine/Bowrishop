@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,7 +16,7 @@ import {
   useDeleteProductMutation,
 } from '../../features/products/productsApi';
 import { useGetFlatCategoriesQuery } from '../../features/categories/categoriesApi';
-import { useGetCloudinaryImagesQuery, useUploadImageMutation } from '../../features/admin/adminApi';
+import { useLazyGetCloudinaryImagesQuery, useUploadImageMutation } from '../../features/admin/adminApi';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -93,9 +93,44 @@ export function AdminProducts() {
   const [removeProductImage] = useRemoveProductImageMutation();
   const [deleteProduct] = useDeleteProductMutation();
   const [uploadImage] = useUploadImageMutation();
-  const { data: cloudinaryImages, isLoading: loadingCloudinaryImages } = useGetCloudinaryImagesQuery(undefined, {
-    skip: !showModal || !showCloudinaryImages,
-  });
+  const [loadCloudinaryImages] = useLazyGetCloudinaryImagesQuery();
+  const [cloudinaryImages, setCloudinaryImages] = useState<{ publicId: string; url: string }[]>([]);
+  const [cloudinaryCursor, setCloudinaryCursor] = useState<string | null>(null);
+  const [loadingCloudinaryImages, setLoadingCloudinaryImages] = useState(false);
+  const cloudinaryLoadMoreRef = useRef<HTMLDivElement>(null);
+
+  const loadMoreCloudinaryImages = useCallback(async (cursor?: string) => {
+    if (loadingCloudinaryImages) return;
+    setLoadingCloudinaryImages(true);
+    try {
+      const result = await loadCloudinaryImages(cursor ? { nextCursor: cursor } : undefined).unwrap();
+      setCloudinaryImages((previous) => cursor ? [...previous, ...result.images] : result.images);
+      setCloudinaryCursor(result.nextCursor);
+    } catch {
+      toast.error('Could not load Cloudinary images');
+    } finally {
+      setLoadingCloudinaryImages(false);
+    }
+  }, [loadCloudinaryImages, loadingCloudinaryImages]);
+
+  useEffect(() => {
+    if (!showCloudinaryImages) return;
+    setCloudinaryImages([]);
+    setCloudinaryCursor(null);
+    void loadMoreCloudinaryImages();
+  }, [showCloudinaryImages]);
+
+  useEffect(() => {
+    const sentinel = cloudinaryLoadMoreRef.current;
+    if (!sentinel || !showCloudinaryImages) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && cloudinaryCursor) {
+        void loadMoreCloudinaryImages(cloudinaryCursor);
+      }
+    }, { rootMargin: '300px' });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [showCloudinaryImages, cloudinaryCursor, loadMoreCloudinaryImages]);
 
   const {
     register,
@@ -835,13 +870,13 @@ export function AdminProducts() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium text-gray-700">Images</label>
-                  <button
+                    <button
                     type="button"
-                    onClick={() => setShowCloudinaryImages((visible) => !visible)}
+                      onClick={() => setShowCloudinaryImages(true)}
                     className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-medium"
                   >
                     <Images className="w-3.5 h-3.5" />
-                    {showCloudinaryImages ? 'Hide Cloudinary images' : 'Browse Cloudinary'}
+                    Browse Cloudinary
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-2 mb-2">
@@ -877,30 +912,6 @@ export function AdminProducts() {
                     <input type="file" accept="image/*" multiple className="hidden" onChange={handleBatchImageUpload} disabled={uploading} />
                   </label>
                 </div>
-                {showCloudinaryImages && (
-                  <div className="mt-3 border border-indigo-100 rounded-xl p-3 bg-indigo-50/30">
-                    <p className="text-xs font-medium text-gray-700 mb-2">Choose an existing Cloudinary image</p>
-                    {loadingCloudinaryImages ? (
-                      <div className="py-3 flex justify-center"><Loader size="sm" label="Loading images" /></div>
-                    ) : cloudinaryImages?.length ? (
-                      <div className="grid grid-cols-5 sm:grid-cols-8 gap-2 max-h-40 overflow-y-auto">
-                        {cloudinaryImages.map((image) => (
-                          <button
-                            key={image.publicId}
-                            type="button"
-                            onClick={() => addCloudinaryImage(image.url)}
-                            className={`aspect-square rounded-lg overflow-hidden border-2 ${imageUrls.includes(image.url) ? 'border-indigo-600 opacity-50' : 'border-transparent hover:border-indigo-400'}`}
-                            title={imageUrls.includes(image.url) ? 'Already selected' : 'Add image'}
-                          >
-                            <img src={image.url} alt="" className="w-full h-full object-cover" />
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-gray-400 py-3">No Cloudinary images found.</p>
-                    )}
-                  </div>
-                )}
                 <p className="text-xs text-gray-400">Multiple images select করতে পারবে একসাথে</p>
               </div>
 
@@ -911,6 +922,44 @@ export function AdminProducts() {
                 <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showCloudinaryImages && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="cloudinary-gallery-title">
+          <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+              <div>
+                <h2 id="cloudinary-gallery-title" className="font-semibold text-gray-900">Cloudinary images</h2>
+                <p className="text-xs text-gray-500">Latest images appear first. Click an image to add it.</p>
+              </div>
+              <button type="button" onClick={() => setShowCloudinaryImages(false)} aria-label="Close image gallery" className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="min-h-0 overflow-y-auto p-5">
+              {cloudinaryImages.length === 0 && loadingCloudinaryImages ? (
+                <div className="flex justify-center py-12"><Loader size="md" label="Loading images" /></div>
+              ) : cloudinaryImages.length === 0 ? (
+                <p className="py-12 text-center text-sm text-gray-400">No Cloudinary images found.</p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 md:grid-cols-7">
+                    {cloudinaryImages.map((image) => (
+                      <button key={image.publicId} type="button" onClick={() => addCloudinaryImage(image.url)} className={`group relative aspect-square overflow-hidden rounded-xl border-2 ${imageUrls.includes(image.url) ? 'border-indigo-600 opacity-50' : 'border-transparent hover:border-indigo-400'}`} title={imageUrls.includes(image.url) ? 'Already selected' : 'Add image'}>
+                        <img src={image.url} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+                        {imageUrls.includes(image.url) && <span className="absolute inset-x-0 bottom-0 bg-indigo-600/90 py-1 text-[10px] text-white">Selected</span>}
+                      </button>
+                    ))}
+                  </div>
+                  <div ref={cloudinaryLoadMoreRef} className="flex min-h-12 items-center justify-center">
+                    {loadingCloudinaryImages && <Loader size="sm" label="Loading more images" />}
+                    {!loadingCloudinaryImages && !cloudinaryCursor && <span className="text-xs text-gray-400">All images loaded</span>}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

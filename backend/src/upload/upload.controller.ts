@@ -9,6 +9,7 @@ import {
   FileTypeValidator,
   BadRequestException,
   Get,
+  Query,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
@@ -47,7 +48,7 @@ export class UploadController {
   }
 
   @Get('images')
-  async listImages() {
-    return this.uploadService.listImages();
+  async listImages(@Query('nextCursor') nextCursor?: string) {
+    return this.uploadService.listImages('trendora', nextCursor);
   }
 }

@@ -35,18 +35,23 @@ export class UploadService {
     });
   }
 
-  async listImages(folder = 'trendora') {
+  async listImages(folder = 'trendora', nextCursor?: string) {
     const result = await cloudinary.api.resources({
       type: 'upload',
       prefix: `${folder}/`,
       resource_type: 'image',
       max_results: 100,
+      next_cursor: nextCursor,
+      direction: 'desc',
     });
 
-    return result.resources.map((resource: { public_id: string; secure_url: string }) => ({
-      publicId: resource.public_id,
-      url: resource.secure_url,
-    }));
+    return {
+      images: result.resources.map((resource: { public_id: string; secure_url: string }) => ({
+        publicId: resource.public_id,
+        url: resource.secure_url,
+      })),
+      nextCursor: result.next_cursor ?? null,
+    };
   }
 
   async deleteImage(publicId: string) {
