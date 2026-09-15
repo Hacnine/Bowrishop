@@ -194,7 +194,16 @@ export class ProductsService {
     const search = normalizeSearch(query.search ?? query.q);
 
     if (query.categoryId) {
-      where.categoryId = query.categoryId;
+      const category = await this.prisma.category.findUnique({
+        where: { id: query.categoryId },
+        select: { id: true, subCategories: { select: { id: true } } },
+      });
+
+      if (category) {
+        where.categoryId = {
+          in: [category.id, ...category.subCategories.map((subCategory) => subCategory.id)],
+        };
+      }
     } else if (query.category) {
       const cat = await this.prisma.category.findFirst({
         where: { slug: { equals: normalizeSearch(query.category), mode: 'insensitive' } },
