@@ -6,7 +6,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { Request, Response } from 'express';  // ← Request add করো
+import { Request, Response } from 'express';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -15,7 +15,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request>();  // ← add
+    const request = ctx.getRequest<Request>();
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Internal server error';
@@ -26,18 +26,29 @@ export class AllExceptionsFilter implements ExceptionFilter {
       const exceptionResponse = exception.getResponse();
       message = (exceptionResponse as any)?.message || exception.message;
       details = (exceptionResponse as any)?.error;
+
+      if (status >= 500) {
+        this.logger.error(
+          `[${request.method} ${request.url}] ${status} ${message}`,
+          exception.stack,
+        );
+      } else {
+        this.logger.warn(
+          `[${request.method} ${request.url}] ${status} ${message}`,
+        );
+      }
     } else if (exception instanceof Error) {
       message = exception.message;
-      this.logger.error(`Unhandled error: ${exception.message}`, exception.stack);
+      this.logger.error(
+        `[${request.method} ${request.url}] 500 ${message}`,
+        exception.stack,
+      );
     } else {
-      this.logger.error(`Unknown error:`, exception);
+      this.logger.error(
+        `[${request.method} ${request.url}] Unknown error`,
+        JSON.stringify(exception),
+      );
     }
-
-    // ← এইটাই key change — method + url দেখাবে
-    this.logger.error(
-      `[${request.method} ${request.url}] Status: ${status}, Message: ${message}`,
-      exception instanceof Error ? exception.stack : JSON.stringify(exception),
-    );
 
     response.status(status).json({
       statusCode: status,

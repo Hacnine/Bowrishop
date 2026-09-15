@@ -18,6 +18,14 @@ interface ProductCardProps {
   product: Product;
 }
 
+function getSquareCropUrl(url: string, size = 400): string {
+  if (!url || !url.includes('res.cloudinary.com')) return url;
+  return url.replace(
+    '/upload/',
+    `/upload/w_${size},h_${size},c_fill,g_auto,f_auto,q_auto/`,
+  );
+}
+
 export function ProductCard({ product }: ProductCardProps) {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
@@ -105,17 +113,17 @@ export function ProductCard({ product }: ProductCardProps) {
   return (
     <Link href={`/products/${product.slug}`} className="group">
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow duration-200">
-        <div className="relative overflow-hidden h-56 bg-gray-50">
+        <div className="relative overflow-hidden h-56">
           <img
-            src={product.images[0] || '/placeholder.jpg'}
+            src={getSquareCropUrl(product.images[0]) || '/placeholder.jpg'}
             alt={product.name}
-            className="w-full h-full object-contain transition-transform duration-300"
+            className="w-full h-full object-cover transition-opacity duration-150"
           />
           {product.images[1] && (
             <img
-              src={product.images[1]}
+              src={getSquareCropUrl(product.images[1])}
               alt={product.name}
-              className="absolute inset-0 w-full h-full object-contain opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-150"
             />
           )}
 
