@@ -105,17 +105,17 @@ export function ProductCard({ product }: ProductCardProps) {
   return (
     <Link href={`/products/${product.slug}`} className="group">
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow duration-200">
-        <div className="relative overflow-hidden h-56">
+        <div className="relative overflow-hidden aspect-square">
           <img
             src={product.images[0] || '/placeholder.jpg'}
             alt={product.name}
-            className="w-full h-full object-cover transition-opacity duration-150"
+            className="w-full h-full object-cover object-top transition-opacity duration-150"
           />
           {product.images[1] && (
             <img
               src={product.images[1]}
               alt={product.name}
-              className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+              className="absolute inset-0 w-full h-full object-cover object-top opacity-0 group-hover:opacity-100 transition-opacity duration-150"
             />
           )}
 
