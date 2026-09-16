@@ -1,16 +1,15 @@
 import { Controller, Post, Body, UseGuards, HttpCode } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { BackupService } from './backup.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from 'src/common/guards/roles.guard';
+import { Roles } from 'src/common/decorators/roles.decorator';
 
 @Controller('admin/backup')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(AuthGuard('jwt'), RolesGuard)
 @Roles('ADMIN')
 export class BackupController {
   constructor(private readonly backupService: BackupService) {}
 
-  // Manual backup trigger
   @Post('create')
   @HttpCode(200)
   async createBackup() {
@@ -22,7 +21,6 @@ export class BackupController {
     };
   }
 
-  // Restore from Cloudinary URL
   @Post('restore')
   @HttpCode(200)
   async restoreBackup(@Body('url') url: string) {
