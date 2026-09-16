@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 
@@ -18,6 +19,7 @@ import { UploadModule } from './upload/upload.module';
 import { EmailModule } from './email/email.module';
 import { AdminModule } from './admin/admin.module';
 import { FeedModule } from './feed/feed.module';
+import { BackupModule } from './backup/backup.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -25,6 +27,7 @@ import { AppService } from './app.service';
   controllers: [AppController],
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot({ throttlers: [{ ttl: 60000, limit: 100 }] }),
     PrismaModule,
     AuthModule,
@@ -41,6 +44,7 @@ import { AppService } from './app.service';
     EmailModule,
     AdminModule,
     FeedModule,
+    BackupModule,
   ],
   providers: [
     AppService,
