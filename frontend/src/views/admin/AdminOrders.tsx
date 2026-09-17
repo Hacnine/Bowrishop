@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import toast from "react-hot-toast";
 import {
   Copy,
@@ -257,10 +257,36 @@ function OrderDetailModal({
 
 export function AdminOrders() {
   const [page, setPage] = useState(1);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data, isLoading } = useGetAdminOrdersQuery({ page, limit: 20 });
   const [updateStatus] = useUpdateOrderStatusMutation();
+
+  // URL থেকে orderId নিয়ে modal open করো
+  const openOrderId = searchParams.get('orderId');
+  const selectedOrder = openOrderId
+    ? (data?.data.find((o) => o.id === openOrderId) as Order | undefined) ?? null
+    : null;
+
+  const openModal = (order: Order) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('orderId', order.id);
+    router.replace(`?${params.toString()}`, { scroll: false });
+  };
+
+  const closeModal = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('orderId');
+    const q = params.toString();
+    router.replace(q ? `?${q}` : window.location.pathname, { scroll: false });
+  };
+
+  // আজকের orders count
+  const todayCount = data?.data.filter((o) => {
+    const orderDate = new Date(o.createdAt).toDateString();
+    const today = new Date().toDateString();
+    return orderDate === today;
+  }).length ?? 0;
 
   const handleStatusChange = async (id: string, status: string) => {
     try {
@@ -274,7 +300,14 @@ export function AdminOrders() {
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
+          {todayCount > 0 && (
+            <p className="text-sm text-indigo-600 font-medium mt-1">
+              🛍️ আজকে {todayCount}টি নতুন অর্ডার
+            </p>
+          )}
+        </div>
         <div>
           <Button onClick={() => router.push('/admin/orders/create')}>
             <Plus className="w-4 h-4 mr-2" /> Create Order
@@ -339,7 +372,7 @@ export function AdminOrders() {
                     <td className="px-6 py-4">
                       <button
                         type="button"
-                        onClick={() => setSelectedOrder(order as any)}
+                        onClick={() => openModal(order as Order)}
                         className="text-xs text-indigo-600 font-medium hover:underline whitespace-nowrap"
                       >
                         <svg
@@ -387,7 +420,7 @@ export function AdminOrders() {
       {selectedOrder && (
         <OrderDetailModal
           order={selectedOrder}
-          onClose={() => setSelectedOrder(null)}
+          onClose={closeModal}
         />
       )}
     </div>

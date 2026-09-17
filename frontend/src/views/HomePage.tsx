@@ -37,7 +37,7 @@ export function HomePage({ categories }: HomePageProps) {
         <Hero categories={categories ?? []} />
 
         {/* ── Trust bar ── */}
-        <section className="bg-white border-b border-gray-100">
+        {/* <section className="bg-white border-b border-gray-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 grid grid-cols-2 lg:grid-cols-4 gap-4">
             {perks.map(({ icon: Icon, title, desc }) => (
               <div key={title} className="flex items-center gap-3">
@@ -53,7 +53,7 @@ export function HomePage({ categories }: HomePageProps) {
               </div>
             ))}
           </div>
-        </section>
+        </section> */}
 
         {/* ── Categories ── */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 pb-6">

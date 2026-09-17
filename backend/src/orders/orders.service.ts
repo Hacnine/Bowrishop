@@ -9,6 +9,7 @@ import { CreateOrderDto, CreateGuestOrderDto, UpdateOrderStatusDto, CreateAdminC
 import { EmailService } from '../email/email.service';
 import { MetaService } from '../meta/meta.service';
 import { GA4Service } from '../ga4/ga4.service';
+import { WhatsappService } from '../notification/whatsapp.service';
 import { Prisma, OrderStatus } from '@prisma/client';
 
 @Injectable()
@@ -18,6 +19,7 @@ export class OrdersService {
     private emailService: EmailService,
     private metaService: MetaService,
     private ga4Service: GA4Service,
+    private whatsappService: WhatsappService,
   ) {}
 
   async createOrder(userId: string, dto: CreateOrderDto) {
@@ -125,13 +127,21 @@ export class OrdersService {
       return newOrder;
     });
 
-    // email + Meta event — non-blocking background
+    // email + WhatsApp + Meta event — non-blocking background
     this.prisma.user
       .findUnique({ where: { id: userId }, select: { email: true, name: true } })
       .then((user) => {
         if (user) {
           this.emailService.sendOrderConfirmation(user.email, user.name, order).catch(console.error);
         }
+        // Admin WhatsApp notification
+        this.whatsappService.sendAdminOrderNotification({
+          id: order.id,
+          total: order.total,
+          customerName: user?.name ?? 'Customer',
+          customerPhone: (order as any).shippingAddress?.phone,
+          itemCount: order.items?.length ?? 0,
+        }).catch(console.error);
       })
       .catch(console.error);
 
@@ -360,6 +370,15 @@ export class OrdersService {
     });
 
     this.emailService.sendOrderConfirmation(guestEmail, guestName, order).catch(console.error);
+
+    // Admin WhatsApp notification
+    this.whatsappService.sendAdminOrderNotification({
+      id: order.id,
+      total: order.total,
+      customerName: guestName,
+      customerPhone: (dto.shippingAddress as any)?.phone,
+      itemCount: order.items?.length ?? 0,
+    }).catch(console.error);
 
     this.metaService.trackPurchase({
       orderId: order.id,
