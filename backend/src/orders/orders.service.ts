@@ -137,7 +137,7 @@ export class OrdersService {
         // Admin WhatsApp notification
         this.whatsappService.sendAdminOrderNotification({
           id: order.id,
-          total: order.total,
+          total: Number(order.total),
           customerName: user?.name ?? 'Customer',
           customerPhone: (order as any).shippingAddress?.phone,
           itemCount: order.items?.length ?? 0,
@@ -374,7 +374,7 @@ export class OrdersService {
     // Admin WhatsApp notification
     this.whatsappService.sendAdminOrderNotification({
       id: order.id,
-      total: order.total,
+      total: Number(order.total),
       customerName: guestName,
       customerPhone: (dto.shippingAddress as any)?.phone,
       itemCount: order.items?.length ?? 0,
