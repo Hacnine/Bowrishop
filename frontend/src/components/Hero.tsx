@@ -22,10 +22,6 @@ import {
 } from 'lucide-react';
 import { Button } from './ui/button';
 
-// ---- Slide content (dynamic: swap/add slides freely) ----
-// Each slide carries its own perks (icon/title/desc + colors) plus its
-// own bar styling (background, divider) so the perks bar visually matches
-// that slide's photo instead of one perk set/style being reused everywhere.
 const heroSlides = [
   {
     eyebrow: 'Beauty in every detail',
@@ -34,7 +30,7 @@ const heroSlides = [
       'Discover our collection of beautifully designed hair pins that add the perfect touch to every look, every occasion.',
     image: '/hero/hero-1.webp',
     link: '/products?categoryId=1',
-    objectPosition: 'center center',
+    objectPosition: 'center top',
     titleClass: 'text-[#4A3328] ',
     descriptionClass: 'text-[#7A6557]',
     eyebrowClass: 'text-[#8B6A56]',
@@ -81,7 +77,7 @@ const heroSlides = [
       'Trendy hair clips, bands & clever accessories designed to elevate your style and make everyday easier.',
     image: '/hero/hero-2.webp',
     link: '/products?categoryId=2',
-    objectPosition: 'center center',
+    objectPosition: 'center top',
     titleClass: 'text-[#4A3328]',
     descriptionClass: 'text-[#7A6557]',
     eyebrowClass: 'text-[#8B6A56]',
@@ -264,7 +260,6 @@ const heroSlides = [
   },
 ];
 
-// ---- Icon matcher for the category strip below the hero ----
 const categoryIconRules = [
   { match: /living/i, icon: Sofa },
   { match: /bed/i, icon: BedDouble },
@@ -279,11 +274,6 @@ function getCategoryIcon(name = '') {
 
 const AUTOPLAY_MS = 6000;
 
-/**
- * Renders a slide's perks as a bottom overlay bar. Colors (bar background,
- * divider, icon circle, text) all come from the slide/perk config so each
- * slide's bar matches its own photo instead of sharing one hardcoded look.
- */
 function Perks({ slide }) {
   if (!slide.perks?.length) return null;
 
@@ -339,7 +329,7 @@ export function Hero({ categories = [] }: HeroProps) {
   return (
     <section className="relative">
       {/* Hero image with text + perks */}
-      <div className="relative text-white h-[550px] lg:h-[650px] overflow-hidden">
+      <div className="relative text-white h-[400px] sm:h-[550px] lg:h-[650px] overflow-hidden">
         {/* Background slider */}
         <div className="absolute inset-0">
           {heroSlides.map((s, index) => (
@@ -361,8 +351,8 @@ export function Hero({ categories = [] }: HeroProps) {
         </div>
 
         {/* Text content */}
-        <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center pb-28">
-          <div className="max-w-xl space-y-5">
+        <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center pb-28 sm:pb-28">
+          <div className="max-w-xl space-y-3 sm:space-y-5">
             <span
               className={`block uppercase tracking-[0.2em] text-xs font-semibold ${slide.eyebrowClass}`}
             >
@@ -372,12 +362,12 @@ export function Hero({ categories = [] }: HeroProps) {
             <span className="block w-10 h-[2px] bg-current opacity-70" />
 
             <h1
-              className={`${slide.titleClass} text-5xl lg:text-6xl font-cormorant font-bold leading-tight`}
+              className={`${slide.titleClass} text-3xl sm:text-5xl lg:text-6xl font-cormorant font-bold leading-tight`}
             >
               {slide.title}
             </h1>
 
-            <p className={`${slide.descriptionClass} text-base lg:text-lg max-w-md`}>
+            <p className={`${slide.descriptionClass} text-sm sm:text-base lg:text-lg max-w-md`}>
               {slide.description}
             </p>
 
@@ -395,7 +385,7 @@ export function Hero({ categories = [] }: HeroProps) {
         </div>
 
         {/* Slider dots */}
-        <div className="absolute inset-x-0 bottom-[120px] flex justify-center gap-3 z-30">
+        <div className="absolute inset-x-0 bottom-[100px] sm:bottom-[120px] flex justify-center gap-3 z-30">
           {heroSlides.map((_, index) => (
             <button
               key={index}
@@ -412,29 +402,6 @@ export function Hero({ categories = [] }: HeroProps) {
         {/* Perks overlay bar */}
         <Perks slide={slide} />
       </div>
-
-      {/* Category icon strip (below hero) */}
-      {/* {categories.length > 0 && (
-        <div className="bg-[#F7F1EA] border-b border-gray-200">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-wrap items-center justify-center gap-x-10 gap-y-3">
-            {categories.map((cat) => {
-              const Icon = getCategoryIcon(cat.name);
-              return (
-                <Link
-                  key={cat.id}
-                  href={`/products?categoryId=${cat.id}`}
-                  className="flex items-center gap-2 text-gray-700 hover:text-indigo-600 transition-colors"
-                >
-                  <Icon className="w-4 h-4" />
-                  <span className="text-xs font-semibold tracking-wide uppercase">
-                    {cat.name}
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      )} */}
     </section>
   );
 }
