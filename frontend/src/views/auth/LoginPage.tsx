@@ -2,43 +2,33 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { Eye, EyeOff } from 'lucide-react';
 
-import { useRegisterMutation } from '../../features/auth/authApi';
+import { useLoginMutation } from '../../features/auth/authApi';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { setCredentials } from '../../features/auth/authSlice';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 
-const schema = z
-  .object({
-    name: z.string().min(2, 'Name must be at least 2 characters'),
-    email: z.string().email('Invalid email'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
-    confirmPassword: z.string(),
-  })
-  .refine((d) => d.password === d.confirmPassword, {
-    message: "Passwords don't match",
-    path: ['confirmPassword'],
-  });
+const schema = z.object({
+  email: z.string().email('Invalid email'),
+  password: z.string().min(1, 'Password required'),
+});
 
 type FormValues = z.infer<typeof schema>;
 
-export function RegisterPage() {
+export function LoginPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { isAuthenticated } = useAppSelector((s) => s.auth);
 
-  const [registerUser, { isLoading }] = useRegisterMutation();
-
-  // Password visibility states
+  const [login, { isLoading }] = useLoginMutation();
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -56,11 +46,7 @@ export function RegisterPage() {
 
   const onSubmit = async (data: FormValues) => {
     try {
-      const result = await registerUser({
-        name: data.name,
-        email: data.email,
-        password: data.password,
-      }).unwrap();
+      const result = await login(data).unwrap();
 
       dispatch(setCredentials(result));
       router.push('/');
@@ -71,11 +57,11 @@ export function RegisterPage() {
         };
       };
 
-      toast.error(e?.data?.message ?? 'Registration failed');
+      toast.error(e?.data?.message ?? 'Login failed');
     }
   };
 
-  const handleGoogleSignup = () => {
+  const handleGoogleLogin = () => {
     window.location.href = `${
       process.env.NEXT_PUBLIC_API_URL ?? ''
     }/api/auth/google`;
@@ -85,19 +71,11 @@ export function RegisterPage() {
     <div className="min-h-[80vh] flex items-center justify-center py-12 px-4">
       <div className="w-full max-w-md">
         <h1 className="text-3xl font-bold text-gray-900 text-center mb-8">
-          Create account
+          Welcome back
         </h1>
 
         <div className="bg-white shadow-sm rounded-2xl p-8 space-y-6">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {/* Full Name */}
-            <Input
-              label="Full name"
-              autoComplete="name"
-              error={errors.name?.message}
-              {...register('name')}
-            />
-
             {/* Email */}
             <Input
               label="Email"
@@ -112,7 +90,7 @@ export function RegisterPage() {
               <Input
                 label="Password"
                 type={showPassword ? 'text' : 'password'}
-                autoComplete="new-password"
+                autoComplete="current-password"
                 error={errors.password?.message}
                 className="pr-10"
                 {...register('password')}
@@ -134,44 +112,13 @@ export function RegisterPage() {
               </button>
             </div>
 
-            {/* Confirm Password */}
-            <div className="relative">
-              <Input
-                label="Confirm password"
-                type={showConfirmPassword ? 'text' : 'password'}
-                autoComplete="new-password"
-                error={errors.confirmPassword?.message}
-                className="pr-10"
-                {...register('confirmPassword')}
-              />
-
-              <button
-                type="button"
-                onClick={() =>
-                  setShowConfirmPassword((prev) => !prev)
-                }
-                className="absolute right-3 top-[38px] text-gray-500 hover:text-gray-700 transition-colors"
-                aria-label={
-                  showConfirmPassword
-                    ? 'Hide confirm password'
-                    : 'Show confirm password'
-                }
-              >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-5 w-5" />
-                ) : (
-                  <Eye className="h-5 w-5" />
-                )}
-              </button>
-            </div>
-
             {/* Submit */}
             <Button
               type="submit"
               className="w-full"
               isLoading={isLoading}
             >
-              Create account
+              Sign in
             </Button>
           </form>
 
@@ -188,10 +135,10 @@ export function RegisterPage() {
             </div>
           </div>
 
-          {/* Google Signup */}
+          {/* Google Login */}
           <button
             type="button"
-            onClick={handleGoogleSignup}
+            onClick={handleGoogleLogin}
             className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-xl px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
           >
             <svg
@@ -217,17 +164,17 @@ export function RegisterPage() {
               />
             </svg>
 
-            Sign up with Google
+            Continue with Google
           </button>
 
-          {/* Login Link */}
+          {/* Register */}
           <p className="text-center text-sm text-gray-500">
-            Already have an account?{' '}
+            Don't have an account?{' '}
             <Link
-              href="/login"
+              href="/register"
               className="text-indigo-600 font-medium hover:underline"
             >
-              Sign in
+              Sign up
             </Link>
           </p>
         </div>
